@@ -19,7 +19,10 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return (
-        (isSignedIn() && request.auth.token.email == 'nahianalmubin2006@gmail.com') ||
+        (isSignedIn() && (
+          request.auth.token.email == 'nahianalmubin2006@gmail.com' ||
+          request.auth.token.email == 'nahianalmubin212528@gmail.com'
+        )) ||
         (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPER_ADMIN')
       );

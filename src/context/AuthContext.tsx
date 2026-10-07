@@ -61,7 +61,17 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Super admin email constant
+// Super admin email constants
+export const SUPER_ADMIN_EMAILS = [
+  'nahianalmubin2006@gmail.com',
+  'nahianalmubin212528@gmail.com',
+];
+
+export const isSuperAdminEmail = (email?: string | null): boolean => {
+  if (!email) return false;
+  return SUPER_ADMIN_EMAILS.some((adminEmail) => adminEmail.toLowerCase() === email.toLowerCase());
+};
+
 export const SUPER_ADMIN_EMAIL = 'nahianalmubin2006@gmail.com';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -77,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (snap.exists()) {
         const data = snap.data() as UserProfile;
         // Check if this is the super admin email and promote if needed
-        if (user.email === SUPER_ADMIN_EMAIL && data.role !== 'SUPER_ADMIN') {
+        if (isSuperAdminEmail(user.email) && data.role !== 'SUPER_ADMIN') {
           const updated = { ...data, role: 'SUPER_ADMIN' as Role, status: 'APPROVED' as UserStatus };
           await setDoc(userDocRef, updated, { merge: true });
           return updated;
@@ -85,7 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return data;
       } else {
         // Create initial profile for new auth user
-        const isMasterAdmin = user.email === SUPER_ADMIN_EMAIL;
+        const isMasterAdmin = isSuperAdminEmail(user.email);
         const initialProfile: UserProfile = {
           id: user.uid,
           uid: user.uid,
@@ -129,8 +139,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         uid: user.uid,
         email: user.email || '',
         name: user.displayName || 'AlumniSphere User',
-        role: user.email === SUPER_ADMIN_EMAIL ? 'SUPER_ADMIN' : 'STUDENT',
-        status: user.email === SUPER_ADMIN_EMAIL ? 'APPROVED' : 'PENDING',
+        role: isSuperAdminEmail(user.email) ? 'SUPER_ADMIN' : 'STUDENT',
+        status: isSuperAdminEmail(user.email) ? 'APPROVED' : 'PENDING',
         profileType: 'Student',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -213,17 +223,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        if (email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) {
+        if (isSuperAdminEmail(email)) {
           const syntheticUser: any = {
             uid: 'admin_nahianalmubin',
-            email: SUPER_ADMIN_EMAIL,
+            email: email,
             displayName: 'Nahian Al Mubin',
             emailVerified: true,
           };
           setCurrentUser(syntheticUser);
           localStorage.setItem(
             'alumniSphereSyntheticSession',
-            JSON.stringify({ uid: 'admin_nahianalmubin', email: SUPER_ADMIN_EMAIL, name: 'Nahian Al Mubin' })
+            JSON.stringify({ uid: 'admin_nahianalmubin', email: email, name: 'Nahian Al Mubin' })
           );
           const profile = await fetchOrCreateUserProfile(syntheticUser);
           setUserProfile(profile);
@@ -279,7 +289,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('User authentication could not be established.');
       }
 
-      const isMasterAdmin = data.email === SUPER_ADMIN_EMAIL;
+      const isMasterAdmin = isSuperAdminEmail(data.email);
       const initialRole: Role = isMasterAdmin
         ? 'SUPER_ADMIN'
         : data.profileType === 'Alumni'
@@ -427,9 +437,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const effectiveRole: Role =
     simulatedRole ||
     (userProfile?.role ||
-      (currentUser?.email === SUPER_ADMIN_EMAIL ? 'SUPER_ADMIN' : 'STUDENT'));
+      (isSuperAdminEmail(currentUser?.email) ? 'SUPER_ADMIN' : 'STUDENT'));
 
-  const isSuperAdmin = effectiveRole === 'SUPER_ADMIN' || currentUser?.email === SUPER_ADMIN_EMAIL;
+  const isSuperAdmin = effectiveRole === 'SUPER_ADMIN' || isSuperAdminEmail(currentUser?.email);
   const isUniversityAdmin = isSuperAdmin || effectiveRole === 'UNIVERSITY_ADMIN';
   const isDepartmentAdmin = isSuperAdmin || isUniversityAdmin || effectiveRole === 'DEPARTMENT_ADMIN';
 
