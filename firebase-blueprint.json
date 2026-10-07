@@ -1,0 +1,353 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role-based access information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string", "maxLength": 150 },
+        "role": { "type": "string", "enum": ["SUPER_ADMIN", "UNIVERSITY_ADMIN", "DEPARTMENT_ADMIN", "STUDENT", "ALUMNI"] },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED", "SUSPENDED"] },
+        "profileType": { "type": "string", "enum": ["Student", "Alumni", "Admin"] },
+        "university": { "type": "string", "maxLength": 200 },
+        "department": { "type": "string", "maxLength": 200 },
+        "studentId": { "type": "string", "maxLength": 50 },
+        "educationLevel": { "type": "string", "maxLength": 100 },
+        "studentYear": { "type": "string", "maxLength": 50 },
+        "expectedGraduation": { "type": "string", "maxLength": 20 },
+        "graduationYear": { "type": "string", "maxLength": 20 },
+        "jobRole": { "type": "string", "maxLength": 150 },
+        "company": { "type": "string", "maxLength": 150 },
+        "country": { "type": "string", "maxLength": 100 },
+        "city": { "type": "string", "maxLength": 100 },
+        "bio": { "type": "string", "maxLength": 1000 },
+        "photoUrl": { "type": "string", "maxLength": 2000 },
+        "linkedin": { "type": "string", "maxLength": 300 },
+        "isVerifiedAlumni": { "type": "boolean" },
+        "assignedUniversity": { "type": "string", "maxLength": 200 },
+        "assignedDepartment": { "type": "string", "maxLength": 200 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "name", "role", "status", "profileType"]
+    },
+    "University": {
+      "title": "University",
+      "description": "University records in AlumniSphere directory",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 200 },
+        "type": { "type": "string", "enum": ["Public", "Private", "International"] },
+        "location": { "type": "string", "maxLength": 200 },
+        "verified": { "type": "boolean" },
+        "alumniCount": { "type": "number" },
+        "studentCount": { "type": "number" },
+        "departmentCount": { "type": "number" },
+        "employmentRate": { "type": "number" },
+        "higherStudiesRate": { "type": "number" },
+        "countriesCount": { "type": "number" },
+        "companiesCount": { "type": "number" },
+        "overview": { "type": "string", "maxLength": 2000 },
+        "website": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "type"]
+    },
+    "Department": {
+      "title": "Department",
+      "description": "Academic department records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 200 },
+        "university": { "type": "string", "maxLength": 200 },
+        "group": { "type": "string", "maxLength": 100 },
+        "alumniCount": { "type": "number" },
+        "studentCount": { "type": "number" },
+        "employmentRate": { "type": "number" },
+        "higherStudiesRate": { "type": "number" },
+        "countriesCount": { "type": "number" },
+        "companiesCount": { "type": "number" },
+        "careerScores": { "type": "object" },
+        "achievements": { "type": "string", "maxLength": 2000 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "university", "group"]
+    },
+    "Batch": {
+      "title": "Batch",
+      "description": "Department cohort batches",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "year": { "type": "string", "maxLength": 10 },
+        "department": { "type": "string", "maxLength": 200 },
+        "university": { "type": "string", "maxLength": 200 },
+        "studentsCount": { "type": "number" },
+        "employedRate": { "type": "number" },
+        "higherStudyRate": { "type": "number" },
+        "internationalRate": { "type": "number" },
+        "entrepreneursRate": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["year", "department", "university"]
+    },
+    "Alumni": {
+      "title": "Alumni",
+      "description": "Approved alumni public profiles",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 150 },
+        "email": { "type": "string" },
+        "university": { "type": "string", "maxLength": 200 },
+        "department": { "type": "string", "maxLength": 200 },
+        "batch": { "type": "string", "maxLength": 10 },
+        "studentId": { "type": "string", "maxLength": 50 },
+        "educationLevel": { "type": "string", "maxLength": 100 },
+        "graduationYear": { "type": "string", "maxLength": 20 },
+        "jobRole": { "type": "string", "maxLength": 150 },
+        "company": { "type": "string", "maxLength": 150 },
+        "country": { "type": "string", "maxLength": 100 },
+        "city": { "type": "string", "maxLength": 100 },
+        "bio": { "type": "string", "maxLength": 1000 },
+        "photoUrl": { "type": "string", "maxLength": 2000 },
+        "linkedin": { "type": "string", "maxLength": 300 },
+        "isVerified": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "university", "department", "status"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Approved student profiles",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 150 },
+        "email": { "type": "string" },
+        "university": { "type": "string", "maxLength": 200 },
+        "department": { "type": "string", "maxLength": 200 },
+        "studentId": { "type": "string", "maxLength": 50 },
+        "educationLevel": { "type": "string", "maxLength": 100 },
+        "studentYear": { "type": "string", "maxLength": 50 },
+        "expectedGraduation": { "type": "string", "maxLength": 20 },
+        "bio": { "type": "string", "maxLength": 1000 },
+        "photoUrl": { "type": "string", "maxLength": 2000 },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "university", "department", "status"]
+    },
+    "News": {
+      "title": "News",
+      "description": "Live News articles and announcements",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string", "maxLength": 300 },
+        "content": { "type": "string", "maxLength": 10000 },
+        "summary": { "type": "string", "maxLength": 500 },
+        "imageUrl": { "type": "string", "maxLength": 2000 },
+        "category": { "type": "string", "maxLength": 100 },
+        "university": { "type": "string", "maxLength": 200 },
+        "department": { "type": "string", "maxLength": 200 },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string", "maxLength": 150 },
+        "status": { "type": "string", "enum": ["DRAFT", "PENDING_APPROVAL", "PUBLISHED", "ARCHIVED"] },
+        "featured": { "type": "boolean" },
+        "trending": { "type": "boolean" },
+        "views": { "type": "number" },
+        "publishedAt": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "content", "category", "status"]
+    },
+    "ChangeRequest": {
+      "title": "ChangeRequest",
+      "description": "University/Department admin edit submissions requiring Super Admin review",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "requesterId": { "type": "string" },
+        "requesterName": { "type": "string", "maxLength": 150 },
+        "requesterEmail": { "type": "string" },
+        "requesterRole": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["UNIVERSITY", "DEPARTMENT", "NEWS", "BATCH", "SETTINGS"] },
+        "targetId": { "type": "string" },
+        "targetTitle": { "type": "string", "maxLength": 200 },
+        "university": { "type": "string", "maxLength": 200 },
+        "department": { "type": "string", "maxLength": 200 },
+        "oldValue": { "type": "string", "maxLength": 5000 },
+        "newValue": { "type": "string", "maxLength": 5000 },
+        "reason": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "reviewedBy": { "type": "string", "maxLength": 150 },
+        "reviewerComment": { "type": "string", "maxLength": 1000 },
+        "reviewedAt": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["requesterId", "targetType", "status"]
+    },
+    "VerificationRequest": {
+      "title": "VerificationRequest",
+      "description": "Alumni verification badge requests",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string", "maxLength": 150 },
+        "userEmail": { "type": "string" },
+        "university": { "type": "string", "maxLength": 200 },
+        "department": { "type": "string", "maxLength": 200 },
+        "batch": { "type": "string", "maxLength": 20 },
+        "studentId": { "type": "string", "maxLength": 50 },
+        "proofUrl": { "type": "string", "maxLength": 2000 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "reviewedBy": { "type": "string", "maxLength": 150 },
+        "reviewerComment": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "university", "department", "status"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "In-app notifications for users and admins",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "recipientId": { "type": "string" },
+        "recipientRole": { "type": "string" },
+        "title": { "type": "string", "maxLength": 200 },
+        "message": { "type": "string", "maxLength": 1000 },
+        "type": { "type": "string", "enum": ["ACCOUNT", "VERIFICATION", "CHANGE_REQUEST", "NEWS", "ADMIN_ASSIGNMENT", "SYSTEM"] },
+        "read": { "type": "boolean" },
+        "actionUrl": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "message", "type", "read"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "System audit trail for administrative operations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "actorId": { "type": "string" },
+        "actorName": { "type": "string", "maxLength": 150 },
+        "actorEmail": { "type": "string" },
+        "actorRole": { "type": "string" },
+        "action": { "type": "string", "maxLength": 100 },
+        "targetType": { "type": "string", "maxLength": 100 },
+        "targetId": { "type": "string" },
+        "details": { "type": "string", "maxLength": 2000 },
+        "ip": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["actorId", "action", "targetType"]
+    },
+    "AdminAssignment": {
+      "title": "AdminAssignment",
+      "description": "Assignment records of University and Department Admins",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "userName": { "type": "string", "maxLength": 150 },
+        "role": { "type": "string", "enum": ["UNIVERSITY_ADMIN", "DEPARTMENT_ADMIN"] },
+        "university": { "type": "string", "maxLength": 200 },
+        "department": { "type": "string", "maxLength": 200 },
+        "assignedBy": { "type": "string", "maxLength": 150 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "role", "university"]
+    },
+    "PlatformSetting": {
+      "title": "PlatformSetting",
+      "description": "Configuration settings for AlumniSphere platform",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "autoApproveStudents": { "type": "boolean" },
+        "autoApproveAlumni": { "type": "boolean" },
+        "requireAlumniProof": { "type": "boolean" },
+        "allowPublicNewsSubmission": { "type": "boolean" },
+        "maintenanceMode": { "type": "boolean" },
+        "updatedBy": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile with role and verification status"
+    },
+    "/universities/{universityId}": {
+      "schema": "University",
+      "description": "University records and analytics"
+    },
+    "/departments/{departmentId}": {
+      "schema": "Department",
+      "description": "Department records and career statistics"
+    },
+    "/batches/{batchId}": {
+      "schema": "Batch",
+      "description": "Academic cohort batches"
+    },
+    "/alumni/{alumniId}": {
+      "schema": "Alumni",
+      "description": "Approved and verified alumni profiles"
+    },
+    "/students/{studentId}": {
+      "schema": "Student",
+      "description": "Approved student profiles"
+    },
+    "/news/{newsId}": {
+      "schema": "News",
+      "description": "Platform live news and announcements"
+    },
+    "/changeRequests/{requestId}": {
+      "schema": "ChangeRequest",
+      "description": "University and department change approval queue"
+    },
+    "/verificationRequests/{verificationId}": {
+      "schema": "VerificationRequest",
+      "description": "Alumni verification requests"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Administrative actions audit log"
+    },
+    "/adminAssignments/{assignmentId}": {
+      "schema": "AdminAssignment",
+      "description": "University and Department Admin assignments"
+    },
+    "/platformSettings/{settingId}": {
+      "schema": "PlatformSetting",
+      "description": "Global platform configurations"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "AlumniSphere — Alumni Intelligence Platform",
+  "description": "Explore where university graduates go. A comprehensive university alumni intelligence platform featuring verified alumni directory, departments, live news, and approval workflows.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
