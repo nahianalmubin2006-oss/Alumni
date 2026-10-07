@@ -116,7 +116,8 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
 
   const departmentList = useMemo(() => {
     const fromDb = departments.map((d) => d.name);
-    return Array.from(new Set([...fromDb, ...RAW_DEPARTMENT_CATALOG]));
+    const catalog = RAW_DEPARTMENT_CATALOG.map((d) => d.name);
+    return Array.from(new Set([...fromDb, ...catalog]));
   }, [departments]);
 
   // Filter published news

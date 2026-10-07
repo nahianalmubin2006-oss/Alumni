@@ -87,7 +87,8 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     const fromDb = departments
       .filter((d) => d.university.toLowerCase() === universityName.toLowerCase())
       .map((d) => d.name);
-    return Array.from(new Set([...fromDb, ...RAW_DEPARTMENT_CATALOG]));
+    const catalog = RAW_DEPARTMENT_CATALOG.map((d) => d.name);
+    return Array.from(new Set([...fromDb, ...catalog]));
   }, [departments, universityName]);
 
   // Related news with department filtering & hot topic prioritization

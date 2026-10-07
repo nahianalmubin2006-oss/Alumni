@@ -65,6 +65,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const SUPER_ADMIN_EMAILS = [
   'nahianalmubin2006@gmail.com',
   'nahianalmubin212528@gmail.com',
+  'nahianalmubin1@gmail.com',
 ];
 
 export const isSuperAdminEmail = (email?: string | null): boolean => {

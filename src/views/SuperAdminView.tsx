@@ -36,6 +36,8 @@ import {
   Trash2,
   Activity,
   History,
+  Bot,
+  Pin,
 } from 'lucide-react';
 import { AdminActivityLog } from '../components/AdminActivityLog';
 
