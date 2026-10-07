@@ -119,7 +119,10 @@ service cloud.firestore {
         getUserData().role == 'UNIVERSITY_ADMIN' ||
         getUserData().role == 'DEPARTMENT_ADMIN'
       ));
-      allow delete: if isSuperAdmin();
+      allow delete: if isSuperAdmin() || (isSignedIn() && (
+        getUserData().role == 'UNIVERSITY_ADMIN' ||
+        getUserData().role == 'DEPARTMENT_ADMIN'
+      )) || (resource.data.isPermanent == false);
     }
 
     // Change Requests Collection

@@ -2,6 +2,19 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { universityInitials, RAW_DEPARTMENT_CATALOG, demoSeed } from '../data/initialData';
+import {
+  Flame,
+  Award,
+  Shield,
+  Clock,
+  ExternalLink,
+  Pin,
+  RefreshCw,
+  Bot,
+  Sparkles,
+  Newspaper,
+  CheckCircle2,
+} from 'lucide-react';
 
 interface UniversityDetailViewProps {
   universityName: string;
@@ -12,13 +25,34 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
   universityName,
   onNavigate,
 }) => {
-  const { universities, departments, alumni, news, submitChangeRequest } = useData();
+  const {
+    universities,
+    departments,
+    alumni,
+    news,
+    submitChangeRequest,
+    makeNewsPermanent,
+    removeNewsPermanent,
+    triggerAINewsBotScan,
+  } = useData();
   const { currentUser, userProfile, isSuperAdmin } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'departments' | 'alumni' | 'batches' | 'news'>('overview');
   const [showEditModal, setShowEditModal] = useState(false);
   const [editOverview, setEditOverview] = useState('');
   const [editLocation, setEditLocation] = useState('');
+
+  // AI news state in University View
+  const [selectedNewsDept, setSelectedNewsDept] = useState('All');
+  const [newsFilterType, setNewsFilterType] = useState<'ALL' | 'HOT' | 'ACHIEVEMENTS' | 'PERMANENT'>('ALL');
+  const [isScanningUniNews, setIsScanningUniNews] = useState(false);
+
+  // Check if current user is one of the 3 admin types
+  const canMakePermanent =
+    isSuperAdmin ||
+    userProfile?.role === 'SUPER_ADMIN' ||
+    userProfile?.role === 'UNIVERSITY_ADMIN' ||
+    userProfile?.role === 'DEPARTMENT_ADMIN';
 
   // Find university record or generate representation
   const university = useMemo(() => {
@@ -48,10 +82,63 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     return alumni.filter((a) => a.university.toLowerCase() === universityName.toLowerCase() && a.status === 'APPROVED');
   }, [alumni, universityName]);
 
-  // Related news
+  // Available departments for this university
+  const uniDeptList = useMemo(() => {
+    const fromDb = departments
+      .filter((d) => d.university.toLowerCase() === universityName.toLowerCase())
+      .map((d) => d.name);
+    return Array.from(new Set([...fromDb, ...RAW_DEPARTMENT_CATALOG]));
+  }, [departments, universityName]);
+
+  // Related news with department filtering & hot topic prioritization
   const uniNews = useMemo(() => {
-    return news.filter((n) => n.university?.toLowerCase() === universityName.toLowerCase() && n.status === 'PUBLISHED');
-  }, [news, universityName]);
+    return news
+      .filter(
+        (n) =>
+          n.university?.toLowerCase() === universityName.toLowerCase() &&
+          n.status === 'PUBLISHED'
+      )
+      .filter((n) => {
+        if (selectedNewsDept === 'All') return true;
+        return n.department?.toLowerCase() === selectedNewsDept.toLowerCase();
+      })
+      .filter((n) => {
+        if (newsFilterType === 'HOT') return n.isHotTopic;
+        if (newsFilterType === 'ACHIEVEMENTS')
+          return (
+            n.category === 'Alumni special achievements' ||
+            n.category === 'Alumni achievements' ||
+            Boolean(n.alumniPrizeName)
+          );
+        if (newsFilterType === 'PERMANENT') return n.isPermanent;
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.isHotTopic && !b.isHotTopic) return -1;
+        if (!a.isHotTopic && b.isHotTopic) return 1;
+        return (
+          new Date(b.publishedAt || b.createdAt).getTime() -
+          new Date(a.publishedAt || a.createdAt).getTime()
+        );
+      });
+  }, [news, universityName, selectedNewsDept, newsFilterType]);
+
+  const handleScanUniNews = async () => {
+    try {
+      setIsScanningUniNews(true);
+      await triggerAINewsBotScan({
+        university: universityName,
+        department: selectedNewsDept !== 'All' ? selectedNewsDept : undefined,
+        focusType: 'ALUMNI_ACHIEVEMENT',
+        forceHotTopic: true,
+        count: 2,
+      });
+    } catch (err) {
+      console.error('Failed to trigger scan:', err);
+    } finally {
+      setIsScanningUniNews(false);
+    }
+  };
 
   // Check if current user is university admin for this uni
   const isThisUniAdmin =
@@ -383,24 +470,255 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
       )}
 
       {activeTab === 'news' && (
-        <div className="mt-6">
+        <div className="mt-6 space-y-6">
+          {/* AI Intelligence Header & Department Filter Bar */}
+          <div className="card p-6 border-soft">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-soft">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="p-1 bg-blue-100 text-blue-700 rounded-lg">
+                    <Newspaper className="w-3.5 h-3.5" />
+                  </span>
+                  <span className="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    AI LIVE WIRE
+                  </span>
+                </div>
+                <h3 className="text-lg font-black navy mt-1">
+                  {university.name} Live Intelligence & Accolades
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Daily 24h rotating news wire covering all departments, alumni prize winners, and research breakthroughs.
+                </p>
+              </div>
+
+              <button
+                onClick={handleScanUniNews}
+                disabled={isScanningUniNews}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow transition flex items-center gap-2 cursor-pointer disabled:opacity-50 self-start md:self-auto shrink-0"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isScanningUniNews ? 'animate-spin' : ''}`} />
+                <span>{isScanningUniNews ? 'AI Bot Scanning...' : 'Scan University Web Wire'}</span>
+              </button>
+            </div>
+
+            {/* Department and Category Filter Controls */}
+            <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-1">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-bold text-slate-600">Department:</label>
+                <select
+                  value={selectedNewsDept}
+                  onChange={(e) => setSelectedNewsDept(e.target.value)}
+                  className="text-xs font-semibold bg-slate-50 border border-soft rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
+                >
+                  <option value="All">All Departments</option>
+                  {uniDeptList.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                <button
+                  onClick={() => setNewsFilterType('ALL')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    newsFilterType === 'ALL'
+                      ? 'bg-navy text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  All ({uniNews.length})
+                </button>
+                <button
+                  onClick={() => setNewsFilterType('HOT')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                    newsFilterType === 'HOT'
+                      ? 'bg-rose-600 text-white'
+                      : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                  }`}
+                >
+                  <Flame className="w-3 h-3 text-amber-400" />
+                  Hot Topics
+                </button>
+                <button
+                  onClick={() => setNewsFilterType('ACHIEVEMENTS')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                    newsFilterType === 'ACHIEVEMENTS'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                  }`}
+                >
+                  <Award className="w-3 h-3 text-amber-500" />
+                  Alumni Prizes
+                </button>
+                <button
+                  onClick={() => setNewsFilterType('PERMANENT')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                    newsFilterType === 'PERMANENT'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  }`}
+                >
+                  <Shield className="w-3 h-3 text-emerald-500" />
+                  Permanent Records
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* News Cards Grid */}
           {uniNews.length === 0 ? (
-            <div className="card p-8 text-center text-slate-400 text-sm">
-              No news articles published for {university.name} yet.
+            <div className="card p-12 text-center text-slate-400 bg-white border-dashed border-slate-300">
+              <Bot className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="font-bold text-sm navy">
+                No active news stories matching "{selectedNewsDept}"
+              </p>
+              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                Trigger the autonomous AI bot to scan web archives and scholarly journals for this institution.
+              </p>
+              <button
+                onClick={handleScanUniNews}
+                disabled={isScanningUniNews}
+                className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition inline-flex items-center gap-2 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Fetch AI News Now</span>
+              </button>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 gap-4">
-              {uniNews.map((n) => (
-                <div
-                  key={n.id}
-                  onClick={() => onNavigate('newsDetail', { id: n.id })}
-                  className="card p-5 cursor-pointer hover:border-blue-300 transition"
-                >
-                  <span className="pill text-[10px] text-blue-600 mb-2">{n.category}</span>
-                  <h3 className="font-bold text-slate-900 mt-1">{n.title}</h3>
-                  <p className="text-xs text-slate-500 mt-2 line-clamp-2">{n.summary}</p>
-                </div>
-              ))}
+              {uniNews.map((n) => {
+                const daysLeft = n.expiresAt
+                  ? Math.max(
+                      0,
+                      Math.ceil(
+                        (new Date(n.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                      )
+                    )
+                  : null;
+
+                return (
+                  <div
+                    key={n.id}
+                    className={`card p-5 transition hover:shadow-md flex flex-col justify-between bg-white ${
+                      n.isHotTopic
+                        ? 'border-rose-300 bg-gradient-to-br from-rose-50/30 to-amber-50/20'
+                        : 'hover:border-blue-300'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center justify-between gap-1.5 mb-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {n.isHotTopic && (
+                            <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-rose-700 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded-full animate-pulse">
+                              <Flame className="w-3 h-3 text-rose-600" />
+                              <span>HOT TOPIC</span>
+                            </span>
+                          )}
+
+                          {n.alumniPrizeName && (
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                              <Award className="w-3 h-3 text-amber-600" />
+                              <span>{n.alumniPrizeName}</span>
+                            </span>
+                          )}
+
+                          <span className="pill text-[10px] text-blue-600 bg-blue-50">
+                            {n.category}
+                          </span>
+
+                          {n.department && (
+                            <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
+                              {n.department}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Retention & 3 Admin Types Permanent Action */}
+                        <div className="flex items-center gap-1.5">
+                          {n.isPermanent ? (
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              <Shield className="w-3 h-3 text-emerald-600" />
+                              <span>Permanent</span>
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              <span>{daysLeft}d left</span>
+                            </span>
+                          )}
+
+                          {canMakePermanent && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (n.isPermanent) {
+                                  removeNewsPermanent(n.id);
+                                } else {
+                                  makeNewsPermanent(n.id);
+                                }
+                              }}
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded border transition cursor-pointer flex items-center gap-1 ${
+                                n.isPermanent
+                                  ? 'bg-slate-50 text-slate-600 border-slate-300 hover:bg-slate-100'
+                                  : 'bg-emerald-600 text-white border-emerald-700 hover:bg-emerald-700'
+                              }`}
+                              title="Designate permanent status"
+                            >
+                              <Pin className="w-2.5 h-2.5" />
+                              <span>{n.isPermanent ? 'Unpin' : 'Permanent'}</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <h3
+                        onClick={() => onNavigate('newsDetail', { id: n.id })}
+                        className="font-bold text-slate-900 mt-1 hover:text-blue-600 transition cursor-pointer leading-snug"
+                      >
+                        {n.title}
+                      </h3>
+
+                      {n.isHotTopic && n.hotTopicReason && (
+                        <p className="text-[11px] text-rose-700 font-bold mt-1 bg-rose-50/70 p-1.5 rounded border border-rose-200">
+                          {n.hotTopicReason}
+                        </p>
+                      )}
+
+                      <p className="text-xs text-slate-500 mt-2 line-clamp-3 leading-relaxed">
+                        {n.summary || n.content.slice(0, 140) + '...'}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-soft flex items-center justify-between text-xs text-slate-400">
+                      <div className="flex items-center gap-2">
+                        <span>{new Date(n.publishedAt || n.createdAt).toLocaleDateString()}</span>
+                        {n.sourceUrl && (
+                          <a
+                            href={n.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-blue-600 hover:underline flex items-center gap-1 font-semibold"
+                          >
+                            <ExternalLink className="w-2.5 h-2.5" />
+                            <span>Source</span>
+                          </a>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => onNavigate('newsDetail', { id: n.id })}
+                        className="text-blue-600 hover:underline font-bold text-xs cursor-pointer"
+                      >
+                        Read story →
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

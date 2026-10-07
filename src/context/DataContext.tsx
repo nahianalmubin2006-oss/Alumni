@@ -87,6 +87,23 @@ interface DataContextType {
   createNewsArticle: (article: Omit<NewsArticle, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateNewsArticle: (id: string, updates: Partial<NewsArticle>) => Promise<void>;
   deleteNewsArticle: (id: string, reason?: string) => Promise<void>;
+  makeNewsPermanent: (id: string, actor?: { uid: string; name: string; role: Role }) => Promise<void>;
+  removeNewsPermanent: (id: string) => Promise<void>;
+  triggerAINewsBotScan: (options?: {
+    focusType?: string;
+    university?: string;
+    department?: string;
+    forceHotTopic?: boolean;
+    count?: number;
+  }) => Promise<NewsArticle[]>;
+  cleanupExpiredNews: () => Promise<number>;
+  botStatus: {
+    active: boolean;
+    lastScanAt: string;
+    nextRotationAt: string;
+    cycleCount: number;
+    totalGenerated: number;
+  };
   deleteUser: (userId: string, reason?: string) => Promise<void>;
   deleteAlumni: (alumniId: string, reason?: string) => Promise<void>;
 
@@ -1076,6 +1093,202 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
+  // AI News Bot & Multi-Admin Permanence Lifecycle
+  const [botStatus, setBotStatus] = useState({
+    active: true,
+    lastScanAt: new Date().toISOString(),
+    nextRotationAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    cycleCount: 1,
+    totalGenerated: 0,
+  });
+
+  useEffect(() => {
+    fetch('/api/ai-news-bot/status')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.active !== undefined) {
+          setBotStatus({
+            active: data.active,
+            lastScanAt: data.lastScanAt || new Date().toISOString(),
+            nextRotationAt: data.nextRotationAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            cycleCount: data.cycleCount || 1,
+            totalGenerated: data.totalGenerated || 0,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const makeNewsPermanent = async (
+    id: string,
+    actor?: { uid: string; name: string; role: Role }
+  ) => {
+    const artDoc = doc(db, 'news', id);
+    const targetArticle = news.find((n) => n.id === id);
+    const adminUser = actor || {
+      uid: currentUser?.uid || 'admin',
+      name: userProfile?.name || 'Authorized Admin',
+      role: (userProfile?.role as Role) || 'SUPER_ADMIN',
+    };
+
+    await updateDoc(artDoc, {
+      isPermanent: true,
+      expiresAt: null as any,
+      permanentBy: {
+        userId: adminUser.uid,
+        userName: adminUser.name,
+        role: adminUser.role,
+        at: new Date().toISOString(),
+      },
+      updatedAt: new Date().toISOString(),
+    });
+
+    await logAudit(
+      'NEWS_MADE_PERMANENT',
+      'NEWS',
+      id,
+      `Article "${targetArticle?.title || id}" designated as PERMANENT by ${adminUser.role} ${adminUser.name}. 10-day expiration timer cancelled.`,
+      {
+        severity: 'SUCCESS',
+        targetName: targetArticle?.title || id,
+        metadata: {
+          adminRole: adminUser.role,
+          university: targetArticle?.university,
+          department: targetArticle?.department,
+        },
+      }
+    );
+  };
+
+  const removeNewsPermanent = async (id: string) => {
+    const artDoc = doc(db, 'news', id);
+    const targetArticle = news.find((n) => n.id === id);
+    const tenDaysLater = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString();
+
+    await updateDoc(artDoc, {
+      isPermanent: false,
+      expiresAt: tenDaysLater,
+      permanentBy: null as any,
+      updatedAt: new Date().toISOString(),
+    });
+
+    await logAudit(
+      'NEWS_PERMANENCE_REVOKED',
+      'NEWS',
+      id,
+      `Permanence status removed for "${targetArticle?.title || id}". Reverted to standard 10-day TTL lifecycle.`,
+      {
+        severity: 'WARNING',
+        targetName: targetArticle?.title || id,
+      }
+    );
+  };
+
+  const cleanupExpiredNews = async (): Promise<number> => {
+    const now = Date.now();
+    let cleanedCount = 0;
+    const expiredList = news.filter(
+      (n) => !n.isPermanent && n.expiresAt && new Date(n.expiresAt).getTime() < now
+    );
+
+    for (const item of expiredList) {
+      try {
+        await deleteDoc(doc(db, 'news', item.id));
+        cleanedCount++;
+        await logAudit(
+          'EXPIRED_NEWS_AUTO_DELETED',
+          'NEWS',
+          item.id,
+          `AI bot routine auto-purged expired temporary news story: "${item.title}" (exceeded 10-day lifecycle without permanent admin lock).`,
+          {
+            severity: 'INFO',
+            targetName: item.title,
+            metadata: {
+              university: item.university,
+              department: item.department,
+              createdAt: item.createdAt,
+              expiresAt: item.expiresAt,
+            },
+          }
+        );
+      } catch (err) {
+        console.warn('Failed to delete expired news doc:', item.id, err);
+      }
+    }
+    return cleanedCount;
+  };
+
+  const triggerAINewsBotScan = async (options?: {
+    focusType?: string;
+    university?: string;
+    department?: string;
+    forceHotTopic?: boolean;
+    count?: number;
+  }): Promise<NewsArticle[]> => {
+    try {
+      const resp = await fetch('/api/ai-news-bot/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(options || {}),
+      });
+
+      if (!resp.ok) {
+        throw new Error(`Bot API returned status ${resp.status}`);
+      }
+
+      const data = await resp.json();
+      const articles = data.articles || [];
+      const savedArticles: NewsArticle[] = [];
+
+      for (const item of articles) {
+        const docRef = await addDoc(collection(db, 'news'), item);
+        savedArticles.push({ ...item, id: docRef.id });
+
+        if (item.isHotTopic) {
+          await logAudit(
+            'AI_HOT_TOPIC_DETECTED',
+            'NEWS',
+            docRef.id,
+            `🔥 Instant Hot Topic flagged: "${item.title}" (${item.hotTopicReason || 'High-impact breakthrough'}). Added immediately to live wire.`,
+            {
+              severity: 'WARNING',
+              targetName: item.title,
+              metadata: {
+                university: item.university,
+                department: item.department,
+                hotTopicReason: item.hotTopicReason,
+                sourceUrl: item.sourceUrl,
+              },
+            }
+          );
+        } else {
+          await logAudit(
+            'AI_NEWS_INDEXED',
+            'NEWS',
+            docRef.id,
+            `AI Bot indexed daily 24h wire story: "${item.title}" for ${item.university || 'Institutions'} · ${item.department || 'Departments'} (10-day temporary retention).`,
+            {
+              severity: 'INFO',
+              targetName: item.title,
+            }
+          );
+        }
+      }
+
+      if (data.botState) {
+        setBotStatus((prev) => ({ ...prev, ...data.botState }));
+      }
+
+      // Run automatic expired news cleanup
+      await cleanupExpiredNews();
+
+      return savedArticles;
+    } catch (err) {
+      console.error('Error triggering AI News Bot scan:', err);
+      throw err;
+    }
+  };
+
   const deleteUser = async (userId: string, reason?: string) => {
     const targetUser = allUsers.find((u) => u.uid === userId || u.id === userId);
     const targetName = targetUser?.name || 'User';
@@ -1253,6 +1466,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createNewsArticle,
         updateNewsArticle,
         deleteNewsArticle,
+        makeNewsPermanent,
+        removeNewsPermanent,
+        triggerAINewsBotScan,
+        cleanupExpiredNews,
+        botStatus,
         deleteUser,
         deleteAlumni,
         assignAdmin,

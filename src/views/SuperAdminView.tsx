@@ -65,6 +65,10 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onNavigate }) =>
     rejectChangeRequest,
     updateNewsArticle,
     deleteNewsArticle,
+    makeNewsPermanent,
+    removeNewsPermanent,
+    triggerAINewsBotScan,
+    cleanupExpiredNews,
     deleteUser,
     deleteAlumni,
     logAudit,
@@ -1841,48 +1845,170 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onNavigate }) =>
 
       {activeTab === 'news' && (
         <div className="mt-8 card p-6 shadow-xl border-soft">
-          <div className="flex items-center justify-between pb-4 border-b border-soft">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-soft">
             <div>
-              <h2 className="text-xl font-black navy">News & Campus Notices</h2>
-              <p className="text-xs text-slate-500 mt-1">Manage public articles and moderation states.</p>
-            </div>
-            <button
-              onClick={() => onNavigate('news')}
-              className="text-xs text-blue-600 font-bold hover:underline"
-            >
-              Public News Page →
-            </button>
-          </div>
-          <div className="mt-6 space-y-4">
-            {news.map((item) => (
-              <div
-                key={item.id}
-                className="p-4 rounded-xl border border-soft flex items-center justify-between gap-4"
-              >
-                <div>
-                  <b className="navy text-sm block">{item.title}</b>
-                  <span className="text-xs text-slate-500">
-                    Category: {item.category} · Status: {item.status}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  {item.status !== 'PUBLISHED' && (
-                    <button
-                      onClick={() => updateNewsArticle(item.id, { status: 'PUBLISHED' })}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-lg text-xs font-bold cursor-pointer"
-                    >
-                      Publish
-                    </button>
-                  )}
-                  <button
-                    onClick={() => deleteNewsArticle(item.id)}
-                    className="border border-soft px-3 py-1 rounded-lg text-xs font-bold text-rose-600 hover:bg-rose-50 cursor-pointer"
-                  >
-                    Delete
-                  </button>
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="p-1 bg-blue-100 text-blue-700 rounded-lg">
+                  <Bot className="w-4 h-4 text-blue-700" />
+                </span>
+                <h2 className="text-xl font-black navy">AI News Intelligence & Campus Wire</h2>
               </div>
-            ))}
+              <p className="text-xs text-slate-500 mt-1">
+                Oversee 24-hour rotating stories, verify breaking hot topics, and designate permanent status.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await triggerAINewsBotScan();
+                    showToast(`AI Bot successfully rotated wire: Added ${res.length} stories`, 'success');
+                  } catch (err: any) {
+                    showToast('AI Bot scan encountered an issue', 'error');
+                  }
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                title="Trigger web browsing scan and rotation"
+              >
+                <Bot className="w-3.5 h-3.5" />
+                <span>Trigger AI Wire Scan</span>
+              </button>
+
+              <button
+                onClick={async () => {
+                  const cleaned = await cleanupExpiredNews();
+                  showToast(
+                    cleaned > 0
+                      ? `Purged ${cleaned} expired temporary news items (>10d TTL)`
+                      : 'No expired temporary items found',
+                    'info'
+                  );
+                }}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                title="Run background expiration routine"
+              >
+                <Clock className="w-3.5 h-3.5 text-amber-600" />
+                <span>Purge Expired (&gt;10d)</span>
+              </button>
+
+              <button
+                onClick={() => onNavigate('news')}
+                className="text-xs text-blue-600 font-bold hover:underline"
+              >
+                Public Wire →
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {news.map((item) => {
+              const daysLeft = item.expiresAt
+                ? Math.max(
+                    0,
+                    Math.ceil((new Date(item.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                  )
+                : null;
+
+              return (
+                <div
+                  key={item.id}
+                  className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 transition ${
+                    item.isHotTopic ? 'border-rose-300 bg-rose-50/20' : 'border-soft bg-white'
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {item.isHotTopic && (
+                        <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-rose-700 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded-full animate-pulse">
+                          🔥 HOT TOPIC
+                        </span>
+                      )}
+
+                      {item.alumniPrizeName && (
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                          🏆 {item.alumniPrizeName}
+                        </span>
+                      )}
+
+                      <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                        {item.category}
+                      </span>
+
+                      {item.university && (
+                        <span className="text-[10px] text-slate-500 font-medium">
+                          {item.university} {item.department ? `· ${item.department}` : ''}
+                        </span>
+                      )}
+                    </div>
+
+                    <b
+                      onClick={() => onNavigate('newsDetail', { id: item.id })}
+                      className="navy text-sm block hover:text-blue-600 cursor-pointer"
+                    >
+                      {item.title}
+                    </b>
+
+                    <div className="flex items-center gap-3 text-xs text-slate-400">
+                      <span>Status: <b className="text-slate-600">{item.status}</b></span>
+                      <span>·</span>
+                      <span>
+                        {item.isPermanent ? (
+                          <span className="text-emerald-700 font-bold flex items-center gap-1 inline-flex">
+                            <Shield className="w-3 h-3 text-emerald-600" />
+                            Permanent Record
+                          </span>
+                        ) : (
+                          <span className="text-amber-700 font-semibold inline-flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-amber-600" />
+                            Expires in {daysLeft}d (10d TTL)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={async () => {
+                        if (item.isPermanent) {
+                          await removeNewsPermanent(item.id);
+                          showToast(`Permanence removed for "${item.title}"`, 'info');
+                        } else {
+                          await makeNewsPermanent(item.id);
+                          showToast(`"${item.title}" designated as permanent`, 'success');
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                        item.isPermanent
+                          ? 'bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200'
+                          : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs'
+                      }`}
+                      title="Super Admin permanent designation"
+                    >
+                      <Pin className="w-3 h-3" />
+                      <span>{item.isPermanent ? 'Unpin' : 'Make Permanent'}</span>
+                    </button>
+
+                    {item.status !== 'PUBLISHED' && (
+                      <button
+                        onClick={() => updateNewsArticle(item.id, { status: 'PUBLISHED' })}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
+                      >
+                        Publish
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => deleteNewsArticle(item.id, 'Super Admin deletion')}
+                      className="border border-rose-200 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 hover:bg-rose-50 cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

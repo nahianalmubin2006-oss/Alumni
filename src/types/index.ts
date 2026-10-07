@@ -140,6 +140,7 @@ export type NewsCategory =
   | 'University announcements'
   | 'Department announcements'
   | 'Alumni achievements'
+  | 'Alumni special achievements'
   | 'Events'
   | 'Scholarships'
   | 'Jobs'
@@ -164,6 +165,23 @@ export interface NewsArticle {
   publishedAt?: string;
   createdAt: string;
   updatedAt: string;
+
+  // AI News Bot & 24h Rotation & 10-day TTL Lifecycle
+  isHotTopic?: boolean;
+  hotTopicReason?: string;
+  isAiGenerated?: boolean;
+  sourceUrl?: string;
+  sourceName?: string;
+  isPermanent?: boolean;
+  permanentBy?: {
+    userId: string;
+    userName: string;
+    role: Role;
+    at: string;
+  };
+  expiresAt?: string; // 10 days after creation if not permanent
+  rotationCycleId?: string;
+  alumniPrizeName?: string;
 }
 
 export type ChangeRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
