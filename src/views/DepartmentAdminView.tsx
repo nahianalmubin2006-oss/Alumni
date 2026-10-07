@@ -11,9 +11,13 @@ export const DepartmentAdminView: React.FC<DepartmentAdminViewProps> = ({ onNavi
   const { alumni, students, submitChangeRequest } = useData();
 
   const assignedUni =
-    userProfile?.assignedUniversity || 'Bangladesh University of Professionals';
+    userProfile?.assignedUniversity ||
+    userProfile?.university ||
+    'University of Dhaka';
   const assignedDept =
-    userProfile?.assignedDepartment || 'Computer Science & Engineering';
+    userProfile?.assignedDepartment ||
+    userProfile?.department ||
+    'Computer Science & Engineering';
 
   const deptAlumni = alumni.filter(
     (a) =>

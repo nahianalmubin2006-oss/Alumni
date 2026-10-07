@@ -72,7 +72,7 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="md:col-span-2 border border-soft rounded-xl px-4 py-3 outline-none focus:border-blue-400 bg-white"
-            placeholder="Search university name — e.g. BUP, BUET, Dhaka..."
+            placeholder="Search university name — e.g. Dhaka, BUET, Chittagong, NSU, Rajshahi..."
           />
           <select
             value={typeFilter}
@@ -108,15 +108,12 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
         {list.map((u) => {
           const initials = universityInitials(u.name);
-          const isBUP = u.name === 'Bangladesh University of Professionals';
 
           return (
             <button
               key={u.id || u.name}
               onClick={() => onNavigate('universityDetail', { name: u.name })}
-              className={`card p-5 text-left hover:-translate-y-1 transition flex flex-col justify-between group ${
-                isBUP ? 'border-blue-300 ring-1 ring-blue-100' : ''
-              }`}
+              className="card p-5 text-left hover:-translate-y-1 transition flex flex-col justify-between group"
             >
               <div>
                 <div className="flex items-start gap-4">
@@ -128,11 +125,9 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
                       <b className="leading-snug text-slate-900 group-hover:text-blue-600 transition">
                         {u.name}
                       </b>
-                      {isBUP && (
-                        <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded whitespace-nowrap">
-                          FLAGSHIP
-                        </span>
-                      )}
+                      <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded whitespace-nowrap">
+                        {u.type}
+                      </span>
                     </div>
                     <p className="text-xs text-slate-400 mt-1">{u.location || 'Bangladesh'}</p>
                   </div>

@@ -29,8 +29,10 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [university, setUniversity] = useState('Bangladesh University of Professionals');
-  const [department, setDepartment] = useState('Computer Science & Engineering');
+  const [university, setUniversity] = useState('');
+  const [department, setDepartment] = useState('');
+  const [customUniversity, setCustomUniversity] = useState('');
+  const [customDepartment, setCustomDepartment] = useState('');
   const [studentId, setStudentId] = useState('');
   const [educationLevel, setEducationLevel] = useState('Undergraduate');
   const [studentYear, setStudentYear] = useState('');
@@ -72,8 +74,28 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
   const enterEditMode = () => {
     if (!userProfile) return;
     setName(userProfile.name || '');
-    setUniversity(userProfile.university || '');
-    setDepartment(userProfile.department || '');
+    const currentUni = userProfile.university || '';
+    const currentDept = userProfile.department || '';
+
+    const hasUniInList = ALL_DIRECTORY_UNIVERSITIES.some((u) => u.name === currentUni);
+    const hasDeptInList = RAW_DEPARTMENT_CATALOG.some((d) => d.name === currentDept);
+
+    if (currentUni && !hasUniInList) {
+      setUniversity('OTHER');
+      setCustomUniversity(currentUni);
+    } else {
+      setUniversity(currentUni);
+      setCustomUniversity('');
+    }
+
+    if (currentDept && !hasDeptInList) {
+      setDepartment('OTHER');
+      setCustomDepartment(currentDept);
+    } else {
+      setDepartment(currentDept);
+      setCustomDepartment('');
+    }
+
     setStudentId(userProfile.studentId || '');
     setEducationLevel(userProfile.educationLevel || 'Undergraduate');
     setStudentYear(userProfile.studentYear || '');
@@ -114,14 +136,29 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
+
+    const finalUniversity = (university === 'OTHER' ? customUniversity : university).trim();
+    const finalDepartment = (department === 'OTHER' ? customDepartment : department).trim();
+
+    if (!finalUniversity) {
+      setErrorMsg('Please select or specify your University.');
+      setLoading(false);
+      return;
+    }
+    if (!finalDepartment) {
+      setErrorMsg('Please select or specify your Department.');
+      setLoading(false);
+      return;
+    }
+
     try {
       await registerUser({
         name: name.trim(),
         email: email.trim(),
         password,
         profileType,
-        university,
-        department,
+        university: finalUniversity,
+        department: finalDepartment,
         studentId: studentId.trim(),
         educationLevel,
         studentYear: studentYear.trim(),
@@ -152,11 +189,15 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    const finalUniversity = (university === 'OTHER' ? customUniversity : university).trim();
+    const finalDepartment = (department === 'OTHER' ? customDepartment : department).trim();
+
     try {
       await updateProfileData({
         name,
-        university,
-        department,
+        university: finalUniversity,
+        department: finalDepartment,
         studentId,
         educationLevel,
         studentYear,
@@ -288,6 +329,27 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
               </button>
             </div>
           </div>
+
+          {/* Institutional Affiliation Prompt if Missing */}
+          {(!userProfile.university || userProfile.university === '') && (
+            <div className="mt-6 p-5 rounded-2xl bg-blue-50 border-2 border-blue-300 text-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+              <div>
+                <b className="navy text-sm flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                  Institutional Affiliation Setup Needed
+                </b>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Please specify your University and Department so your peers and batch mates can connect with you.
+                </p>
+              </div>
+              <button
+                onClick={enterEditMode}
+                className="bg-navy text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-800 transition shrink-0 shadow"
+              >
+                Set University & Dept →
+              </button>
+            </div>
+          )}
 
           {/* Pending Review Notice */}
           {userProfile.status === 'PENDING' && (
@@ -630,12 +692,23 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
                   required
                   className="account-input mt-1 bg-white cursor-pointer"
                 >
+                  <option value="" disabled>-- Select Your University --</option>
                   {ALL_DIRECTORY_UNIVERSITIES.map((u) => (
                     <option key={u.name} value={u.name}>
                       {u.name}
                     </option>
                   ))}
+                  <option value="OTHER">Other / Custom University</option>
                 </select>
+                {university === 'OTHER' && (
+                  <input
+                    value={customUniversity}
+                    onChange={(e) => setCustomUniversity(e.target.value)}
+                    required
+                    className="account-input mt-2"
+                    placeholder="Enter your exact University name"
+                  />
+                )}
               </div>
 
               <div>
@@ -646,12 +719,23 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
                   required
                   className="account-input mt-1 bg-white cursor-pointer"
                 >
+                  <option value="" disabled>-- Select Your Department --</option>
                   {RAW_DEPARTMENT_CATALOG.map((d) => (
                     <option key={d.name} value={d.name}>
                       {d.name}
                     </option>
                   ))}
+                  <option value="OTHER">Other / Custom Department</option>
                 </select>
+                {department === 'OTHER' && (
+                  <input
+                    value={customDepartment}
+                    onChange={(e) => setCustomDepartment(e.target.value)}
+                    required
+                    className="account-input mt-2"
+                    placeholder="Enter your exact Department name"
+                  />
+                )}
               </div>
 
               <div>
@@ -823,7 +907,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
 
             <form onSubmit={handleSaveEdit} className="mt-6 grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold text-slate-600">Full Name</label>
+                <label className="text-xs font-bold text-slate-600">Full Name *</label>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -833,11 +917,109 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
               </div>
 
               <div>
+                <label className="text-xs font-bold text-slate-600">University *</label>
+                <select
+                  value={university}
+                  onChange={(e) => setUniversity(e.target.value)}
+                  required
+                  className="account-input mt-1 bg-white cursor-pointer"
+                >
+                  <option value="" disabled>-- Select University --</option>
+                  {ALL_DIRECTORY_UNIVERSITIES.map((u) => (
+                    <option key={u.name} value={u.name}>
+                      {u.name}
+                    </option>
+                  ))}
+                  <option value="OTHER">Other / Custom University</option>
+                </select>
+                {university === 'OTHER' && (
+                  <input
+                    value={customUniversity}
+                    onChange={(e) => setCustomUniversity(e.target.value)}
+                    required
+                    className="account-input mt-2"
+                    placeholder="Enter your exact University name"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600">Department *</label>
+                <select
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  required
+                  className="account-input mt-1 bg-white cursor-pointer"
+                >
+                  <option value="" disabled>-- Select Department --</option>
+                  {RAW_DEPARTMENT_CATALOG.map((d) => (
+                    <option key={d.name} value={d.name}>
+                      {d.name}
+                    </option>
+                  ))}
+                  <option value="OTHER">Other / Custom Department</option>
+                </select>
+                {department === 'OTHER' && (
+                  <input
+                    value={customDepartment}
+                    onChange={(e) => setCustomDepartment(e.target.value)}
+                    required
+                    className="account-input mt-2"
+                    placeholder="Enter your exact Department name"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600">Student ID / Roll</label>
+                <input
+                  value={studentId}
+                  onChange={(e) => setStudentId(e.target.value)}
+                  className="account-input mt-1"
+                  placeholder="e.g. 230204101"
+                />
+              </div>
+
+              {userProfile?.profileType === 'Student' ? (
+                <>
+                  <div>
+                    <label className="text-xs font-bold text-slate-600">Current Year / Semester</label>
+                    <input
+                      value={studentYear}
+                      onChange={(e) => setStudentYear(e.target.value)}
+                      className="account-input mt-1"
+                      placeholder="e.g. 2nd Year, 4th Semester"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-600">Expected Graduation</label>
+                    <input
+                      value={expectedGraduation}
+                      onChange={(e) => setExpectedGraduation(e.target.value)}
+                      className="account-input mt-1"
+                      placeholder="e.g. 2027"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label className="text-xs font-bold text-slate-600">Graduation Year</label>
+                  <input
+                    value={graduationYear}
+                    onChange={(e) => setGraduationYear(e.target.value)}
+                    className="account-input mt-1"
+                    placeholder="e.g. 2023"
+                  />
+                </div>
+              )}
+
+              <div>
                 <label className="text-xs font-bold text-slate-600">Job Role</label>
                 <input
                   value={jobRole}
                   onChange={(e) => setJobRole(e.target.value)}
                   className="account-input mt-1"
+                  placeholder="e.g. Software Engineer"
                 />
               </div>
 
@@ -847,6 +1029,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
                   className="account-input mt-1"
+                  placeholder="e.g. Google, Brain Station 23"
                 />
               </div>
 

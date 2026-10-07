@@ -230,8 +230,11 @@ export interface AuditLog {
   action: string;
   targetType: string;
   targetId: string;
+  targetName?: string;
   details: string;
   createdAt: string;
+  severity?: 'INFO' | 'SUCCESS' | 'WARNING' | 'DANGER';
+  metadata?: Record<string, any>;
 }
 
 export interface AdminAssignment {

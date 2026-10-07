@@ -78,7 +78,7 @@ export default function App() {
 
               {currentPage === 'universityDetail' && (
                 <UniversityDetailView
-                  universityName={pageParams.name || 'Bangladesh University of Professionals'}
+                  universityName={pageParams.name || 'University of Dhaka'}
                   onNavigate={handleNavigate}
                 />
               )}
@@ -98,7 +98,7 @@ export default function App() {
               {currentPage === 'departmentProfile' && (
                 <DepartmentProfileView
                   departmentName={pageParams.dept || 'Computer Science & Engineering'}
-                  universityName={pageParams.uni || 'Bangladesh University of Professionals'}
+                  universityName={pageParams.uni || 'University of Dhaka'}
                   onNavigate={handleNavigate}
                 />
               )}
@@ -106,7 +106,7 @@ export default function App() {
               {currentPage === 'departmentBatch' && (
                 <DepartmentBatchView
                   departmentName={pageParams.dept || 'Computer Science & Engineering'}
-                  universityName={pageParams.uni || 'Bangladesh University of Professionals'}
+                  universityName={pageParams.uni || 'University of Dhaka'}
                   batchYear={pageParams.batch || '2023'}
                   onNavigate={handleNavigate}
                 />

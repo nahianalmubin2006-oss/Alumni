@@ -29,34 +29,28 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
       if (match) return match;
     }
 
-    // Default to the platform creator / user profile
-    const userMatch = alumni.find(
-      (a) => a.email === 'nahianalmubin2006@gmail.com' || a.id === 'alumni-nahian-al-mubin'
-    );
-    if (userMatch) return userMatch;
+    if (alumni.length > 0) return alumni[0];
 
-    return (
-      alumni[0] || {
-        id: 'alumni-nahian-al-mubin',
-        userId: 'admin_nahianalmubin',
-        name: 'Nahian Al Mubin',
-        email: 'nahianalmubin2006@gmail.com',
-        university: 'Bangladesh University of Professionals',
-        department: 'Computer Science & Engineering',
-        batch: '2026',
-        graduationYear: '2026',
-        jobRole: 'Software Developer & Platform Creator',
-        company: 'AlumniSphere',
-        country: 'Bangladesh',
-        city: 'Dhaka',
-        bio: 'Creator of AlumniSphere. BUP CSE student connecting students and graduates across Bangladesh.',
-        linkedin: 'https://linkedin.com/in/nahianalmubin',
-        isVerified: true,
-        status: 'APPROVED',
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      }
-    );
+    return {
+      id: 'alumni-default',
+      userId: 'usr-default',
+      name: 'Tanvir Hasan',
+      email: 'tanvir.hasan@alumni.ac.bd',
+      university: 'University of Dhaka',
+      department: 'Computer Science & Engineering',
+      batch: '2019',
+      graduationYear: '2019',
+      jobRole: 'Senior Software Engineer',
+      company: 'Google',
+      country: 'Germany',
+      city: 'Munich',
+      bio: 'Distributed systems engineer and mentor for university students pursuing international tech careers.',
+      linkedin: 'https://linkedin.com',
+      isVerified: true,
+      status: 'APPROVED',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    };
   }, [alumni, alumniId, alumniName]);
 
   const initials = profile.name

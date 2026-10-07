@@ -701,9 +701,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                     const item: HelpItem = {
                       id: 'creator',
                       title: 'Creator Info',
-                      subtitle: 'About Nahian Al Mubin (BUP CSE)',
+                      subtitle: 'About Nahian Al Mubin (Platform Founder)',
                       description:
-                        'Discover the vision and story behind AlumniSphere created by Nahian Al Mubin (BUP CSE student) to map nationwide graduate trajectories.',
+                        'Discover the vision and story behind AlumniSphere created by Nahian Al Mubin to connect students and map graduate trajectories across all universities.',
                       icon: '★',
                       onAction: () => onNavigate('creator'),
                     };

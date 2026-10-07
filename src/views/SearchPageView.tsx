@@ -97,7 +97,7 @@ export const SearchPageView: React.FC<SearchPageViewProps> = ({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="flex-1 outline-none text-base bg-transparent text-slate-900"
-          placeholder="Try “BUP CSE alumni”, “Germany”, “BUET”, “Software Engineer”..."
+          placeholder="Try “Computer Science alumni”, “Germany”, “BUET”, “Software Engineer”..."
           autoFocus
         />
         {query && (
@@ -294,7 +294,7 @@ export const SearchPageView: React.FC<SearchPageViewProps> = ({
           <div className="card p-12 text-center text-slate-400">
             <p className="font-semibold text-base">No results found for “{query}”</p>
             <p className="text-xs mt-1">
-              Try searching by university acronyms (e.g. BUP, BUET), department names, countries, or
+              Try searching by university acronyms (e.g. DU, BUET, NSU, JU), department names, countries, or
               companies.
             </p>
           </div>

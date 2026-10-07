@@ -24,29 +24,28 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
     onSearch(term);
   };
 
-  // Top showcase universities
+  // Top showcase universities across Bangladesh
   const showcaseList = [
-    {
-      name: 'Bangladesh University of Professionals',
-      abbr: 'BU',
-      alumni: '2,840',
-      employment: '84%',
-      bg: 'bg-slate-900 text-white',
-      demo: true,
-    },
-    {
-      name: 'Bangladesh University of Engineering & Technology',
-      abbr: 'BU',
-      alumni: '6,240',
-      employment: '91%',
-      bg: 'bg-blue-50 text-blue-700',
-    },
     {
       name: 'University of Dhaka',
       abbr: 'DU',
       alumni: '8,920',
       employment: '87%',
       bg: 'bg-emerald-50 text-emerald-700',
+    },
+    {
+      name: 'Bangladesh University of Engineering & Technology',
+      abbr: 'BUET',
+      alumni: '6,240',
+      employment: '91%',
+      bg: 'bg-blue-50 text-blue-700',
+    },
+    {
+      name: 'North South University',
+      abbr: 'NSU',
+      alumni: '5,800',
+      employment: '86%',
+      bg: 'bg-purple-50 text-purple-700',
     },
     {
       name: 'Jahangirnagar University',
@@ -102,10 +101,10 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
             <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-400">
               <span>Try</span>
               <button
-                onClick={() => handleQuickSearch('BUP CSE alumni')}
+                onClick={() => handleQuickSearch('Computer Science alumni')}
                 className="text-blue-600 font-semibold hover:underline"
               >
-                BUP CSE alumni
+                Computer Science alumni
               </button>
               <span>·</span>
               <button
@@ -116,10 +115,10 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
               </button>
               <span>·</span>
               <button
-                onClick={() => handleQuickSearch('CSE 2023 batch')}
+                onClick={() => handleQuickSearch('Software Engineers')}
                 className="text-blue-600 font-semibold hover:underline"
               >
-                CSE 2023 batch
+                Software Engineers
               </button>
             </div>
           </div>

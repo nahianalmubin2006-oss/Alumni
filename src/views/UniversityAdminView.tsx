@@ -11,7 +11,9 @@ export const UniversityAdminView: React.FC<UniversityAdminViewProps> = ({ onNavi
   const { universities, alumni, students, news, submitChangeRequest } = useData();
 
   const assignedUniName =
-    userProfile?.assignedUniversity || 'Bangladesh University of Professionals';
+    userProfile?.assignedUniversity ||
+    userProfile?.university ||
+    (universities.length > 0 ? universities[0].name : 'University of Dhaka');
 
   const university = universities.find(
     (u) => u.name.toLowerCase() === assignedUniName.toLowerCase()

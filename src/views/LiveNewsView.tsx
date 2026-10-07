@@ -287,7 +287,7 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   className="account-input mt-1"
-                  placeholder="e.g. BUP CSE Researchers Win International Innovation Award"
+                  placeholder="e.g. University Researchers Win International Innovation Award"
                   required
                 />
               </div>
@@ -349,7 +349,7 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
                     value={newUniversity}
                     onChange={(e) => setNewUniversity(e.target.value)}
                     className="account-input mt-1"
-                    placeholder="e.g. Bangladesh University of Professionals"
+                    placeholder="e.g. University of Dhaka, BUET, etc."
                   />
                 </div>
                 <div>

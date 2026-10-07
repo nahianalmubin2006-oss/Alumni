@@ -100,15 +100,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: user.uid,
           uid: user.uid,
           email: user.email || '',
-          name: user.displayName || (isMasterAdmin ? 'Nahian Al Mubin' : user.email?.split('@')[0]) || 'Nahian Al Mubin',
+          name: user.displayName || (isMasterAdmin ? 'Nahian Al Mubin' : user.email?.split('@')[0]) || 'Member',
           role: isMasterAdmin ? 'SUPER_ADMIN' : 'STUDENT',
           status: isMasterAdmin ? 'APPROVED' : 'PENDING',
           profileType: isMasterAdmin ? 'Admin' : 'Student',
-          university: 'Bangladesh University of Professionals',
-          department: 'Computer Science & Engineering',
+          university: '',
+          department: '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          bio: isMasterAdmin ? 'Platform Creator & Super Administrator — BUP CSE' : '',
+          bio: isMasterAdmin ? 'Platform Creator & Super Administrator' : '',
         };
         await setDoc(userDocRef, initialProfile);
 
@@ -141,7 +141,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: user.displayName || 'AlumniSphere User',
         role: isSuperAdminEmail(user.email) ? 'SUPER_ADMIN' : 'STUDENT',
         status: isSuperAdminEmail(user.email) ? 'APPROVED' : 'PENDING',
-        profileType: 'Student',
+        profileType: isSuperAdminEmail(user.email) ? 'Admin' : 'Student',
+        university: '',
+        department: '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

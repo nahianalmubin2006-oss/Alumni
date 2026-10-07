@@ -71,6 +71,7 @@ interface DataContextType {
   // Actions
   approveUser: (userId: string, targetRole?: Role) => Promise<void>;
   rejectUser: (userId: string, reason?: string) => Promise<void>;
+  unapproveUser: (userId: string, reason?: string) => Promise<void>;
   suspendUser: (userId: string) => Promise<void>;
   changeUserRole: (userId: string, newRole: Role) => Promise<void>;
 
@@ -85,7 +86,9 @@ interface DataContextType {
 
   createNewsArticle: (article: Omit<NewsArticle, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateNewsArticle: (id: string, updates: Partial<NewsArticle>) => Promise<void>;
-  deleteNewsArticle: (id: string) => Promise<void>;
+  deleteNewsArticle: (id: string, reason?: string) => Promise<void>;
+  deleteUser: (userId: string, reason?: string) => Promise<void>;
+  deleteAlumni: (alumniId: string, reason?: string) => Promise<void>;
 
   assignAdmin: (assignment: Omit<AdminAssignment, 'id' | 'createdAt'>) => Promise<void>;
   removeAdminAssignment: (id: string) => Promise<void>;
@@ -95,7 +98,17 @@ interface DataContextType {
 
   markNotificationRead: (id: string) => Promise<void>;
   clearNotifications: () => Promise<void>;
-  logAudit: (action: string, targetType: string, targetId: string, details: string) => Promise<void>;
+  logAudit: (
+    action: string,
+    targetType: string,
+    targetId: string,
+    details: string,
+    options?: {
+      severity?: 'INFO' | 'SUCCESS' | 'WARNING' | 'DANGER';
+      targetName?: string;
+      metadata?: Record<string, any>;
+    }
+  ) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -119,8 +132,28 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loadingData, setLoadingData] = useState<boolean>(true);
 
   // Helper to log audit events
-  const logAudit = async (action: string, targetType: string, targetId: string, details: string) => {
+  const logAudit = async (
+    action: string,
+    targetType: string,
+    targetId: string,
+    details: string,
+    options?: {
+      severity?: 'INFO' | 'SUCCESS' | 'WARNING' | 'DANGER';
+      targetName?: string;
+      metadata?: Record<string, any>;
+    }
+  ) => {
     try {
+      // Determine automatic severity if not specified
+      let computedSeverity: 'INFO' | 'SUCCESS' | 'WARNING' | 'DANGER' = options?.severity || 'INFO';
+      if (!options?.severity) {
+        if (action.includes('DELETED') || action.includes('REJECTED') || action.includes('SUSPENDED')) {
+          computedSeverity = action.includes('DELETED') ? 'DANGER' : 'WARNING';
+        } else if (action.includes('APPROVED') || action.includes('VERIFIED')) {
+          computedSeverity = 'SUCCESS';
+        }
+      }
+
       await addDoc(collection(db, 'auditLogs'), {
         actorId: currentUser?.uid || 'system',
         actorName: userProfile?.name || 'Super Admin',
@@ -129,7 +162,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         action,
         targetType,
         targetId,
+        targetName: options?.targetName || '',
         details,
+        severity: computedSeverity,
+        metadata: options?.metadata || {},
         createdAt: new Date().toISOString(),
       });
     } catch (e) {
@@ -147,25 +183,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('Seeding initial universities & departments into Firestore...');
           // Seed top showcase universities first for speed
           const showcaseNames = [
-            'Bangladesh University of Professionals',
-            'Bangladesh University of Engineering & Technology',
             'University of Dhaka',
-            'Jahangirnagar University',
+            'Bangladesh University of Engineering & Technology',
             'North South University',
+            'Jahangirnagar University',
             'BRAC University',
+            'Bangladesh University of Professionals',
           ];
 
           for (const u of ALL_DIRECTORY_UNIVERSITIES) {
             const isShowcase = showcaseNames.includes(u.name);
             const seed = demoSeed('uni-' + u.name);
             const baseAlumni = isShowcase
-              ? u.name === 'Bangladesh University of Professionals'
-                ? 2840
+              ? u.name === 'University of Dhaka'
+                ? 8920
                 : u.name === 'Bangladesh University of Engineering & Technology'
                 ? 6240
-                : u.name === 'University of Dhaka'
-                ? 8920
-                : 5110
+                : u.name === 'North South University'
+                ? 5800
+                : u.name === 'Jahangirnagar University'
+                ? 5110
+                : u.name === 'BRAC University'
+                ? 4600
+                : 2840
               : 800 + (seed % 3500);
 
             const uniRecord: University = {
@@ -193,13 +233,28 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await setDoc(doc(db, 'universities', uniRecord.id), uniRecord);
           }
 
-          // Seed showcase departments
-          for (const d of RAW_DEPARTMENT_CATALOG.slice(0, 20)) {
-            const seed = demoSeed('dept-' + d.name);
+          // Seed showcase departments distributed neutrally across major universities
+          const majorUnis = [
+            'University of Dhaka',
+            'Bangladesh University of Engineering & Technology',
+            'Jahangirnagar University',
+            'North South University',
+            'BRAC University',
+            'University of Rajshahi',
+            'University of Chittagong',
+            'Bangladesh Agricultural University',
+            'Shahjalal University of Science & Technology',
+            'Khulna University',
+          ];
+
+          for (let i = 0; i < RAW_DEPARTMENT_CATALOG.slice(0, 20).length; i++) {
+            const d = RAW_DEPARTMENT_CATALOG[i];
+            const assignedUni = majorUnis[i % majorUnis.length];
+            const seed = demoSeed('dept-' + d.name + '-' + assignedUni);
             const deptRecord: Department = {
               id: 'dept-' + encodeURIComponent(d.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
               name: d.name,
-              university: 'Bangladesh University of Professionals',
+              university: assignedUni,
               group: d.group,
               alumniCount: 842 + (seed % 400),
               studentCount: 1100 + (seed % 500),
@@ -212,7 +267,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 research: 74,
                 industry: 88,
               },
-              achievements: 'Ranked top in national competitive programming and industry graduate satisfaction.',
+              achievements: 'Ranked top in competitive academic standing and graduate satisfaction.',
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             };
@@ -295,11 +350,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         snap.forEach((d) => list.push(d.data() as Department));
         if (list.length > 0) setDepartments(list);
         else {
+          const fallbackUnis = [
+            'University of Dhaka',
+            'Bangladesh University of Engineering & Technology',
+            'Jahangirnagar University',
+            'North South University',
+            'BRAC University',
+            'University of Rajshahi',
+            'University of Chittagong',
+          ];
           setDepartments(
-            RAW_DEPARTMENT_CATALOG.map((d) => ({
+            RAW_DEPARTMENT_CATALOG.map((d, idx) => ({
               id: 'dept-' + encodeURIComponent(d.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
               name: d.name,
-              university: 'Bangladesh University of Professionals',
+              university: fallbackUnis[idx % fallbackUnis.length],
               group: d.group,
               alumniCount: 842,
               employmentRate: 84,
@@ -318,19 +382,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const list: AlumniRecord[] = [];
         snap.forEach((d) => {
           const item = d.data() as AlumniRecord;
-          // Filter out dummy/test alumni from testing; keep only Nahian Al Mubin's record
-          const isUser =
-            item.email?.toLowerCase() === 'nahianalmubin2006@gmail.com' ||
-            item.name?.toLowerCase().includes('nahian') ||
-            d.id === 'alumni-nahian-al-mubin';
-          if (isUser) {
-            list.push({ ...item, id: d.id });
-          } else {
-            // Delete test dummy docs from Firestore in background
-            deleteDoc(d.ref).catch(() => {});
+          list.push({ ...item, id: d.id });
+        });
+        // Merge initial verified alumni if not already in list
+        const existingIds = new Set(list.map((a) => a.id));
+        INITIAL_ALUMNI.forEach((initAlum) => {
+          if (!existingIds.has(initAlum.id)) {
+            list.push(initAlum);
           }
         });
-        setAlumni(list.length > 0 ? list : INITIAL_ALUMNI);
+        setAlumni(list);
       },
       (error) => {
         console.warn('Alumni listener warning:', error.message);
@@ -343,14 +404,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const list: StudentRecord[] = [];
         snap.forEach((d) => {
           const item = d.data() as StudentRecord;
-          const isUser =
-            item.email?.toLowerCase() === 'nahianalmubin2006@gmail.com' ||
-            item.name?.toLowerCase().includes('nahian');
-          if (isUser) {
-            list.push({ ...item, id: d.id });
-          } else {
-            deleteDoc(d.ref).catch(() => {});
-          }
+          list.push({ ...item, id: d.id });
         });
         setStudents(list);
       },
@@ -472,16 +526,34 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const list: UserProfile[] = [];
         snap.forEach((d) => {
           const u = d.data() as UserProfile;
-          const isUser =
-            u.email?.toLowerCase() === 'nahianalmubin2006@gmail.com' ||
-            u.name?.toLowerCase().includes('nahian');
-          if (isUser) {
-            list.push({ ...u, uid: d.id });
-          } else {
-            // Delete testing user documents
-            deleteDoc(d.ref).catch(() => {});
-          }
+          list.push({ ...u, uid: d.id, id: u.id || d.id });
         });
+
+        // Merge any locally registered session accounts if not already in Firestore
+        try {
+          const localUsers = JSON.parse(localStorage.getItem('alumniSphereLocalUsers') || '[]');
+          const existingUids = new Set(list.map((x) => x.uid));
+          localUsers.forEach((loc: any) => {
+            if (loc.uid && !existingUids.has(loc.uid)) {
+              list.push({
+                id: loc.uid,
+                uid: loc.uid,
+                name: loc.name || 'Member',
+                email: loc.email,
+                role: 'STUDENT',
+                status: 'PENDING',
+                profileType: 'Student',
+                university: loc.university || '',
+                department: loc.department || '',
+                createdAt: loc.createdAt || new Date().toISOString(),
+                updatedAt: loc.updatedAt || new Date().toISOString(),
+              });
+            }
+          });
+        } catch (e) {}
+
+        // Sort so newly added members appear first!
+        list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         setAllUsers(list);
         setLoadingData(false);
       },
@@ -539,42 +611,60 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Action: Approve User
   const approveUser = async (userId: string, targetRole?: Role) => {
-    const userDocRef = doc(db, 'users', userId);
     const existingUser = allUsers.find((u) => u.uid === userId);
-    const newRole = targetRole || existingUser?.role || 'STUDENT';
+    const newRole = targetRole || existingUser?.role || (existingUser?.profileType === 'Alumni' ? 'ALUMNI' : 'STUDENT');
 
-    await updateDoc(userDocRef, {
-      status: 'APPROVED',
-      role: newRole,
-      updatedAt: new Date().toISOString(),
-    });
+    // 1. Instant optimistic update so UI is lightning fast
+    setAllUsers((prev) =>
+      prev.map((u) =>
+        u.uid === userId
+          ? { ...u, status: 'APPROVED', role: newRole, updatedAt: new Date().toISOString() }
+          : u
+      )
+    );
+
+    const userDocRef = doc(db, 'users', userId);
+    try {
+      await updateDoc(userDocRef, {
+        status: 'APPROVED',
+        role: newRole,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('Firestore updateDoc user note:', err);
+    }
 
     // If alumni, also approve in alumni collection and update university count dynamically
     if (existingUser?.profileType === 'Alumni' || newRole === 'ALUMNI') {
       const alumniDocRef = doc(db, 'alumni', userId);
-      await updateDoc(alumniDocRef, {
-        status: 'APPROVED',
-        updatedAt: new Date().toISOString(),
-      }).catch(async () => {
-        // Create if didn't exist
+      try {
+        await updateDoc(alumniDocRef, {
+          status: 'APPROVED',
+          updatedAt: new Date().toISOString(),
+        });
+      } catch {
+        // Create if didn't exist with user's genuine university and department
         await setDoc(alumniDocRef, {
           id: userId,
           userId,
           name: existingUser?.name || 'Alumni Member',
           email: existingUser?.email || '',
-          university: existingUser?.university || 'Bangladesh University of Professionals',
-          department: existingUser?.department || 'Computer Science & Engineering',
+          university: existingUser?.university || '',
+          department: existingUser?.department || '',
           batch: existingUser?.graduationYear || '2023',
           graduationYear: existingUser?.graduationYear || '2023',
-          jobRole: existingUser?.jobRole || 'Professional',
-          company: existingUser?.company || 'Organization',
+          jobRole: existingUser?.jobRole || '',
+          company: existingUser?.company || '',
           country: existingUser?.country || 'Bangladesh',
+          city: existingUser?.city || '',
+          bio: existingUser?.bio || '',
+          linkedin: existingUser?.linkedin || '',
           isVerified: false,
           status: 'APPROVED',
-          createdAt: new Date().toISOString(),
+          createdAt: existingUser?.createdAt || new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        });
-      });
+        }).catch(() => {});
+      }
 
       // Interconnection: Increment university alumni count
       if (existingUser?.university) {
@@ -588,64 +678,162 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } else {
       const studentDocRef = doc(db, 'students', userId);
-      await updateDoc(studentDocRef, {
-        status: 'APPROVED',
-        updatedAt: new Date().toISOString(),
-      }).catch(() => {});
+      try {
+        await updateDoc(studentDocRef, {
+          status: 'APPROVED',
+          updatedAt: new Date().toISOString(),
+        });
+      } catch {
+        await setDoc(studentDocRef, {
+          id: userId,
+          userId,
+          name: existingUser?.name || 'Student Member',
+          email: existingUser?.email || '',
+          university: existingUser?.university || '',
+          department: existingUser?.department || '',
+          studentId: existingUser?.studentId || '',
+          educationLevel: existingUser?.educationLevel || 'Undergraduate',
+          studentYear: existingUser?.studentYear || '',
+          expectedGraduation: existingUser?.expectedGraduation || '',
+          bio: existingUser?.bio || '',
+          status: 'APPROVED',
+          createdAt: existingUser?.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }).catch(() => {});
+      }
     }
 
     // Notify user
-    await addDoc(collection(db, 'notifications'), {
-      recipientId: userId,
-      title: 'Account Approved! 🎉',
-      message: `Your AlumniSphere account has been verified and approved as ${newRole}. You now have full member access.`,
-      type: 'ACCOUNT',
-      read: false,
-      actionUrl: '/account',
-      createdAt: new Date().toISOString(),
-    });
+    try {
+      await addDoc(collection(db, 'notifications'), {
+        recipientId: userId,
+        title: 'Account Approved! 🎉',
+        message: `Your AlumniSphere account has been verified and approved as ${newRole}. You now have full member access.`,
+        type: 'ACCOUNT',
+        read: false,
+        actionUrl: '/account',
+        createdAt: new Date().toISOString(),
+      });
+    } catch (e) {}
 
     await logAudit('USER_APPROVED', 'USER', userId, `User ${existingUser?.name} approved as ${newRole}`);
   };
 
   // Action: Reject User
   const rejectUser = async (userId: string, reason?: string) => {
-    const userDocRef = doc(db, 'users', userId);
-    await updateDoc(userDocRef, {
-      status: 'REJECTED',
-      updatedAt: new Date().toISOString(),
-    });
+    // 1. Instant optimistic update
+    setAllUsers((prev) =>
+      prev.map((u) =>
+        u.uid === userId
+          ? { ...u, status: 'REJECTED', updatedAt: new Date().toISOString() }
+          : u
+      )
+    );
 
-    await addDoc(collection(db, 'notifications'), {
-      recipientId: userId,
-      title: 'Account Verification Update',
-      message: `Your account could not be verified at this time.${reason ? ` Reason: ${reason}` : ''}`,
-      type: 'ACCOUNT',
-      read: false,
-      actionUrl: '/account',
-      createdAt: new Date().toISOString(),
-    });
+    const userDocRef = doc(db, 'users', userId);
+    try {
+      await updateDoc(userDocRef, {
+        status: 'REJECTED',
+        updatedAt: new Date().toISOString(),
+      });
+      await updateDoc(doc(db, 'alumni', userId), { status: 'REJECTED' }).catch(() => {});
+      await updateDoc(doc(db, 'students', userId), { status: 'REJECTED' }).catch(() => {});
+    } catch (err) {
+      console.warn('Firestore rejectUser note:', err);
+    }
+
+    try {
+      await addDoc(collection(db, 'notifications'), {
+        recipientId: userId,
+        title: 'Account Registration Status',
+        message: `Your account could not be verified at this time.${reason ? ` Reason: ${reason}` : ''}`,
+        type: 'ACCOUNT',
+        read: false,
+        actionUrl: '/account',
+        createdAt: new Date().toISOString(),
+      });
+    } catch (e) {}
 
     await logAudit('USER_REJECTED', 'USER', userId, `User rejected: ${reason || 'No reason provided'}`);
   };
 
+  // Action: Unapprove User (Revert to PENDING)
+  const unapproveUser = async (userId: string, reason?: string) => {
+    // 1. Instant optimistic update
+    setAllUsers((prev) =>
+      prev.map((u) =>
+        u.uid === userId
+          ? { ...u, status: 'PENDING', updatedAt: new Date().toISOString() }
+          : u
+      )
+    );
+
+    const userDocRef = doc(db, 'users', userId);
+    try {
+      await updateDoc(userDocRef, {
+        status: 'PENDING',
+        updatedAt: new Date().toISOString(),
+      });
+      await updateDoc(doc(db, 'alumni', userId), { status: 'PENDING' }).catch(() => {});
+      await updateDoc(doc(db, 'students', userId), { status: 'PENDING' }).catch(() => {});
+    } catch (err) {
+      console.warn('Firestore unapproveUser note:', err);
+    }
+
+    try {
+      await addDoc(collection(db, 'notifications'), {
+        recipientId: userId,
+        title: 'Account Approval Status Updated',
+        message: `Your account verification has been placed back in review (Pending).${reason ? ` Note: ${reason}` : ''}`,
+        type: 'ACCOUNT',
+        read: false,
+        actionUrl: '/account',
+        createdAt: new Date().toISOString(),
+      });
+    } catch (e) {}
+
+    await logAudit('USER_UNAPPROVED', 'USER', userId, `User status reverted to PENDING: ${reason || 'Revoked by admin'}`);
+  };
+
   // Action: Suspend User
   const suspendUser = async (userId: string) => {
+    setAllUsers((prev) =>
+      prev.map((u) =>
+        u.uid === userId
+          ? { ...u, status: 'SUSPENDED', updatedAt: new Date().toISOString() }
+          : u
+      )
+    );
     const userDocRef = doc(db, 'users', userId);
-    await updateDoc(userDocRef, {
-      status: 'SUSPENDED',
-      updatedAt: new Date().toISOString(),
-    });
+    try {
+      await updateDoc(userDocRef, {
+        status: 'SUSPENDED',
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('Firestore suspendUser note:', err);
+    }
     await logAudit('USER_SUSPENDED', 'USER', userId, `User account suspended`);
   };
 
   // Action: Change User Role
   const changeUserRole = async (userId: string, newRole: Role) => {
+    setAllUsers((prev) =>
+      prev.map((u) =>
+        u.uid === userId
+          ? { ...u, role: newRole, updatedAt: new Date().toISOString() }
+          : u
+      )
+    );
     const userDocRef = doc(db, 'users', userId);
-    await updateDoc(userDocRef, {
-      role: newRole,
-      updatedAt: new Date().toISOString(),
-    });
+    try {
+      await updateDoc(userDocRef, {
+        role: newRole,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('Firestore changeUserRole note:', err);
+    }
     await logAudit('ROLE_UPDATED', 'USER', userId, `Role changed to ${newRole}`);
   };
 
@@ -872,9 +1060,68 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await logAudit('NEWS_UPDATED', 'NEWS', id, `Updated article ${id}`);
   };
 
-  const deleteNewsArticle = async (id: string) => {
+  const deleteNewsArticle = async (id: string, reason?: string) => {
+    const targetArticle = news.find((n) => n.id === id);
     await deleteDoc(doc(db, 'news', id));
-    await logAudit('NEWS_DELETED', 'NEWS', id, `Deleted article ${id}`);
+    await logAudit(
+      'DATA_DELETED',
+      'NEWS',
+      id,
+      `Permanently deleted publication: "${targetArticle?.title || id}". ${reason ? `Reason: ${reason}` : ''}`,
+      {
+        severity: 'DANGER',
+        targetName: targetArticle?.title || id,
+        metadata: { category: targetArticle?.category, authorName: targetArticle?.authorName, reason }
+      }
+    );
+  };
+
+  const deleteUser = async (userId: string, reason?: string) => {
+    const targetUser = allUsers.find((u) => u.uid === userId || u.id === userId);
+    const targetName = targetUser?.name || 'User';
+    const targetEmail = targetUser?.email || '';
+    const targetRole = targetUser?.role || 'STUDENT';
+    const targetUni = targetUser?.university || '';
+
+    await deleteDoc(doc(db, 'users', userId));
+
+    // Also remove from alumni collection if exists
+    const alumniMatch = alumni.find((a) => a.userId === userId || a.id === userId);
+    if (alumniMatch) {
+      await deleteDoc(doc(db, 'alumni', alumniMatch.id)).catch(() => {});
+    }
+
+    await logAudit(
+      'DATA_DELETED',
+      'USER',
+      userId,
+      `Permanently deleted member account: "${targetName}" (${targetEmail}, Role: ${targetRole}, Uni: ${targetUni || 'Unset'}). ${
+        reason ? `Reason: ${reason}` : ''
+      }`,
+      {
+        severity: 'DANGER',
+        targetName,
+        metadata: { email: targetEmail, role: targetRole, university: targetUni, reason }
+      }
+    );
+  };
+
+  const deleteAlumni = async (alumniId: string, reason?: string) => {
+    const target = alumni.find((a) => a.id === alumniId);
+    await deleteDoc(doc(db, 'alumni', alumniId));
+    await logAudit(
+      'DATA_DELETED',
+      'ALUMNI',
+      alumniId,
+      `Permanently deleted alumni directory record: "${target?.name || alumniId}" (${target?.university || 'University'}). ${
+        reason ? `Reason: ${reason}` : ''
+      }`,
+      {
+        severity: 'DANGER',
+        targetName: target?.name || alumniId,
+        metadata: { university: target?.university, department: target?.department, reason }
+      }
+    );
   };
 
   // Admin Assignments
@@ -993,6 +1240,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         stats,
         approveUser,
         rejectUser,
+        unapproveUser,
         suspendUser,
         changeUserRole,
         verifyAlumni,
@@ -1005,6 +1253,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createNewsArticle,
         updateNewsArticle,
         deleteNewsArticle,
+        deleteUser,
+        deleteAlumni,
         assignAdmin,
         removeAdminAssignment,
         saveUniversity,

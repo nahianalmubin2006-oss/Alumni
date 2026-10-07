@@ -32,19 +32,20 @@ export const CreatorView: React.FC<CreatorViewProps> = ({ onNavigate }) => {
           <div className="bg-slate-50 rounded-2xl p-6">
             <h2 className="font-black navy text-lg">Creator Vision</h2>
             <p className="text-sm text-slate-600 mt-2 leading-7">
-              Nahian Al Mubin, a BUP CSE student, made this platform to connect university students
-              and graduates through a structured, transparent alumni intelligence network where
-              people can discover educational trajectories, cohorts, career destinations, and
-              professional journeys across Bangladesh and the global diaspora.
+              Nahian Al Mubin created AlumniSphere as an open, university-neutral alumni intelligence
+              network for all students, alumni, and faculty across higher education institutions in Bangladesh.
+              The platform is built to provide an equal, transparent space where every student can discover
+              educational trajectories, class cohorts, career destinations, and verified professional
+              journeys across Bangladesh and the worldwide diaspora.
             </p>
           </div>
 
           <div className="bg-slate-50 rounded-2xl p-6">
-            <h2 className="font-black navy text-lg">Built For</h2>
+            <h2 className="font-black navy text-lg">Built For All Students</h2>
             <p className="text-sm text-slate-600 mt-2 leading-7">
-              Students seeking alumni guidance, graduates reconnecting with class cohorts,
-              universities establishing authenticated career graphs, and future employers exploring
-              verified university talent.
+              Undergraduates and postgraduates from any university seeking mentorship, verified alumni
+              reconnecting with class cohorts, institutions establishing authenticated career graphs,
+              and future employers exploring talent across public, engineering, and private universities nationwide.
             </p>
           </div>
         </div>
