@@ -316,3 +316,16 @@ export interface PlatformSetting {
   updatedBy?: string;
   updatedAt?: string;
 }
+
+export type AlumniConnectionStatus = 'NOT_CONNECTED' | 'SENDING' | 'PENDING' | 'CONNECTED';
+
+export interface AlumniConnectionRecord {
+  alumniId: string;
+  alumniName: string;
+  status: AlumniConnectionStatus;
+  sentAt?: string;
+  connectedAt?: string;
+  message?: string;
+  senderName?: string;
+  senderRole?: string;
+}
