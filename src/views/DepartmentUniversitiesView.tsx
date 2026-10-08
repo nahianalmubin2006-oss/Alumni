@@ -19,6 +19,8 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
   const [search, setSearch] = useState('');
   const [isScanningDept, setIsScanningDept] = useState(false);
 
+  const normalizeDepartmentName = (value: string) => value.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+
   // Relevant news for this department across all universities
   const deptNews = useMemo(() => {
     return news
@@ -57,7 +59,7 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
   const list = useMemo(() => {
     const offered = new Set([
       ...VERIFIED_DEPARTMENT_SEEDS
-        .filter((d) => d.name.toLowerCase() === departmentName.toLowerCase())
+        .filter((d) => normalizeDepartmentName(d.name) === normalizeDepartmentName(departmentName))
         .map((d) => d.university.toLowerCase()),
       ...departments
         .filter((d) => d.name.toLowerCase() === departmentName.toLowerCase() && d.verified === true)
@@ -215,7 +217,7 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
         {list.slice(0, 36).map((u) => {
           const initials = universityInitials(u.name);
-          const alumniCount = alumni.filter((a) => a.status === 'APPROVED' && a.university.toLowerCase() === u.name.toLowerCase() && a.department.toLowerCase() === departmentName.toLowerCase()).length;
+          const alumniCount = alumni.filter((a) => a.status === 'APPROVED' && a.university.toLowerCase() === u.name.toLowerCase() && normalizeDepartmentName(a.department) === normalizeDepartmentName(departmentName)).length;
           const employmentRate = 0;
           const countriesCount = 0;
 
