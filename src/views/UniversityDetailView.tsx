@@ -66,12 +66,8 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
   const [newsFilterType, setNewsFilterType] = useState<'ALL' | 'HOT' | 'ACHIEVEMENTS' | 'PERMANENT'>('ALL');
   const [isScanningUniNews, setIsScanningUniNews] = useState(false);
 
-  // Check if current user is one of the 3 admin types
-  const canMakePermanent =
-    isSuperAdmin ||
-    userProfile?.role === 'SUPER_ADMIN' ||
-    userProfile?.role === 'UNIVERSITY_ADMIN' ||
-    userProfile?.role === 'DEPARTMENT_ADMIN';
+  // Administrative controls belong strictly to the separated Admin Portal
+  const canMakePermanent = false;
 
   // Find university record or generate representation
   const university: University = useMemo(() => {
@@ -180,11 +176,8 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     }
   };
 
-  // Check if current user is university admin for this uni
-  const isThisUniAdmin =
-    isSuperAdmin ||
-    (userProfile?.role === 'UNIVERSITY_ADMIN' &&
-      userProfile?.assignedUniversity?.toLowerCase() === universityName.toLowerCase());
+  // Institutional administration is managed in the Admin Dashboard
+  const isThisUniAdmin = false;
 
   const handleProposeChanges = async (e: React.FormEvent) => {
     e.preventDefault();

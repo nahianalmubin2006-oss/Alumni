@@ -44,12 +44,8 @@ export const NewsDetailView: React.FC<NewsDetailViewProps> = ({ articleId, onNav
     );
   }
 
-  // Check if current user is one of the 3 types of admins
-  const canMakePermanent =
-    isSuperAdmin ||
-    userProfile?.role === 'SUPER_ADMIN' ||
-    userProfile?.role === 'UNIVERSITY_ADMIN' ||
-    userProfile?.role === 'DEPARTMENT_ADMIN';
+  // Admin controls are separated to Admin Dashboard
+  const canMakePermanent = false;
 
   const daysLeft = article.expiresAt
     ? Math.max(

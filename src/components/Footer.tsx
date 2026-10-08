@@ -30,22 +30,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           </button>
           <span className="text-slate-300">|</span>
           <button
-            onClick={() => onNavigate('admin')}
-            className="text-blue-600 font-semibold hover:underline"
+            onClick={() => onNavigate('admin-login')}
+            className="text-slate-500 hover:text-blue-600 transition font-medium flex items-center gap-1.5"
+            title="Administrative Access Gateway"
           >
-            ⚙ Super Admin
-          </button>
-          <button
-            onClick={() => onNavigate('university-admin')}
-            className="hover:text-blue-600 transition"
-          >
-            🏛 University Admin
-          </button>
-          <button
-            onClick={() => onNavigate('department-admin')}
-            className="hover:text-blue-600 transition"
-          >
-            📂 Department Admin
+            <span>🔒</span>
+            <span>Admin</span>
           </button>
         </div>
         <div className="text-slate-400 text-center md:text-right">

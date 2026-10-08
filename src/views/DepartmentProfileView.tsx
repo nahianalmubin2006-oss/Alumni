@@ -58,12 +58,8 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
   const [newPrizeName, setNewPrizeName] = useState('');
   const [newIsHot, setNewIsHot] = useState(false);
 
-  // Check if current user is one of the 3 types of admins
-  const canMakePermanent =
-    isSuperAdmin ||
-    userProfile?.role === 'SUPER_ADMIN' ||
-    userProfile?.role === 'UNIVERSITY_ADMIN' ||
-    userProfile?.role === 'DEPARTMENT_ADMIN';
+  // Administrative controls belong strictly in the Admin Dashboard
+  const canMakePermanent = false;
 
   // Filter news specifically for this university and department
   const deptNews = useMemo(() => {
@@ -207,11 +203,8 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
     };
   }, [departmentName, universityName]);
 
-  const isThisDeptAdmin =
-    isSuperAdmin ||
-    (userProfile?.role === 'DEPARTMENT_ADMIN' &&
-      userProfile?.assignedUniversity?.toLowerCase() === universityName.toLowerCase() &&
-      userProfile?.assignedDepartment?.toLowerCase() === departmentName.toLowerCase());
+  // Department administration is managed in the Admin Dashboard
+  const isThisDeptAdmin = false;
 
   const handleProposeDeptChange = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,3 +1,16 @@
+export type AdminAuthRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+
+export interface AdminSessionUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'ADMIN' | 'SUPER_ADMIN';
+  status?: string;
+  university?: string;
+  department?: string;
+  lastLoginAt?: string;
+}
+
 export type Role =
   | 'SUPER_ADMIN'
   | 'UNIVERSITY_ADMIN'

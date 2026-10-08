@@ -1,6 +1,8 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
+import fs from 'fs';
 import { GoogleGenAI } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -430,6 +432,1015 @@ setInterval(async () => {
     }
   }
 }, 10 * 60 * 1000);
+
+// ==========================================
+// SECURE ADMIN ROLE-BASED ACCESS CONTROL (RBAC) & SESSION ENGINE
+// ==========================================
+
+export type AdminRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  passwordHash: string;
+  name: string;
+  role: AdminRole;
+  status: 'APPROVED' | 'PENDING' | 'REJECTED' | 'SUSPENDED';
+  university?: string;
+  department?: string;
+  profileType?: string;
+  studentId?: string;
+  graduationYear?: string;
+  jobRole?: string;
+  company?: string;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt?: string;
+}
+
+export interface AdminSession {
+  token: string;
+  userId: string;
+  email: string;
+  name: string;
+  role: AdminRole;
+  createdAt: number;
+  expiresAt: number;
+  lastActivityAt: number;
+  ip: string;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  timestamp: string;
+  actorId: string;
+  actorEmail: string;
+  actorRole: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  details: string;
+  ip?: string;
+}
+
+export interface VerificationItem {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  university: string;
+  department: string;
+  graduationYear: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  proofUrl?: string;
+  notes?: string;
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+}
+
+export interface ChangeRequestItem {
+  id: string;
+  requesterId: string;
+  requesterName: string;
+  requesterEmail: string;
+  requesterRole: string;
+  targetType: string;
+  targetId: string;
+  targetTitle: string;
+  university: string;
+  oldValue: string;
+  newValue: string;
+  reason: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  reviewerNote?: string;
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+}
+
+export interface AdminSettings {
+  maintenanceMode: boolean;
+  allowRegistrations: boolean;
+  requireVerificationReview: boolean;
+  allowAlumniBadges: boolean;
+  systemVersion: string;
+  lastUpdated: string;
+}
+
+interface AdminStoreData {
+  users: AdminUser[];
+  auditLogs: AdminAuditLog[];
+  verifications: VerificationItem[];
+  changeRequests: ChangeRequestItem[];
+  settings: AdminSettings;
+}
+
+// Password hashing with cryptographic salt and scrypt
+function hashPassword(password: string, salt = crypto.randomBytes(16).toString('hex')): string {
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password: string, stored: string): boolean {
+  try {
+    const [salt, key] = stored.split(':');
+    if (!salt || !key) return false;
+    const keyBuffer = Buffer.from(key, 'hex');
+    const derivedKey = crypto.scryptSync(password, salt, 64);
+    return crypto.timingSafeEqual(keyBuffer, derivedKey);
+  } catch {
+    return false;
+  }
+}
+
+function generateSessionToken(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+// File persistence
+const ADMIN_DB_PATH = path.resolve(__dirname, 'admin-database.json');
+
+function initDefaultAdminStore(): AdminStoreData {
+  const defaultPassword = 'Admin@2026!';
+  return {
+    users: [
+      {
+        id: 'usr-superadmin-nahian',
+        email: 'nahianalmubin2006@gmail.com',
+        passwordHash: hashPassword(defaultPassword),
+        name: 'Nahian Al Mubin',
+        role: 'SUPER_ADMIN',
+        status: 'APPROVED',
+        university: 'University of Dhaka',
+        department: 'Computer Science & Engineering',
+        profileType: 'Super Admin',
+        jobRole: 'Platform Founder & Lead Architect',
+        company: 'AlumniSphere Core Engineering',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'usr-admin-demo',
+        email: 'admin@alumnisphere.edu',
+        passwordHash: hashPassword(defaultPassword),
+        name: 'Institutional Administrator',
+        role: 'ADMIN',
+        status: 'APPROVED',
+        university: 'Bangladesh University of Engineering & Technology',
+        department: 'Electrical & Electronic Engineering',
+        profileType: 'Admin',
+        jobRole: 'Institutional Records Director',
+        company: 'University Administration',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'usr-member-1',
+        email: 'tanvir.cse@du.ac.bd',
+        passwordHash: hashPassword(defaultPassword),
+        name: 'Tanvir Ahmed',
+        role: 'USER',
+        status: 'APPROVED',
+        university: 'University of Dhaka',
+        department: 'Computer Science & Engineering',
+        profileType: 'Student',
+        studentId: 'DU-CSE-2022-041',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'usr-member-2',
+        email: 'sadia.eee@buet.ac.bd',
+        passwordHash: hashPassword(defaultPassword),
+        name: 'Sadia Islam',
+        role: 'USER',
+        status: 'APPROVED',
+        university: 'Bangladesh University of Engineering & Technology',
+        department: 'Electrical & Electronic Engineering',
+        profileType: 'Alumni',
+        jobRole: 'Senior Firmware Engineer',
+        company: 'Tech Solutions Inc',
+        graduationYear: '2023',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'usr-member-3',
+        email: 'rafiq.bba@nsu.edu',
+        passwordHash: hashPassword(defaultPassword),
+        name: 'Rafiqul Islam',
+        role: 'USER',
+        status: 'PENDING',
+        university: 'North South University',
+        department: 'Business Administration',
+        profileType: 'Student',
+        studentId: 'NSU-BBA-2024-819',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ],
+    auditLogs: [
+      {
+        id: 'log-init-1',
+        timestamp: new Date().toISOString(),
+        actorId: 'system',
+        actorEmail: 'system@alumnisphere.internal',
+        actorRole: 'SYSTEM',
+        action: 'SYSTEM_INITIALIZED',
+        targetType: 'SYSTEM',
+        targetId: 'core-platform',
+        details: 'Admin RBAC security subsystem and initial audit registry initialized.',
+        ip: '127.0.0.1',
+      },
+    ],
+    verifications: [
+      {
+        id: 'verif-1',
+        userId: 'usr-member-2',
+        userName: 'Sadia Islam',
+        userEmail: 'sadia.eee@buet.ac.bd',
+        university: 'Bangladesh University of Engineering & Technology',
+        department: 'Electrical & Electronic Engineering',
+        graduationYear: '2023',
+        status: 'PENDING',
+        proofUrl: 'https://alumnisphere.edu/records/buet/2023/sadia-cert.pdf',
+        notes: 'Submitted certified degree certificate and institutional LinkedIn profile verification.',
+        createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+      },
+    ],
+    changeRequests: [
+      {
+        id: 'cr-1',
+        requesterId: 'usr-admin-demo',
+        requesterName: 'Institutional Administrator',
+        requesterEmail: 'admin@alumnisphere.edu',
+        requesterRole: 'ADMIN',
+        targetType: 'UNIVERSITY',
+        targetId: 'uni-buet',
+        targetTitle: 'Bangladesh University of Engineering & Technology',
+        university: 'Bangladesh University of Engineering & Technology',
+        oldValue: 'Employment Rate: 88%',
+        newValue: 'Employment Rate: 92% (Updated for 2025 cohort)',
+        reason: 'Annual UGC graduate employment registry published official index.',
+        status: 'PENDING',
+        createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
+      },
+    ],
+    settings: {
+      maintenanceMode: false,
+      allowRegistrations: true,
+      requireVerificationReview: true,
+      allowAlumniBadges: true,
+      systemVersion: '2.5.0-enterprise',
+      lastUpdated: new Date().toISOString(),
+    },
+  };
+}
+
+let adminStore: AdminStoreData = (() => {
+  try {
+    if (fs.existsSync(ADMIN_DB_PATH)) {
+      const content = fs.readFileSync(ADMIN_DB_PATH, 'utf-8');
+      const parsed = JSON.parse(content);
+      const nahianUser = parsed.users.find((u: any) => u.email.toLowerCase() === 'nahianalmubin2006@gmail.com');
+      if (nahianUser) {
+        nahianUser.role = 'SUPER_ADMIN';
+      } else {
+        parsed.users.unshift({
+          id: 'usr-superadmin-nahian',
+          email: 'nahianalmubin2006@gmail.com',
+          passwordHash: hashPassword('Admin@2026!'),
+          name: 'Nahian Al Mubin',
+          role: 'SUPER_ADMIN',
+          status: 'APPROVED',
+          university: 'University of Dhaka',
+          department: 'Computer Science & Engineering',
+          profileType: 'Super Admin',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      return parsed;
+    }
+  } catch (e) {
+    console.warn('Failed to load existing admin-database.json, generating default store', e);
+  }
+  const defaultData = initDefaultAdminStore();
+  try {
+    fs.writeFileSync(ADMIN_DB_PATH, JSON.stringify(defaultData, null, 2));
+  } catch (e) {}
+  return defaultData;
+})();
+
+function persistAdminStore() {
+  try {
+    fs.writeFileSync(ADMIN_DB_PATH, JSON.stringify(adminStore, null, 2));
+  } catch (err) {
+    console.error('Failed to write admin-database.json:', err);
+  }
+}
+
+// Active session store in memory
+const activeAdminSessions = new Map<string, AdminSession>();
+const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+// Rate limiting & lockout tracker: max 5 failed attempts per IP or Email in 15 mins
+interface RateLimitRecord {
+  attempts: number;
+  lockedUntil: number;
+}
+const loginAttempts = new Map<string, RateLimitRecord>();
+
+function isRateLimited(key: string): boolean {
+  const record = loginAttempts.get(key);
+  if (!record) return false;
+  if (Date.now() < record.lockedUntil) return true;
+  if (Date.now() - record.lockedUntil > 15 * 60 * 1000) {
+    loginAttempts.delete(key);
+    return false;
+  }
+  return false;
+}
+
+function recordFailedLogin(key: string) {
+  const record = loginAttempts.get(key) || { attempts: 0, lockedUntil: 0 };
+  record.attempts += 1;
+  if (record.attempts >= 5) {
+    record.lockedUntil = Date.now() + 15 * 60 * 1000; // 15 minute lockout
+  }
+  loginAttempts.set(key, record);
+}
+
+function resetFailedLogin(key: string) {
+  loginAttempts.delete(key);
+}
+
+function recordAuditLog(log: Omit<AdminAuditLog, 'id' | 'timestamp'>) {
+  const item: AdminAuditLog = {
+    id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    timestamp: new Date().toISOString(),
+    ...log,
+  };
+  adminStore.auditLogs.unshift(item);
+  if (adminStore.auditLogs.length > 500) {
+    adminStore.auditLogs.pop();
+  }
+  persistAdminStore();
+  return item;
+}
+
+// Middleware: Authenticate Admin (Role must be ADMIN or SUPER_ADMIN)
+interface AdminRequest extends express.Request {
+  adminUser?: AdminUser;
+  adminSession?: AdminSession;
+}
+
+function requireAdminAuth(req: AdminRequest, res: express.Response, next: express.NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: Admin authentication token required.' });
+  }
+
+  const token = authHeader.substring(7).trim();
+  const session = activeAdminSessions.get(token);
+  if (!session) {
+    return res.status(401).json({ error: 'Unauthorized: Session invalid or expired.' });
+  }
+
+  if (Date.now() > session.expiresAt) {
+    activeAdminSessions.delete(token);
+    return res.status(401).json({ error: 'Unauthorized: Session has expired. Please log in again.' });
+  }
+
+  const user = adminStore.users.find((u) => u.id === session.userId);
+  if (!user || user.status === 'SUSPENDED') {
+    activeAdminSessions.delete(token);
+    return res.status(401).json({ error: 'Unauthorized: Admin account is not found or has been suspended.' });
+  }
+
+  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    activeAdminSessions.delete(token);
+    return res.status(403).json({ error: 'Forbidden: Insufficient administrative privileges.' });
+  }
+
+  // Slide activity and refresh expiry
+  session.lastActivityAt = Date.now();
+  session.expiresAt = Date.now() + SESSION_TTL_MS;
+  req.adminUser = user;
+  req.adminSession = session;
+  next();
+}
+
+// Middleware: Require Super Admin Role
+function requireSuperAdmin(req: AdminRequest, res: express.Response, next: express.NextFunction) {
+  requireAdminAuth(req, res, () => {
+    if (req.adminUser?.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Forbidden: Super Admin authorization required for this action.' });
+    }
+    next();
+  });
+}
+
+// ------------------------------------------
+// ADMIN AUTHENTICATION ROUTES
+// ------------------------------------------
+
+// Admin Login
+app.post('/api/admin/auth/login', (req, res) => {
+  const { email, password } = req.body || {};
+  const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+
+  if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const rateLimitKey = `${clientIp}:${normalizedEmail}`;
+
+  if (isRateLimited(rateLimitKey)) {
+    return res.status(429).json({
+      error: 'Too many failed login attempts. Security lockout active for 15 minutes. Please try again later.',
+    });
+  }
+
+  const user = adminStore.users.find((u) => u.email.toLowerCase() === normalizedEmail);
+
+  // Generic failure response to avoid account enumeration
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+    recordFailedLogin(rateLimitKey);
+    recordAuditLog({
+      actorId: 'anonymous',
+      actorEmail: normalizedEmail,
+      actorRole: 'UNKNOWN',
+      action: 'ADMIN_LOGIN_FAILED',
+      targetType: 'AUTH',
+      targetId: normalizedEmail,
+      details: 'Failed admin login attempt: Account does not exist or lacks admin role.',
+      ip: clientIp,
+    });
+    return res.status(401).json({ error: 'Invalid administrative credentials.' });
+  }
+
+  if (user.status === 'SUSPENDED') {
+    recordFailedLogin(rateLimitKey);
+    return res.status(403).json({ error: 'This administrative account has been suspended by Super Admin.' });
+  }
+
+  const isValidPassword = verifyPassword(password, user.passwordHash);
+  if (!isValidPassword) {
+    recordFailedLogin(rateLimitKey);
+    recordAuditLog({
+      actorId: user.id,
+      actorEmail: user.email,
+      actorRole: user.role,
+      action: 'ADMIN_LOGIN_FAILED',
+      targetType: 'AUTH',
+      targetId: user.id,
+      details: 'Failed admin login attempt: Incorrect password.',
+      ip: clientIp,
+    });
+    return res.status(401).json({ error: 'Invalid administrative credentials.' });
+  }
+
+  // Login successful
+  resetFailedLogin(rateLimitKey);
+  user.lastLoginAt = new Date().toISOString();
+  persistAdminStore();
+
+  const token = generateSessionToken();
+  const session: AdminSession = {
+    token,
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + SESSION_TTL_MS,
+    lastActivityAt: Date.now(),
+    ip: clientIp,
+  };
+  activeAdminSessions.set(token, session);
+
+  recordAuditLog({
+    actorId: user.id,
+    actorEmail: user.email,
+    actorRole: user.role,
+    action: 'ADMIN_LOGIN_SUCCESS',
+    targetType: 'SESSION',
+    targetId: token.substring(0, 8),
+    details: `Administrator logged into ${user.role} workspace.`,
+    ip: clientIp,
+  });
+
+  return res.json({
+    success: true,
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      status: user.status,
+      university: user.university,
+      department: user.department,
+    },
+  });
+});
+
+// Admin Logout (Session Invalidation)
+app.post('/api/admin/auth/logout', requireAdminAuth, (req: AdminRequest, res) => {
+  const token = req.adminSession?.token;
+  if (token) {
+    activeAdminSessions.delete(token);
+  }
+
+  if (req.adminUser) {
+    recordAuditLog({
+      actorId: req.adminUser.id,
+      actorEmail: req.adminUser.email,
+      actorRole: req.adminUser.role,
+      action: 'ADMIN_LOGOUT',
+      targetType: 'SESSION',
+      targetId: token ? token.substring(0, 8) : 'unknown',
+      details: 'Administrator logged out. Session invalidated server-side.',
+    });
+  }
+
+  return res.json({ success: true, message: 'Admin session terminated successfully.' });
+});
+
+// Admin Auth Status / Current User
+app.get('/api/admin/auth/me', requireAdminAuth, (req: AdminRequest, res) => {
+  const user = req.adminUser!;
+  return res.json({
+    authenticated: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      status: user.status,
+      university: user.university,
+      department: user.department,
+      lastLoginAt: user.lastLoginAt,
+    },
+  });
+});
+
+// Admin Password Change
+app.post('/api/admin/auth/change-password', requireAdminAuth, (req: AdminRequest, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters long.' });
+  }
+
+  const user = req.adminUser!;
+  if (!verifyPassword(currentPassword, user.passwordHash)) {
+    return res.status(400).json({ error: 'Current password verification failed.' });
+  }
+
+  user.passwordHash = hashPassword(newPassword);
+  user.updatedAt = new Date().toISOString();
+  persistAdminStore();
+
+  recordAuditLog({
+    actorId: user.id,
+    actorEmail: user.email,
+    actorRole: user.role,
+    action: 'ADMIN_PASSWORD_CHANGED',
+    targetType: 'USER',
+    targetId: user.id,
+    details: 'Administrator successfully rotated authentication password.',
+  });
+
+  return res.json({ success: true, message: 'Password updated successfully.' });
+});
+
+// ------------------------------------------
+// PROTECTED ADMIN USER MANAGEMENT APIS
+// ------------------------------------------
+
+// GET /api/admin/users - Search & filter users
+app.get('/api/admin/users', requireAdminAuth, (req, res) => {
+  const { search, role, status } = req.query;
+  let results = [...adminStore.users];
+
+  if (search && typeof search === 'string') {
+    const q = search.toLowerCase();
+    results = results.filter(
+      (u) =>
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.university?.toLowerCase().includes(q) ||
+        u.department?.toLowerCase().includes(q)
+    );
+  }
+
+  if (role && typeof role === 'string' && role !== 'ALL') {
+    results = results.filter((u) => u.role === role);
+  }
+
+  if (status && typeof status === 'string' && status !== 'ALL') {
+    results = results.filter((u) => u.status === status);
+  }
+
+  // Strip password hashes before returning
+  const sanitized = results.map(({ passwordHash, ...rest }) => rest);
+  return res.json({ success: true, count: sanitized.length, users: sanitized });
+});
+
+// POST /api/admin/users - Create new user or admin
+app.post('/api/admin/users', requireAdminAuth, (req: AdminRequest, res) => {
+  const { name, email, role = 'USER', password, university, department, status = 'APPROVED' } = req.body || {};
+  if (!name || !email) {
+    return res.status(400).json({ error: 'Name and email are required.' });
+  }
+
+  // Only Super Admin can create ADMIN or SUPER_ADMIN
+  if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && req.adminUser?.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Only Super Admin can provision administrative accounts.' });
+  }
+
+  const existing = adminStore.users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
+  if (existing) {
+    return res.status(400).json({ error: 'A user with this email already exists.' });
+  }
+
+  const newUser: AdminUser = {
+    id: `usr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    email: email.trim().toLowerCase(),
+    passwordHash: hashPassword(password || 'Alumni@2026!'),
+    name: name.trim(),
+    role: role as AdminRole,
+    status: status || 'APPROVED',
+    university: university || '',
+    department: department || '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  adminStore.users.push(newUser);
+  persistAdminStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: 'USER_CREATED',
+    targetType: 'USER',
+    targetId: newUser.id,
+    details: `Created new user ${newUser.name} with role ${newUser.role} (${newUser.email}).`,
+  });
+
+  const { passwordHash, ...sanitized } = newUser;
+  return res.json({ success: true, user: sanitized });
+});
+
+// GET /api/admin/users/:id - Get dossier
+app.get('/api/admin/users/:id', requireAdminAuth, (req, res) => {
+  const user = adminStore.users.find((u) => u.id === req.params.id);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  const { passwordHash, ...sanitized } = user;
+  return res.json({ success: true, user: sanitized });
+});
+
+// PUT /api/admin/users/:id - Update user details
+app.put('/api/admin/users/:id', requireAdminAuth, (req: AdminRequest, res) => {
+  const target = adminStore.users.find((u) => u.id === req.params.id);
+  if (!target) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+
+  // Admin cannot edit Super Admin
+  if (target.role === 'SUPER_ADMIN' && req.adminUser?.role !== 'SUPER_ADMIN' && req.adminUser?.id !== target.id) {
+    return res.status(403).json({ error: 'You do not have permission to modify Super Admin accounts.' });
+  }
+
+  const { name, university, department, jobRole, company, graduationYear, status } = req.body || {};
+  if (name) target.name = name;
+  if (university !== undefined) target.university = university;
+  if (department !== undefined) target.department = department;
+  if (jobRole !== undefined) target.jobRole = jobRole;
+  if (company !== undefined) target.company = company;
+  if (graduationYear !== undefined) target.graduationYear = graduationYear;
+  if (status !== undefined) target.status = status;
+  target.updatedAt = new Date().toISOString();
+
+  persistAdminStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: 'USER_UPDATED',
+    targetType: 'USER',
+    targetId: target.id,
+    details: `Updated dossier information for ${target.name}.`,
+  });
+
+  const { passwordHash, ...sanitized } = target;
+  return res.json({ success: true, user: sanitized });
+});
+
+// POST /api/admin/users/:id/role - Role change (Super Admin only)
+app.post('/api/admin/users/:id/role', requireSuperAdmin, (req: AdminRequest, res) => {
+  const { role } = req.body || {};
+  if (!role || !['USER', 'ADMIN', 'SUPER_ADMIN'].includes(role)) {
+    return res.status(400).json({ error: 'Valid role (USER, ADMIN, SUPER_ADMIN) is required.' });
+  }
+
+  const target = adminStore.users.find((u) => u.id === req.params.id);
+  if (!target) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+
+  // Protect system creator account from demotion
+  if (target.email.toLowerCase() === 'nahianalmubin2006@gmail.com' && role !== 'SUPER_ADMIN') {
+    return res.status(400).json({ error: 'Root creator account role cannot be changed from SUPER_ADMIN.' });
+  }
+
+  const oldRole = target.role;
+  target.role = role as AdminRole;
+  target.updatedAt = new Date().toISOString();
+  persistAdminStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: 'ROLE_MODIFIED',
+    targetType: 'USER',
+    targetId: target.id,
+    details: `Changed role of ${target.name} from ${oldRole} to ${role}.`,
+  });
+
+  const { passwordHash, ...sanitized } = target;
+  return res.json({ success: true, user: sanitized });
+});
+
+// POST /api/admin/users/:id/status - Status change (Approve, Reject, Suspend)
+app.post('/api/admin/users/:id/status', requireAdminAuth, (req: AdminRequest, res) => {
+  const { status, reason } = req.body || {};
+  if (!status || !['APPROVED', 'PENDING', 'REJECTED', 'SUSPENDED'].includes(status)) {
+    return res.status(400).json({ error: 'Valid status (APPROVED, PENDING, REJECTED, SUSPENDED) is required.' });
+  }
+
+  const target = adminStore.users.find((u) => u.id === req.params.id);
+  if (!target) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+
+  if (target.role === 'SUPER_ADMIN' && req.adminUser?.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Cannot modify status of a Super Admin.' });
+  }
+
+  const oldStatus = target.status;
+  target.status = status;
+  target.updatedAt = new Date().toISOString();
+  persistAdminStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: `USER_STATUS_${status}`,
+    targetType: 'USER',
+    targetId: target.id,
+    details: `Status changed from ${oldStatus} to ${status}. Reason: ${reason || 'Administrative action'}`,
+  });
+
+  const { passwordHash, ...sanitized } = target;
+  return res.json({ success: true, user: sanitized });
+});
+
+// DELETE /api/admin/users/:id - Delete user account
+app.delete('/api/admin/users/:id', requireAdminAuth, (req: AdminRequest, res) => {
+  const index = adminStore.users.findIndex((u) => u.id === req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+
+  const target = adminStore.users[index];
+
+  // Protected super admins
+  if (target.role === 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Super Admin accounts cannot be deleted.' });
+  }
+
+  if (target.role === 'ADMIN' && req.adminUser?.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Only Super Admin can delete administrator accounts.' });
+  }
+
+  const reason = (req.body && req.body.reason) || req.query.reason || 'Manual deletion by Admin';
+  adminStore.users.splice(index, 1);
+  persistAdminStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: 'USER_DELETED',
+    targetType: 'USER',
+    targetId: target.id,
+    details: `Deleted user ${target.name} (${target.email}). Reason: ${reason}`,
+  });
+
+  return res.json({ success: true, message: `User account ${target.name} deleted successfully.` });
+});
+
+// ------------------------------------------
+// PROTECTED APPROVALS & VERIFICATIONS APIS
+// ------------------------------------------
+
+// GET /api/admin/verifications
+app.get('/api/admin/verifications', requireAdminAuth, (_req, res) => {
+  return res.json({ success: true, verifications: adminStore.verifications });
+});
+
+// POST /api/admin/verifications/:id/approve
+app.post('/api/admin/verifications/:id/approve', requireAdminAuth, (req: AdminRequest, res) => {
+  const item = adminStore.verifications.find((v) => v.id === req.params.id);
+  if (!item) {
+    return res.status(404).json({ error: 'Verification request not found.' });
+  }
+
+  item.status = 'APPROVED';
+  item.reviewedAt = new Date().toISOString();
+  item.reviewedBy = req.adminUser!.name;
+
+  // Upgrade user in store
+  const user = adminStore.users.find((u) => u.id === item.userId);
+  if (user) {
+    user.status = 'APPROVED';
+  }
+  persistAdminStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: 'VERIFICATION_APPROVED',
+    targetType: 'VERIFICATION',
+    targetId: item.id,
+    details: `Approved alumni verification for ${item.userName} (${item.university}).`,
+  });
+
+  return res.json({ success: true, verification: item });
+});
+
+// POST /api/admin/verifications/:id/reject
+app.post('/api/admin/verifications/:id/reject', requireAdminAuth, (req: AdminRequest, res) => {
+  const item = adminStore.verifications.find((v) => v.id === req.params.id);
+  if (!item) {
+    return res.status(404).json({ error: 'Verification request not found.' });
+  }
+
+  item.status = 'REJECTED';
+  item.reviewedAt = new Date().toISOString();
+  item.reviewedBy = req.adminUser!.name;
+  persistAdminStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: 'VERIFICATION_REJECTED',
+    targetType: 'VERIFICATION',
+    targetId: item.id,
+    details: `Rejected alumni verification request for ${item.userName}.`,
+  });
+
+  return res.json({ success: true, verification: item });
+});
+
+// GET /api/admin/change-requests
+app.get('/api/admin/change-requests', requireAdminAuth, (_req, res) => {
+  return res.json({ success: true, changeRequests: adminStore.changeRequests });
+});
+
+// POST /api/admin/change-requests/:id/approve
+app.post('/api/admin/change-requests/:id/approve', requireAdminAuth, (req: AdminRequest, res) => {
+  const item = adminStore.changeRequests.find((cr) => cr.id === req.params.id);
+  if (!item) {
+    return res.status(404).json({ error: 'Change request not found.' });
+  }
+
+  item.status = 'APPROVED';
+  item.reviewedAt = new Date().toISOString();
+  item.reviewedBy = req.adminUser!.name;
+  persistAdminStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: 'CHANGE_REQUEST_APPROVED',
+    targetType: 'CHANGE_REQUEST',
+    targetId: item.id,
+    details: `Approved institutional modification for ${item.targetTitle}.`,
+  });
+
+  return res.json({ success: true, changeRequest: item });
+});
+
+// POST /api/admin/change-requests/:id/reject
+app.post('/api/admin/change-requests/:id/reject', requireAdminAuth, (req: AdminRequest, res) => {
+  const item = adminStore.changeRequests.find((cr) => cr.id === req.params.id);
+  if (!item) {
+    return res.status(404).json({ error: 'Change request not found.' });
+  }
+
+  const { note } = req.body || {};
+  item.status = 'REJECTED';
+  item.reviewerNote = note || 'Did not meet verification criteria';
+  item.reviewedAt = new Date().toISOString();
+  item.reviewedBy = req.adminUser!.name;
+  persistAdminStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: 'CHANGE_REQUEST_REJECTED',
+    targetType: 'CHANGE_REQUEST',
+    targetId: item.id,
+    details: `Declined institutional modification for ${item.targetTitle}. Note: ${item.reviewerNote}`,
+  });
+
+  return res.json({ success: true, changeRequest: item });
+});
+
+// ------------------------------------------
+// PROTECTED SETTINGS & AUDIT LOG APIS
+// ------------------------------------------
+
+// GET /api/admin/settings
+app.get('/api/admin/settings', requireAdminAuth, (_req, res) => {
+  return res.json({ success: true, settings: adminStore.settings });
+});
+
+// POST /api/admin/settings (Super Admin only)
+app.post('/api/admin/settings', requireSuperAdmin, (req: AdminRequest, res) => {
+  const updates = req.body || {};
+  adminStore.settings = {
+    ...adminStore.settings,
+    ...updates,
+    lastUpdated: new Date().toISOString(),
+  };
+  persistAdminStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: 'SETTINGS_UPDATED',
+    targetType: 'SETTINGS',
+    targetId: 'global-config',
+    details: 'Super Admin updated global platform configurations.',
+  });
+
+  return res.json({ success: true, settings: adminStore.settings });
+});
+
+// GET /api/admin/audit-logs
+app.get('/api/admin/audit-logs', requireAdminAuth, (_req, res) => {
+  return res.json({ success: true, auditLogs: adminStore.auditLogs });
+});
+
+// GET /api/admin/stats
+app.get('/api/admin/stats', requireAdminAuth, (_req, res) => {
+  const totalUsers = adminStore.users.length;
+  const pendingUsers = adminStore.users.filter((u) => u.status === 'PENDING').length;
+  const activeAdmins = adminStore.users.filter((u) => u.role === 'ADMIN' || u.role === 'SUPER_ADMIN').length;
+  const pendingVerifications = adminStore.verifications.filter((v) => v.status === 'PENDING').length;
+  const pendingChangeRequests = adminStore.changeRequests.filter((c) => c.status === 'PENDING').length;
+
+  return res.json({
+    success: true,
+    stats: {
+      totalUsers,
+      pendingUsers,
+      activeAdmins,
+      pendingVerifications,
+      pendingChangeRequests,
+      totalAuditLogs: adminStore.auditLogs.length,
+      activeSessionsCount: activeAdminSessions.size,
+    },
+  });
+});
+
+// Background session cleaner (every 15 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, session] of activeAdminSessions.entries()) {
+    if (now > session.expiresAt) {
+      activeAdminSessions.delete(token);
+    }
+  }
+}, 15 * 60 * 1000);
 
 // Setup Vite middleware in dev or static files in production
 async function startServer() {

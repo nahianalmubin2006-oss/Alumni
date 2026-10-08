@@ -86,12 +86,8 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
   const [articleToDelete, setArticleToDelete] = useState<NewsArticle | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
 
-  // 3 types of admins who can make news permanent or delete
-  const canMakePermanent =
-    isSuperAdmin ||
-    userProfile?.role === 'SUPER_ADMIN' ||
-    userProfile?.role === 'UNIVERSITY_ADMIN' ||
-    userProfile?.role === 'DEPARTMENT_ADMIN';
+  // Admin news controls belong strictly in the Admin Dashboard
+  const canMakePermanent = false;
 
   // Calculate 24-hour cycle time remaining
   const [timeRemaining24h, setTimeRemaining24h] = useState({ hours: 23, minutes: 59 });

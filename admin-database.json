@@ -1,0 +1,204 @@
+{
+  "users": [
+    {
+      "id": "usr-superadmin-nahian",
+      "email": "nahianalmubin2006@gmail.com",
+      "passwordHash": "e8f8d9a48e0f067bc404b4367c0eadcc:a760873707a9028e0294174d303b1e404e56c5e3df0d1b204116af99f88887be8c166a15262d523626cb4834509db861e5303caa8006c6a4b8ea38c73f0669f2",
+      "name": "Nahian Al Mubin",
+      "role": "SUPER_ADMIN",
+      "status": "APPROVED",
+      "university": "University of Dhaka",
+      "department": "Computer Science & Engineering",
+      "profileType": "Super Admin",
+      "jobRole": "Platform Founder & Lead Architect",
+      "company": "AlumniSphere Core Engineering",
+      "createdAt": "2026-10-08T10:18:49.427Z",
+      "updatedAt": "2026-10-08T10:18:49.427Z",
+      "lastLoginAt": "2026-10-08T10:25:47.059Z"
+    },
+    {
+      "id": "usr-admin-demo",
+      "email": "admin@alumnisphere.edu",
+      "passwordHash": "31fd44f478988f0cbd6ee2aab8c86ce2:5055e23f39e9453e72388901f94fc14b45fdb82d4af962111f8a48d9cae602ce6faab29e7aee2807a5d83d756614b1abfd5fb02ab5b10d0c0d551f30863eb6d8",
+      "name": "Institutional Administrator",
+      "role": "ADMIN",
+      "status": "APPROVED",
+      "university": "Bangladesh University of Engineering & Technology",
+      "department": "Electrical & Electronic Engineering",
+      "profileType": "Admin",
+      "jobRole": "Institutional Records Director",
+      "company": "University Administration",
+      "createdAt": "2026-10-08T10:18:49.508Z",
+      "updatedAt": "2026-10-08T10:18:49.508Z"
+    },
+    {
+      "id": "usr-member-1",
+      "email": "tanvir.cse@du.ac.bd",
+      "passwordHash": "8f291cacad0234ef1919a7bf212194ff:795ee8a35bce34ee53746303f445d9c6d64fde429b571d8b4a1b1280fffc52f008395e08334be02b08e44c2aa070f159ab3b2259dd40b96b3b9348c283366953",
+      "name": "Tanvir Ahmed",
+      "role": "USER",
+      "status": "APPROVED",
+      "university": "University of Dhaka",
+      "department": "Computer Science & Engineering",
+      "profileType": "Student",
+      "studentId": "DU-CSE-2022-041",
+      "createdAt": "2026-10-08T10:18:49.558Z",
+      "updatedAt": "2026-10-08T10:18:49.558Z"
+    },
+    {
+      "id": "usr-member-2",
+      "email": "sadia.eee@buet.ac.bd",
+      "passwordHash": "e88c896a4f370fdedaa30082d7dec6d0:90fec918276f907710a31b73ce85b8a84057f35bcce44221b6bfdc6acc0af79dfa69570494d19203d25164f07afe881979f5f27e987a039cfd9a68fa750437ea",
+      "name": "Sadia Islam",
+      "role": "USER",
+      "status": "APPROVED",
+      "university": "Bangladesh University of Engineering & Technology",
+      "department": "Electrical & Electronic Engineering",
+      "profileType": "Alumni",
+      "jobRole": "Senior Firmware Engineer",
+      "company": "Tech Solutions Inc",
+      "graduationYear": "2023",
+      "createdAt": "2026-10-08T10:18:49.607Z",
+      "updatedAt": "2026-10-08T10:18:49.607Z"
+    },
+    {
+      "id": "usr-member-3",
+      "email": "rafiq.bba@nsu.edu",
+      "passwordHash": "682a87a8b0b7e571343600169d79ddc3:79f46a7408072934afcc88aa4b899addd2a9fb678d041721c44ea7e66ab100733fbc47c43abf15613576e86b895df7d9fd5134a259c23579c450ed391d01a626",
+      "name": "Rafiqul Islam",
+      "role": "USER",
+      "status": "PENDING",
+      "university": "North South University",
+      "department": "Business Administration",
+      "profileType": "Student",
+      "studentId": "NSU-BBA-2024-819",
+      "createdAt": "2026-10-08T10:18:49.657Z",
+      "updatedAt": "2026-10-08T10:18:49.657Z"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "audit-1791455147159-irb5h",
+      "timestamp": "2026-10-08T10:25:47.159Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "ADMIN_LOGOUT",
+      "targetType": "SESSION",
+      "targetId": "5d6554c6",
+      "details": "Administrator logged out. Session invalidated server-side."
+    },
+    {
+      "id": "audit-1791455147060-lierx",
+      "timestamp": "2026-10-08T10:25:47.060Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "ADMIN_LOGIN_SUCCESS",
+      "targetType": "SESSION",
+      "targetId": "5d6554c6",
+      "details": "Administrator logged into SUPER_ADMIN workspace.",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "audit-1791455146976-zqwwd",
+      "timestamp": "2026-10-08T10:25:46.976Z",
+      "actorId": "anonymous",
+      "actorEmail": "tanvir.cse@du.ac.bd",
+      "actorRole": "UNKNOWN",
+      "action": "ADMIN_LOGIN_FAILED",
+      "targetType": "AUTH",
+      "targetId": "tanvir.cse@du.ac.bd",
+      "details": "Failed admin login attempt: Account does not exist or lacks admin role.",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "audit-1791454749790-pdwzj",
+      "timestamp": "2026-10-08T10:19:09.790Z",
+      "actorId": "anonymous",
+      "actorEmail": "tanvir.cse@du.ac.bd",
+      "actorRole": "UNKNOWN",
+      "action": "ADMIN_LOGIN_FAILED",
+      "targetType": "AUTH",
+      "targetId": "tanvir.cse@du.ac.bd",
+      "details": "Failed admin login attempt: Account does not exist or lacks admin role.",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "audit-1791454743406-gan8k",
+      "timestamp": "2026-10-08T10:19:03.406Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "ADMIN_LOGOUT",
+      "targetType": "SESSION",
+      "targetId": "8ce0dd87",
+      "details": "Administrator logged out. Session invalidated server-side."
+    },
+    {
+      "id": "audit-1791454735999-vmt85",
+      "timestamp": "2026-10-08T10:18:55.999Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "ADMIN_LOGIN_SUCCESS",
+      "targetType": "SESSION",
+      "targetId": "8ce0dd87",
+      "details": "Administrator logged into SUPER_ADMIN workspace.",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "log-init-1",
+      "timestamp": "2026-10-08T10:18:49.657Z",
+      "actorId": "system",
+      "actorEmail": "system@alumnisphere.internal",
+      "actorRole": "SYSTEM",
+      "action": "SYSTEM_INITIALIZED",
+      "targetType": "SYSTEM",
+      "targetId": "core-platform",
+      "details": "Admin RBAC security subsystem and initial audit registry initialized.",
+      "ip": "127.0.0.1"
+    }
+  ],
+  "verifications": [
+    {
+      "id": "verif-1",
+      "userId": "usr-member-2",
+      "userName": "Sadia Islam",
+      "userEmail": "sadia.eee@buet.ac.bd",
+      "university": "Bangladesh University of Engineering & Technology",
+      "department": "Electrical & Electronic Engineering",
+      "graduationYear": "2023",
+      "status": "PENDING",
+      "proofUrl": "https://alumnisphere.edu/records/buet/2023/sadia-cert.pdf",
+      "notes": "Submitted certified degree certificate and institutional LinkedIn profile verification.",
+      "createdAt": "2026-10-07T10:18:49.657Z"
+    }
+  ],
+  "changeRequests": [
+    {
+      "id": "cr-1",
+      "requesterId": "usr-admin-demo",
+      "requesterName": "Institutional Administrator",
+      "requesterEmail": "admin@alumnisphere.edu",
+      "requesterRole": "ADMIN",
+      "targetType": "UNIVERSITY",
+      "targetId": "uni-buet",
+      "targetTitle": "Bangladesh University of Engineering & Technology",
+      "university": "Bangladesh University of Engineering & Technology",
+      "oldValue": "Employment Rate: 88%",
+      "newValue": "Employment Rate: 92% (Updated for 2025 cohort)",
+      "reason": "Annual UGC graduate employment registry published official index.",
+      "status": "PENDING",
+      "createdAt": "2026-10-07T22:18:49.657Z"
+    }
+  ],
+  "settings": {
+    "maintenanceMode": false,
+    "allowRegistrations": true,
+    "requireVerificationReview": true,
+    "allowAlumniBadges": true,
+    "systemVersion": "2.5.0-enterprise",
+    "lastUpdated": "2026-10-08T10:18:49.658Z"
+  }
+}

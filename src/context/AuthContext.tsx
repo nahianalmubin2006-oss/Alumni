@@ -87,10 +87,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const snap = await getDoc(userDocRef);
       if (snap.exists()) {
         const data = snap.data() as UserProfile;
-        // Check if this is the super admin email and promote if needed
-        if (isSuperAdminEmail(user.email) && data.role !== 'SUPER_ADMIN') {
-          const updated = { ...data, role: 'SUPER_ADMIN' as Role, status: 'APPROVED' as UserStatus };
-          await setDoc(userDocRef, updated, { merge: true });
+        // On public website, user behaves as a normal verified member
+        if (isSuperAdminEmail(user.email)) {
+          const updated = {
+            ...data,
+            profileType: (data.profileType === 'Admin' ? 'Alumni' : data.profileType) as ProfileType,
+            role: (data.role === 'SUPER_ADMIN' ? 'ALUMNI' : data.role) as Role,
+            status: 'APPROVED' as UserStatus,
+            isVerifiedAlumni: true,
+          };
           return updated;
         }
         return data;
@@ -102,14 +107,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           uid: user.uid,
           email: user.email || '',
           name: user.displayName || (isMasterAdmin ? 'Nahian Al Mubin' : user.email?.split('@')[0]) || 'Member',
-          role: isMasterAdmin ? 'SUPER_ADMIN' : 'STUDENT',
+          role: isMasterAdmin ? 'ALUMNI' : 'STUDENT',
           status: isMasterAdmin ? 'APPROVED' : 'PENDING',
-          profileType: isMasterAdmin ? 'Admin' : 'Student',
-          university: '',
-          department: '',
+          profileType: isMasterAdmin ? 'Alumni' : 'Student',
+          university: isMasterAdmin ? 'University of Dhaka' : '',
+          department: isMasterAdmin ? 'Computer Science & Engineering' : '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          bio: isMasterAdmin ? 'Platform Creator & Super Administrator' : '',
+          bio: isMasterAdmin ? 'Platform Creator & DU CSE Alumnus' : '',
+          isVerifiedAlumni: isMasterAdmin,
         };
         await setDoc(userDocRef, initialProfile);
 
@@ -436,15 +442,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUserProfile(updated);
   };
 
-  // Determine effective role: simulated role takes precedence if super admin is testing different roles
-  const effectiveRole: Role =
-    simulatedRole ||
-    (userProfile?.role ||
-      (isSuperAdminEmail(currentUser?.email) ? 'SUPER_ADMIN' : 'STUDENT'));
+  // Public website role: public members operate as regular students or alumni
+  const effectiveRole: Role = userProfile?.role || 'STUDENT';
 
-  const isSuperAdmin = effectiveRole === 'SUPER_ADMIN' || isSuperAdminEmail(currentUser?.email);
-  const isUniversityAdmin = isSuperAdmin || effectiveRole === 'UNIVERSITY_ADMIN';
-  const isDepartmentAdmin = isSuperAdmin || isUniversityAdmin || effectiveRole === 'DEPARTMENT_ADMIN';
+  // Admin access is strictly separated to the dedicated server-authenticated admin panel
+  const isSuperAdmin = false;
+  const isUniversityAdmin = false;
+  const isDepartmentAdmin = false;
 
   return (
     <AuthContext.Provider

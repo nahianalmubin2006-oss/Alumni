@@ -38,7 +38,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [notifMenuOpen, setNotifMenuOpen] = useState(false);
-  const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
 
   // Helping info state
   const [hoveredHelp, setHoveredHelp] = useState<HelpItem | null>(null);
@@ -55,7 +54,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     const handleClickOutside = (e: MouseEvent) => {
       if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
         setMoreMenuOpen(false);
-        setRoleSwitcherOpen(false);
         setHoveredHelp(null);
       }
       if (notifMenuRef.current && !notifMenuRef.current.contains(e.target as Node)) {
@@ -275,15 +273,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }`}
               />
               <span className="navy truncate max-w-[120px]">
-                {effectiveRole === 'SUPER_ADMIN'
-                  ? 'Super Admin'
-                  : effectiveRole === 'UNIVERSITY_ADMIN'
-                  ? 'Uni Admin'
-                  : effectiveRole === 'DEPARTMENT_ADMIN'
-                  ? 'Dept Admin'
-                  : userProfile?.isVerifiedAlumni
+                {userProfile?.isVerifiedAlumni
                   ? 'Verified Alumni'
-                  : userProfile?.profileType || 'Student'}
+                  : userProfile?.profileType === 'Alumni'
+                  ? 'Alumni'
+                  : userProfile?.profileType === 'Student'
+                  ? 'Student'
+                  : 'Member'}
               </span>
             </button>
           )}
@@ -381,228 +377,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     );
                   })()}
 
-                  {/* Item 2: Super Admin Panel */}
-                  {(() => {
-                    const item: HelpItem = {
-                      id: 'admin',
-                      title: 'Super Admin Panel',
-                      subtitle: 'Approvals, users, news & settings',
-                      description:
-                        'Root administrative console. Review and approve pending student/alumni registrations, approve or decline institutional change requests, grant verified badges, publish news, and monitor audit logs.',
-                      icon: '⚙',
-                      onAction: () => onNavigate('admin'),
-                    };
-                    const isPressing = activePressId === item.id;
-
-                    return (
-                      <button
-                        key={item.id}
-                        onMouseEnter={() => setHoveredHelp(item)}
-                        onMouseLeave={() => setHoveredHelp(null)}
-                        onTouchStart={() => handleTouchStart(item)}
-                        onTouchEnd={() =>
-                          handleTouchEnd(() => {
-                            setMoreMenuOpen(false);
-                            onNavigate('admin');
-                          })
-                        }
-                        onTouchMove={handleTouchMove}
-                        onClick={() => {
-                          setMoreMenuOpen(false);
-                          onNavigate('admin');
-                        }}
-                        className={`menu-item bg-blue-50/60 text-blue-900 transition relative ${
-                          isPressing ? 'bg-blue-200 ring-2 ring-blue-500' : ''
-                        }`}
-                      >
-                        <span className="menu-icon bg-blue-100 text-blue-700">{item.icon}</span>
-                        <span className="text-left font-semibold text-sm flex-1">
-                          {item.title}
-                        </span>
-                        {isPressing && (
-                          <span className="absolute right-2 top-2 text-[9px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-bold animate-pulse">
-                            Hold 3s...
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })()}
-
-                  {/* Item 3: University Admin */}
-                  {(() => {
-                    const item: HelpItem = {
-                      id: 'university-admin',
-                      title: 'University Admin',
-                      subtitle: 'Manage assigned university',
-                      description:
-                        'Institutional workspace scoped strictly to your assigned university. View enrolled students, inspect alumni rosters, and propose factual profile modifications to Super Admin.',
-                      icon: '🏛',
-                      onAction: () => onNavigate('university-admin'),
-                    };
-                    const isPressing = activePressId === item.id;
-
-                    return (
-                      <button
-                        key={item.id}
-                        onMouseEnter={() => setHoveredHelp(item)}
-                        onMouseLeave={() => setHoveredHelp(null)}
-                        onTouchStart={() => handleTouchStart(item)}
-                        onTouchEnd={() =>
-                          handleTouchEnd(() => {
-                            setMoreMenuOpen(false);
-                            onNavigate('university-admin');
-                          })
-                        }
-                        onTouchMove={handleTouchMove}
-                        onClick={() => {
-                          setMoreMenuOpen(false);
-                          onNavigate('university-admin');
-                        }}
-                        className={`menu-item transition relative ${
-                          isPressing ? 'bg-blue-100 ring-2 ring-blue-400' : ''
-                        }`}
-                      >
-                        <span className="menu-icon">{item.icon}</span>
-                        <span className="text-left font-semibold text-sm flex-1">
-                          {item.title}
-                        </span>
-                        {isPressing && (
-                          <span className="absolute right-2 top-2 text-[9px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-bold animate-pulse">
-                            Hold 3s...
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })()}
-
-                  {/* Item 4: Department Admin */}
-                  {(() => {
-                    const item: HelpItem = {
-                      id: 'department-admin',
-                      title: 'Department Admin',
-                      subtitle: 'Manage department batches & news',
-                      description:
-                        'Departmental workspace scoped strictly to your academic department. Manage graduating cohort batches (2020–2025), benchmarks, and submit announcements for review.',
-                      icon: '📂',
-                      onAction: () => onNavigate('department-admin'),
-                    };
-                    const isPressing = activePressId === item.id;
-
-                    return (
-                      <button
-                        key={item.id}
-                        onMouseEnter={() => setHoveredHelp(item)}
-                        onMouseLeave={() => setHoveredHelp(null)}
-                        onTouchStart={() => handleTouchStart(item)}
-                        onTouchEnd={() =>
-                          handleTouchEnd(() => {
-                            setMoreMenuOpen(false);
-                            onNavigate('department-admin');
-                          })
-                        }
-                        onTouchMove={handleTouchMove}
-                        onClick={() => {
-                          setMoreMenuOpen(false);
-                          onNavigate('department-admin');
-                        }}
-                        className={`menu-item transition relative ${
-                          isPressing ? 'bg-blue-100 ring-2 ring-blue-400' : ''
-                        }`}
-                      >
-                        <span className="menu-icon">{item.icon}</span>
-                        <span className="text-left font-semibold text-sm flex-1">
-                          {item.title}
-                        </span>
-                        {isPressing && (
-                          <span className="absolute right-2 top-2 text-[9px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-bold animate-pulse">
-                            Hold 3s...
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })()}
-
-                  {/* Item 5: Role Switcher (Testing) - No extra dividing line */}
-                  {(() => {
-                    const item: HelpItem = {
-                      id: 'role-switcher',
-                      title: 'Role Switcher (Testing)',
-                      subtitle: `Simulate: ${simulatedRole || 'Original role'}`,
-                      description:
-                        'Developer testing tool to experience the application as a Super Admin, University Admin, Department Admin, Student, or Alumni without logging out.',
-                      icon: '⇄',
-                      onAction: () => setRoleSwitcherOpen(!roleSwitcherOpen),
-                    };
-                    const isPressing = activePressId === item.id;
-
-                    return (
-                      <div key={item.id}>
-                        <button
-                          onMouseEnter={() => setHoveredHelp(item)}
-                          onMouseLeave={() => setHoveredHelp(null)}
-                          onTouchStart={() => handleTouchStart(item)}
-                          onTouchEnd={() =>
-                            handleTouchEnd(() => setRoleSwitcherOpen(!roleSwitcherOpen))
-                          }
-                          onTouchMove={handleTouchMove}
-                          onClick={() => setRoleSwitcherOpen(!roleSwitcherOpen)}
-                          className={`menu-item text-xs transition relative ${
-                            isPressing ? 'bg-blue-100 ring-2 ring-blue-400' : ''
-                          }`}
-                        >
-                          <span className="menu-icon text-xs">{item.icon}</span>
-                          <span className="text-left font-semibold text-sm flex-1">
-                            {item.title}
-                          </span>
-                          {isPressing && (
-                            <span className="absolute right-2 top-2 text-[9px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-bold animate-pulse">
-                              Hold 3s...
-                            </span>
-                          )}
-                        </button>
-
-                        {roleSwitcherOpen && (
-                          <div className="px-3 py-2 bg-slate-50 rounded-xl my-1 space-y-1 text-xs">
-                            {(
-                              [
-                                'SUPER_ADMIN',
-                                'UNIVERSITY_ADMIN',
-                                'DEPARTMENT_ADMIN',
-                                'STUDENT',
-                                'ALUMNI',
-                              ] as Role[]
-                            ).map((r) => (
-                              <button
-                                key={r}
-                                onClick={() => {
-                                  setSimulatedRole(simulatedRole === r ? null : r);
-                                  setRoleSwitcherOpen(false);
-                                }}
-                                className={`w-full text-left px-2 py-1 rounded text-[11px] font-semibold flex items-center justify-between ${
-                                  effectiveRole === r
-                                    ? 'bg-blue-600 text-white'
-                                    : 'hover:bg-slate-200 text-slate-700'
-                                }`}
-                              >
-                                <span>{r.replace('_', ' ')}</span>
-                                {effectiveRole === r && <span>✓</span>}
-                              </button>
-                            ))}
-                            {simulatedRole && (
-                              <button
-                                onClick={() => setSimulatedRole(null)}
-                                className="w-full text-left text-rose-600 text-[10px] font-bold pt-1"
-                              >
-                                Reset to Actual Role
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Item 6: Dark Mode - No extra dividing line */}
+                  {/* Item 2: Dark Mode - No extra dividing line */}
                   {(() => {
                     const item: HelpItem = {
                       id: 'dark-mode',
