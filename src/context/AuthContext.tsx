@@ -193,15 +193,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       let user = currentUser;
       if (!user && data.password) {
-        try {
-          const cred = await createUserWithEmailAndPassword(auth, data.email, data.password);
-          user = cred.user;
-          if (data.name) {
-            await updateProfile(user, { displayName: data.name });
-          }
-        } catch (authErr: any) {
-          throw authErr;
-        }}
+        const cred = await createUserWithEmailAndPassword(auth, data.email, data.password);
+        user = cred.user;
+        if (data.name) {
+          await updateProfile(user, { displayName: data.name });
+        }
       }
 
       if (!user) {
