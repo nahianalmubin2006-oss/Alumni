@@ -12,7 +12,7 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
   onLoginSuccess,
 }) => {
   const { loginAdmin } = useAdmin();
-  const [email, setEmail] = useState('nahianalmubin2006@gmail.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -37,12 +37,6 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleUseCredentials = (userEmail: string) => {
-    setEmail(userEmail);
-    setPassword('Admin@2026!');
-    setErrorMessage('');
   };
 
   return (
@@ -148,62 +142,6 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
               )}
             </button>
           </form>
-
-          {/* Quick Credential Pre-sets for Developer/Owner verification */}
-          <div className="mt-6 pt-5 border-t border-slate-700/60">
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-              Configured Administrator Accounts:
-            </div>
-
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => handleUseCredentials('nahianalmubin2006@gmail.com')}
-                className="w-full text-left p-2.5 rounded-xl bg-slate-900/60 hover:bg-slate-900 border border-slate-700/60 hover:border-blue-500/50 transition group flex items-center justify-between"
-              >
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-white group-hover:text-blue-400">
-                      nahianalmubin2006@gmail.com
-                    </span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold">
-                      SUPER_ADMIN
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">
-                    Nahian Al Mubin · Default Pass: <code className="text-slate-300 font-mono">Admin@2026!</code>
-                  </div>
-                </div>
-                <span className="text-xs text-blue-400 font-bold group-hover:translate-x-0.5 transition-transform">
-                  Fill →
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleUseCredentials('admin@alumnisphere.edu')}
-                className="w-full text-left p-2.5 rounded-xl bg-slate-900/60 hover:bg-slate-900 border border-slate-700/60 hover:border-blue-500/50 transition group flex items-center justify-between"
-              >
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-white group-hover:text-blue-400">
-                      admin@alumnisphere.edu
-                    </span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">
-                      ADMIN
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">
-                    Institutional Admin · Default Pass: <code className="text-slate-300 font-mono">Admin@2026!</code>
-                  </div>
-                </div>
-                <span className="text-xs text-blue-400 font-bold group-hover:translate-x-0.5 transition-transform">
-                  Fill →
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* Security watermark */}
         <div className="text-center mt-6 text-[11px] text-slate-500">
