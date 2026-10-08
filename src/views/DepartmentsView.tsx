@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { RAW_DEPARTMENT_CATALOG, ALL_DIRECTORY_UNIVERSITIES } from '../data/initialData';
+
 import { useData } from '../context/DataContext';
 import { Flame, Award, Bot, ArrowRight } from 'lucide-react';
 
@@ -18,7 +18,7 @@ const DEPARTMENT_GROUP_META: Record<string, { icon: string }> = {
 };
 
 export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) => {
-  const { news } = useData();
+  const { news, departments } = useData();
   const [search, setSearch] = useState('');
   const [group, setGroup] = useState('All');
 
@@ -31,13 +31,13 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
 
   // Filter departments
   const filtered = useMemo(() => {
-    return RAW_DEPARTMENT_CATALOG.filter((d) => {
+    return departments.filter((d) => d.verified !== false).filter((d) => {
       const matchesGroup = group === 'All' || d.group === group;
       const hay = [d.name, d.group, ...d.aliases].join(' ').toLowerCase();
       const matchesSearch = !search || hay.includes(search.trim().toLowerCase());
       return matchesGroup && matchesSearch;
     });
-  }, [search, group]);
+  }, [departments, search, group]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-5 py-7 sm:py-10">
