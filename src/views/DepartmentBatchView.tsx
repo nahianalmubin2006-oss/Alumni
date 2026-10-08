@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Chart from 'chart.js/auto';
-import { } from '../data/initialData';
 import { useData } from '../context/DataContext';
 import {
   Flame,
