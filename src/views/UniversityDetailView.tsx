@@ -4,9 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { University } from '../types';
 import {
   universityInitials,
-  RAW_DEPARTMENT_CATALOG,
-  ALL_DIRECTORY_UNIVERSITIES,
-  demoSeed,
   getUniversityLogo,
 } from '../data/initialData';
 import {
