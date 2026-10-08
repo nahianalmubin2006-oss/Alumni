@@ -13,7 +13,7 @@ interface UniversitiesViewProps {
 }
 
 export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }) => {
-  const { universities, news, toggleFollowUniversity, isFollowingUniversity } = useData();
+  const { universities, departments, alumni, students, news, toggleFollowUniversity, isFollowingUniversity } = useData();
   const { currentUser } = useAuth();
 
   const [search, setSearch] = useState('');
@@ -43,12 +43,16 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
 
     const combined = ALL_DIRECTORY_UNIVERSITIES.map((u) => {
       const match = dbMap.get(u.name.toLowerCase());
-      if (match) return { ...match, logoUrl: match.logoUrl || getUniversityLogo(match.name) };
+      const liveAlumni = alumni.filter((a) => a.status === 'APPROVED' && a.university.toLowerCase() === u.name.toLowerCase()).length;
+      const liveStudents = students.filter((s) => s.status === 'APPROVED' && s.university.toLowerCase() === u.name.toLowerCase()).length;
+      const liveDepartments = departments.filter((d) => d.university.toLowerCase() === u.name.toLowerCase() && d.verified !== false).length;
+      if (match) return { ...match, logoUrl: match.logoUrl || getUniversityLogo(match.name), alumniCount: liveAlumni, studentCount: liveStudents, departmentCount: liveDepartments };
       return {
         id: 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
         name: u.name, type: u.type, location: '', logoUrl: getUniversityLogo(u.name),
         verified: false, alumniCount: 0, studentCount: 0, followersCount: 0,
-        departmentCount: 0, employmentRate: 0, higherStudiesRate: 0, countriesCount: 0, companiesCount: 0,
+        departmentCount: liveDepartments, employmentRate: 0, higherStudiesRate: 0, countriesCount: 0, companiesCount: 0,
+        alumniCount: liveAlumni, studentCount: liveStudents,
       };
     });
 
@@ -97,7 +101,7 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
 
         return a.name.localeCompare(b.name);
       });
-  }, [universities, search, typeFilter, sortBy]);
+  }, [universities, departments, alumni, students, search, typeFilter, sortBy]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-5 py-7 sm:py-10">
