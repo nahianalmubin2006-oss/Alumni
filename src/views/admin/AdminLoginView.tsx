@@ -40,7 +40,7 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-between py-10 px-4 sm:px-6">
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-between py-6 sm:py-10 px-3 sm:px-6">
       <div className="max-w-md w-full mx-auto">
         {/* Top return link */}
         <button
@@ -52,10 +52,10 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
         </button>
 
         {/* Card */}
-        <div className="bg-slate-800/90 border border-slate-700/80 rounded-3xl p-7 sm:p-9 shadow-2xl backdrop-blur-xl">
+        <div className="bg-slate-800/90 border border-slate-700/80 rounded-3xl p-5 sm:p-9 shadow-2xl backdrop-blur-xl">
           {/* Header */}
           <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center mx-auto shadow-lg shadow-blue-500/20 mb-4 ring-4 ring-blue-500/10">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center mx-auto shadow-lg shadow-blue-500/20 mb-4 ring-4 ring-blue-500/10">
               <Shield className="w-7 h-7 text-white" />
             </div>
             <div className="text-[11px] font-bold text-blue-400 uppercase tracking-widest">
