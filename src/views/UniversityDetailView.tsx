@@ -85,7 +85,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     const fromDb = departments
       .filter((d) => d.university.toLowerCase() === universityName.toLowerCase())
       .map((d) => d.name);
-    return Array.from(new Set(fromDb.filter((d) => d.verified !== false).map((d) => d.name)));
+    return Array.from(new Set(fromDb.filter((d) => d.verified === true).map((d) => d.name)));
   }, [departments, universityName]);
 
   // Related news with department filtering & hot topic prioritization
@@ -518,7 +518,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
 
       {activeTab === 'departments' && (
         <div className="mt-6 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {departments.filter((d) => d.university.toLowerCase() === university.name.toLowerCase() && d.verified !== false).map((dept) => (
+          {departments.filter((d) => d.university.toLowerCase() === university.name.toLowerCase() && d.verified === true).map((dept) => (
             <button
               key={dept.name}
               onClick={() =>
