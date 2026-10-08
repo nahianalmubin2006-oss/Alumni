@@ -31,7 +31,7 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
 
   // Filter departments
   const filtered = useMemo(() => {
-    return departments.filter((d) => d.verified !== false).filter((d) => {
+    return departments.filter((d) => d.verified === true).filter((d) => {
       const matchesGroup = group === 'All' || d.group === group;
       const hay = [d.name, d.group].join(' ').toLowerCase();
       const matchesSearch = !search || hay.includes(search.trim().toLowerCase());
