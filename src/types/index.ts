@@ -118,6 +118,9 @@ export interface Department {
   achievements?: string;
   createdAt?: string;
   updatedAt?: string;
+  sourceUrl?: string;
+  verifiedAt?: string;
+  verified?: boolean;
 }
 
 export interface Batch {
