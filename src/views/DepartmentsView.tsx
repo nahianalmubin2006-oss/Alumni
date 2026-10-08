@@ -75,7 +75,7 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
       }
     });
 
-    return Array.from(merged.values()).filter((d) => d.verified);
+    return Array.from(merged.values());
   }, [departments]);
 
   const filtered = useMemo(() => {
