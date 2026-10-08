@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { GlobalGraph } from '../components/GlobalGraph';
-import { universityInitials } from '../data/initialData';
+import { universityInitials, getUniversityLogo } from '../data/initialData';
 import { Flame, Award, Bot, Clock, Shield, RefreshCw } from 'lucide-react';
 import { NewsArticle } from '../types';
 
@@ -11,7 +11,7 @@ interface HomeViewProps {
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
-  const { universities, alumni, news, botStatus, triggerAINewsBotScan } = useData();
+  const { universities, news, botStatus, triggerAINewsBotScan } = useData();
   const [searchInput, setSearchInput] = useState('');
   const [isScanning, setIsScanning] = useState(false);
 
@@ -27,18 +27,51 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
     onSearch(term);
   };
 
-  // Showcase universities are sourced from the live Firestore-backed directory.
-  const showcaseNames = [
-    { name: 'University of Dhaka', abbr: 'DU', bg: 'bg-emerald-50 text-emerald-700', logo: '/du-logo.png' },
-    { name: 'Bangladesh University of Engineering & Technology', abbr: 'BUET', bg: 'bg-blue-50 text-blue-700' },
-    { name: 'North South University', abbr: 'NSU', bg: 'bg-purple-50 text-purple-700' },
-    { name: 'Jahangirnagar University', abbr: 'JU', bg: 'bg-indigo-50 text-indigo-700' },
+  // Top showcase universities across Bangladesh
+  const showcaseList = [
+    {
+      name: 'University of Dhaka',
+      abbr: 'DU',
+      alumni: '8,920',
+      employment: '87%',
+      bg: 'bg-emerald-50 text-emerald-700',
+    },
+    {
+      name: 'Bangladesh University of Engineering & Technology',
+      abbr: 'BUET',
+      alumni: '6,240',
+      employment: '91%',
+      bg: 'bg-blue-50 text-blue-700',
+    },
+    {
+      name: 'North South University',
+      abbr: 'NSU',
+      alumni: '5,800',
+      employment: '86%',
+      bg: 'bg-purple-50 text-purple-700',
+    },
+    {
+      name: 'BRAC University',
+      abbr: 'BRACU',
+      alumni: '5,350',
+      employment: '88%',
+      bg: 'bg-sky-50 text-sky-700',
+    },
+    {
+      name: 'Bangladesh University of Professionals',
+      abbr: 'BUP',
+      alumni: '4,980',
+      employment: '89%',
+      bg: 'bg-emerald-50 text-emerald-800',
+    },
+    {
+      name: 'Jahangirnagar University',
+      abbr: 'JU',
+      alumni: '5,110',
+      employment: '83%',
+      bg: 'bg-indigo-50 text-indigo-700',
+    },
   ];
-  const showcaseList = showcaseNames.map((item) => {
-    const live = universities.find((u) => u.name.toLowerCase() === item.name.toLowerCase());
-    const liveAlumni = alumni.filter((a) => a.status === 'APPROVED' && a.university.toLowerCase() === item.name.toLowerCase()).length;
-    return { ...item, alumni: String(liveAlumni), employment: live?.employmentRate ? `${live.employmentRate}%` : '—' };
-  });
 
   const publishedNews = useMemo(() => {
     const map = new Map<string, NewsArticle>();
@@ -163,41 +196,46 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
           </button>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {showcaseList.map((item) => (
-            <button
-              key={item.name}
-              onClick={() => onNavigate('universityDetail', { name: item.name })}
-              className="card p-5 text-left hover:-translate-y-1 transition group flex flex-col justify-between"
-            >
-              <div>
-                <div
-                  className={`w-12 h-12 rounded-xl ${item.bg} flex items-center justify-center font-black mb-5 overflow-hidden p-1 border border-slate-200/50`}
-                >
-                  {item.logo ? (
-                    <img src={item.logo} alt={item.name} className="w-full h-full object-contain" />
-                  ) : (
-                    item.abbr
-                  )}
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {showcaseList.map((item) => {
+            const logo = getUniversityLogo(item.name);
+            return (
+              <button
+                key={item.name}
+                onClick={() => onNavigate('universityDetail', { name: item.name })}
+                className="card p-5 text-left hover:-translate-y-1 transition group flex flex-col justify-between cursor-pointer"
+              >
+                <div>
+                  <div
+                    className="w-14 h-14 rounded-2xl bg-white shadow-xs flex items-center justify-center font-black mb-4 overflow-hidden p-1.5 border border-slate-200"
+                  >
+                    {logo ? (
+                      <img src={logo} alt={item.name} className="w-full h-full object-contain" />
+                    ) : (
+                      <span className={`w-full h-full rounded-xl ${item.bg} flex items-center justify-center font-bold text-sm`}>
+                        {item.abbr}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="font-bold text-slate-900 group-hover:text-blue-600 transition leading-snug">
+                    {item.name}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">Bangladesh</p>
                 </div>
-                <h3 className="font-bold text-slate-900 group-hover:text-blue-600 transition leading-snug">
-                  {item.name}
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">Dhaka, Bangladesh</p>
-              </div>
-              <div>
-                <div className="line my-4"></div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">Alumni</span>
-                  <b className="navy">{item.alumni}</b>
+                <div>
+                  <div className="line my-4"></div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-400">Alumni</span>
+                    <b className="navy">{item.alumni}</b>
+                  </div>
+                  <div className="flex justify-between text-xs mt-2">
+                    <span className="text-slate-400">Employment</span>
+                    <b className="text-emerald-600">{item.employment}</b>
+                  </div>
                 </div>
-                <div className="flex justify-between text-xs mt-2">
-                  <span className="text-slate-400">Employment</span>
-                  <b className="text-emerald-600">{item.employment}</b>
-                </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       </div>
 

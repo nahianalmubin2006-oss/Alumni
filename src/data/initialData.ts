@@ -482,26 +482,5 @@ export function universityInitials(name: string): string {
   return name.split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
-export function getUniversityLogo(name: string): string | undefined {
-  if (!name) return undefined;
-  const lower = name.toLowerCase().trim();
-  if (
-    lower === 'university of dhaka' ||
-    lower === 'dhaka university' ||
-    lower === 'du' ||
-    lower.includes('dhaka university') ||
-    lower.includes('university of dhaka') ||
-    (lower.includes('dhaka') &&
-      !lower.includes('engineering') &&
-      !lower.includes('technology') &&
-      !lower.includes('international') &&
-      !lower.includes('central') &&
-      !lower.includes('open') &&
-      !lower.includes('medical') &&
-      !lower.includes('science'))
-  ) {
-    return '/du-logo.png';
-  }
-  return undefined;
-}
+export { getUniversityLogo, UNIVERSITY_LOGO_MAP } from './universityLogos';
 
