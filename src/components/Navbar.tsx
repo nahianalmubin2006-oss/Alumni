@@ -199,7 +199,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               {notifMenuOpen && (
-                <div className="absolute right-0 top-12 w-80 sm:w-96 card p-3 z-50 max-h-[460px] flex flex-col shadow-2xl">
+                <div className="absolute right-0 top-12 w-[calc(100vw-1.5rem)] sm:w-96 max-w-[24rem] card p-3 z-50 max-h-[460px] flex flex-col shadow-2xl">
                   <div className="flex items-center justify-between pb-2 border-b border-soft px-1">
                     <span className="font-bold text-sm">Notifications</span>
                     {unreadNotifs.length > 0 && (
@@ -327,7 +327,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
 
                 {/* 3-Dot Dropdown Menu (Clean, without extra separator lines) */}
-                <div className="absolute right-0 top-2 w-64 card p-2 z-50 shadow-2xl">
+                <div className="absolute right-0 top-2 w-[calc(100vw-1.5rem)] max-w-64 card p-2 z-50 shadow-2xl">
                   {/* Item 1: Profile & Account */}
                   {(() => {
                     const item: HelpItem = {
