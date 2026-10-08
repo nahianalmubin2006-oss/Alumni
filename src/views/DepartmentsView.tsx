@@ -31,6 +31,8 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
       .slice(0, 3);
   }, [news]);
 
+  const normalizeDepartmentName = (value: string) => value.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+
   // Master directory: always show the complete department taxonomy.
   // Verified university offerings are merged from the source-backed catalog and live Firestore.
   const directoryDepartments = useMemo(() => {
@@ -42,7 +44,7 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
     }>();
 
     RAW_DEPARTMENT_CATALOG.forEach((d) => {
-      merged.set(d.name.toLowerCase(), {
+      merged.set(normalizeDepartmentName(d.name), {
         name: d.name,
         group: d.group,
         universities: new Set(),
@@ -51,7 +53,7 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
     });
 
     VERIFIED_DEPARTMENT_SEEDS.forEach((d) => {
-      const key = d.name.toLowerCase();
+      const key = normalizeDepartmentName(d.name);
       const existing = merged.get(key);
       if (existing) {
         existing.universities.add(d.university);
@@ -68,7 +70,7 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
 
     departments.forEach((d) => {
       if (d.verified !== true) return;
-      const key = d.name.toLowerCase();
+      const key = normalizeDepartmentName(d.name);
       const existing = merged.get(key);
       if (existing) {
         existing.universities.add(d.university);
