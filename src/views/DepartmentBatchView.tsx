@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Chart from 'chart.js/auto';
-import { demoSeed } from '../data/initialData';
+import { } from '../data/initialData';
 import { useData } from '../context/DataContext';
 import {
   Flame,
@@ -79,8 +79,7 @@ export const DepartmentBatchView: React.FC<DepartmentBatchViewProps> = ({
     }
   };
 
-  const seed = demoSeed(universityName + '|' + departmentName + '|' + batchYear);
-  const studentsCount = 110 + (seed % 45);
+  const studentsCount = 0;
   const employedRate = 78 + (seed % 17);
   const higherStudyRate = 8 + ((seed >> 4) % 9);
   const internationalRate = 6 + ((seed >> 8) % 10);
