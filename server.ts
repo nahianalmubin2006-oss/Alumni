@@ -792,7 +792,52 @@ app.post('/api/admin/auth/login', (req, res) => {
 });
 
 // Admin Firebase Auth Exchange Login
-app.post('/api/admin/auth/firebase-login', (req, res) => {
+app.post('/api/admin/auth/firebase-login', async (req, res) => {
+  const { idToken } = req.body || {};
+  const clientIp = getClientIp(req);
+
+  if (!idToken || typeof idToken !== 'string') {
+    return res.status(400).json({ error: 'A valid Firebase ID token is required.' });
+  }
+
+  const firebaseApiKey = process.env.FIREBASE_API_KEY;
+  if (!firebaseApiKey) {
+    return res.status(503).json({ error: 'Firebase server authentication is not configured.' });
+  }
+
+  let verifiedEmail = '';
+  let verifiedUid = '';
+  let verifiedName = '';
+
+  try {
+    const lookupResponse = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(firebaseApiKey)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      }
+    );
+    const lookupData = await lookupResponse.json();
+
+    if (!lookupResponse.ok || !Array.isArray(lookupData.users) || !lookupData.users[0]?.localId) {
+      return res.status(401).json({ error: 'Firebase authentication token is invalid or expired.' });
+    }
+
+    const firebaseUser = lookupData.users[0];
+    verifiedUid = String(firebaseUser.localId);
+    verifiedEmail = String(firebaseUser.email || '').trim().toLowerCase();
+    verifiedName = String(firebaseUser.displayName || '').trim();
+
+    if (!verifiedEmail) {
+      return res.status(403).json({ error: 'The Firebase account does not have an email identity.' });
+    }
+  } catch (error) {
+    console.error('Firebase ID token verification failed:', error);
+    return res.status(503).json({ error: 'Unable to verify Firebase authentication at this time.' });
+  }
+
+  const normalizedEmail = verifiedEmail;
   const { email, uid, name } = req.body || {};
   const clientIp = getClientIp(req);
 
@@ -817,10 +862,10 @@ app.post('/api/admin/auth/firebase-login', (req, res) => {
 
   if (!user && superAdminEmails.includes(normalizedEmail)) {
     user = {
-      id: uid || `usr-superadmin-${Date.now()}`,
+      id: verifiedUid,
       email: normalizedEmail,
       passwordHash: '',
-      name: name || 'Nahian Al Mubin',
+      name: verifiedName || 'Nahian Al Mubin',
       role: 'SUPER_ADMIN',
       status: 'APPROVED',
       university: 'University of Dhaka',
