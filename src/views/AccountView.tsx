@@ -102,6 +102,8 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
     } catch (err: any) {
       if (err?.code === 'auth/popup-blocked') {
         setErrorMsg('Pop-up was blocked by your browser. Please allow popups or use email/password.');
+      } else if (err?.code === 'auth/unauthorized-domain') {
+        setErrorMsg('Google Sign-In is unavailable on this preview domain. Please sign in with email and password.');
       } else if (
         err?.code !== 'auth/popup-closed-by-user' &&
         err?.code !== 'auth/cancelled-popup-request'

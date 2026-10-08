@@ -752,28 +752,53 @@ interface RateLimitRecord {
 }
 const loginAttempts = new Map<string, RateLimitRecord>();
 
-function isRateLimited(key: string): boolean {
-  const record = loginAttempts.get(key);
-  if (!record) return false;
-  if (Date.now() < record.lockedUntil) return true;
-  if (Date.now() - record.lockedUntil > 15 * 60 * 1000) {
-    loginAttempts.delete(key);
-    return false;
+function getClientIp(req: express.Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string') {
+    return forwarded.split(',')[0].trim().replace(/^::ffff:/, '');
   }
+  return (req.socket.remoteAddress || '127.0.0.1').replace(/^::ffff:/, '');
+}
+
+function isRateLimited(ip: string, email: string): boolean {
+  const emailKey = `email:${email.toLowerCase().trim()}`;
+  const ipKey = `ip:${ip}`;
+
+  const emailRecord = loginAttempts.get(emailKey);
+  if (emailRecord && emailRecord.lockedUntil > 0) {
+    if (Date.now() < emailRecord.lockedUntil) return true;
+    loginAttempts.delete(emailKey);
+  }
+
+  const ipRecord = loginAttempts.get(ipKey);
+  if (ipRecord && ipRecord.lockedUntil > 0) {
+    if (Date.now() < ipRecord.lockedUntil) return true;
+    loginAttempts.delete(ipKey);
+  }
+
   return false;
 }
 
-function recordFailedLogin(key: string) {
-  const record = loginAttempts.get(key) || { attempts: 0, lockedUntil: 0 };
-  record.attempts += 1;
-  if (record.attempts >= 5) {
-    record.lockedUntil = Date.now() + 15 * 60 * 1000; // 15 minute lockout
+function recordFailedLogin(ip: string, email: string) {
+  const emailKey = `email:${email.toLowerCase().trim()}`;
+  const emailRecord = loginAttempts.get(emailKey) || { attempts: 0, lockedUntil: 0 };
+  emailRecord.attempts += 1;
+  if (emailRecord.attempts >= 5) {
+    emailRecord.lockedUntil = Date.now() + 15 * 60 * 1000; // 15 minute lockout for this account
   }
-  loginAttempts.set(key, record);
+  loginAttempts.set(emailKey, emailRecord);
+
+  const ipKey = `ip:${ip}`;
+  const ipRecord = loginAttempts.get(ipKey) || { attempts: 0, lockedUntil: 0 };
+  ipRecord.attempts += 1;
+  if (ipRecord.attempts >= 50) {
+    ipRecord.lockedUntil = Date.now() + 15 * 60 * 1000; // DDoS lockout
+  }
+  loginAttempts.set(ipKey, ipRecord);
 }
 
-function resetFailedLogin(key: string) {
-  loginAttempts.delete(key);
+function resetFailedLogin(ip: string, email: string) {
+  loginAttempts.delete(`email:${email.toLowerCase().trim()}`);
 }
 
 function recordAuditLog(log: Omit<AdminAuditLog, 'id' | 'timestamp'>) {
@@ -849,16 +874,15 @@ function requireSuperAdmin(req: AdminRequest, res: express.Response, next: expre
 // Admin Login
 app.post('/api/admin/auth/login', (req, res) => {
   const { email, password } = req.body || {};
-  const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+  const clientIp = getClientIp(req);
 
   if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
     return res.status(400).json({ error: 'Email and password are required.' });
   }
 
   const normalizedEmail = email.trim().toLowerCase();
-  const rateLimitKey = `${clientIp}:${normalizedEmail}`;
 
-  if (isRateLimited(rateLimitKey)) {
+  if (isRateLimited(clientIp, normalizedEmail)) {
     return res.status(429).json({
       error: 'Too many failed login attempts. Security lockout active for 15 minutes. Please try again later.',
     });
@@ -868,7 +892,7 @@ app.post('/api/admin/auth/login', (req, res) => {
 
   // Generic failure response to avoid account enumeration
   if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-    recordFailedLogin(rateLimitKey);
+    recordFailedLogin(clientIp, normalizedEmail);
     recordAuditLog({
       actorId: 'anonymous',
       actorEmail: normalizedEmail,
@@ -883,13 +907,13 @@ app.post('/api/admin/auth/login', (req, res) => {
   }
 
   if (user.status === 'SUSPENDED') {
-    recordFailedLogin(rateLimitKey);
+    recordFailedLogin(clientIp, normalizedEmail);
     return res.status(403).json({ error: 'This administrative account has been suspended by Super Admin.' });
   }
 
   const isValidPassword = verifyPassword(password, user.passwordHash);
   if (!isValidPassword) {
-    recordFailedLogin(rateLimitKey);
+    recordFailedLogin(clientIp, normalizedEmail);
     recordAuditLog({
       actorId: user.id,
       actorEmail: user.email,
@@ -904,7 +928,7 @@ app.post('/api/admin/auth/login', (req, res) => {
   }
 
   // Login successful
-  resetFailedLogin(rateLimitKey);
+  resetFailedLogin(clientIp, normalizedEmail);
   user.lastLoginAt = new Date().toISOString();
   persistAdminStore();
 
