@@ -45,7 +45,7 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
       const match = dbMap.get(u.name.toLowerCase());
       const liveAlumni = alumni.filter((a) => a.status === 'APPROVED' && a.university.toLowerCase() === u.name.toLowerCase()).length;
       const liveStudents = students.filter((s) => s.status === 'APPROVED' && s.university.toLowerCase() === u.name.toLowerCase()).length;
-      const liveDepartments = departments.filter((d) => d.university.toLowerCase() === u.name.toLowerCase() && d.verified !== false).length;
+      const liveDepartments = departments.filter((d) => d.university.toLowerCase() === u.name.toLowerCase() && d.verified === true).length;
       if (match) return { ...match, logoUrl: match.logoUrl || getUniversityLogo(match.name), alumniCount: liveAlumni, studentCount: liveStudents, departmentCount: liveDepartments };
       return {
         id: 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
