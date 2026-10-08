@@ -40,13 +40,13 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
   }, [search, group]);
 
   return (
-    <div className="max-w-7xl mx-auto px-5 py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-5 py-7 sm:py-10">
       <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
         <div>
           <div className="text-xs font-bold text-blue-600 uppercase tracking-widest">
             Department Directory
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black navy mt-2">Explore by Department</h1>
+          <h1 className="text-2xl sm:text-4xl font-black navy mt-2">Explore by Department</h1>
           <p className="text-slate-500 mt-2 max-w-3xl">
             Choose a department to see universities offering it, then explore department-wise batches,
             career distributions, and alumni outcomes across the network.
@@ -137,7 +137,7 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
       </div>
 
       {/* Department Cards Grid */}
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
+      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-5 sm:mt-6">
         {filtered.map((d) => {
           const meta = DEPARTMENT_GROUP_META[d.group] || { icon: '•' };
           // Number of universities offering this department
@@ -155,7 +155,7 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
             <button
               key={d.name}
               onClick={() => onNavigate('departmentUniversities', { dept: d.name, group: d.group })}
-              className="dept-card card p-5 text-left group"
+              className="dept-card card p-4 sm:p-5 text-left group"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center text-xl font-black group-hover:scale-105 transition">
