@@ -3,7 +3,7 @@
     {
       "id": "usr-superadmin-nahian",
       "email": "nahianalmubin2006@gmail.com",
-      "passwordHash": "e8f8d9a48e0f067bc404b4367c0eadcc:a760873707a9028e0294174d303b1e404e56c5e3df0d1b204116af99f88887be8c166a15262d523626cb4834509db861e5303caa8006c6a4b8ea38c73f0669f2",
+      "passwordHash": "6ad16b8af2faf1c5cb6f3c10af4520ec:dd8234d4d983305fb2c011c64e0462b442223afc91c5f32fb0058b827af2759312ec9ae9922dafabb72383c9212bb5441dc4026e75fd42a45f341dd57a208fab",
       "name": "Nahian Al Mubin",
       "role": "SUPER_ADMIN",
       "status": "APPROVED",
