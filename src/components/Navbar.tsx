@@ -108,20 +108,20 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-50 glass border-b border-soft">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
         {/* Brand */}
         <button
           onClick={() => onNavigate('home')}
           className="flex items-center gap-2.5 text-left focus:outline-none"
         >
-          <div className="w-9 h-9 rounded-xl bg-navy text-white flex items-center justify-center font-black text-lg shadow-sm">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-navy text-white flex items-center justify-center font-black text-lg shadow-sm">
             A
           </div>
           <div>
-            <div className="font-extrabold navy tracking-tight text-base leading-tight">
+            <div className="font-extrabold navy tracking-tight text-sm sm:text-base leading-tight">
               AlumniSphere
             </div>
-            <div className="text-[9px] uppercase tracking-[.18em] text-slate-400">
+            <div className="hidden sm:block text-[9px] uppercase tracking-[.18em] text-slate-400">
               University intelligence
             </div>
           </div>
@@ -573,6 +573,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
       </div>
+
+      <nav className="md:hidden border-t border-soft bg-white/80 px-3 py-2 overflow-x-auto">
+        <div className="flex items-center gap-1.5 min-w-max">
+          <button onClick={() => onNavigate('home')} className="navbtn px-3 py-1.5 rounded-lg text-xs font-bold">Explore</button>
+          <button onClick={() => onNavigate('universities')} className="navbtn px-3 py-1.5 rounded-lg text-xs font-bold">Universities</button>
+          <button onClick={() => onNavigate('department')} className="navbtn px-3 py-1.5 rounded-lg text-xs font-bold">Departments</button>
+          <button onClick={() => onNavigate('alumni')} className="navbtn px-3 py-1.5 rounded-lg text-xs font-bold">Alumni</button>
+          <button onClick={() => onNavigate('news')} className="navbtn px-3 py-1.5 rounded-lg text-xs font-bold">Live News</button>
+        </div>
+      </nav>
 
       {/* Mobile 3-Second Long Press Helping Info Modal */}
       {mobileHelpModal && (
