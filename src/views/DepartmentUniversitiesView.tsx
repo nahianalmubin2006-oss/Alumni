@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { universityInitials } from '../data/initialData';
+import { VERIFIED_DEPARTMENT_SEEDS } from '../data/verifiedDepartments';
 import { useData } from '../context/DataContext';
 import { Bot, Flame, Award, Shield, Clock, RefreshCw, ExternalLink } from 'lucide-react';
 
@@ -54,7 +55,14 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
 
   // Filter universities offering this department
   const list = useMemo(() => {
-    const offered = new Set(departments.filter((d) => d.name.toLowerCase() === departmentName.toLowerCase() && d.verified === true).map((d) => d.university.toLowerCase()));
+    const offered = new Set([
+      ...VERIFIED_DEPARTMENT_SEEDS
+        .filter((d) => d.name.toLowerCase() === departmentName.toLowerCase())
+        .map((d) => d.university.toLowerCase()),
+      ...departments
+        .filter((d) => d.name.toLowerCase() === departmentName.toLowerCase() && d.verified === true)
+        .map((d) => d.university.toLowerCase()),
+    ]);
     return universities.filter((u) => offered.has(u.name.toLowerCase())).filter((u) => {
       // General availability rule
       const q = search.trim().toLowerCase();
