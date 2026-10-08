@@ -100,17 +100,17 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
     <div>
       {/* Hero Section */}
       <div className="gridbg border-b border-soft">
-        <div className="max-w-7xl mx-auto px-5 pt-14 pb-20 grid lg:grid-cols-[1.05fr_.95fr] gap-12 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-5 pt-8 sm:pt-14 pb-12 sm:pb-20 grid lg:grid-cols-[1.05fr_.95fr] gap-12 items-center">
           <div>
             <div className="inline-flex items-center gap-2 pill mb-6">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Building the world's university career graph
             </div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-[-.045em] leading-[1.05] navy max-w-3xl">
+            <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-[-.045em] leading-[1.05] navy max-w-3xl">
               Explore where university graduates{' '}
               <span className="text-blue-600">go.</span>
             </h1>
-            <p className="mt-6 text-base sm:text-lg leading-8 text-slate-500 max-w-2xl">
+            <p className="mt-4 sm:mt-6 text-sm sm:text-lg leading-7 sm:leading-8 text-slate-500 max-w-2xl">
               Discover alumni, career paths, employment outcomes, achievements and global university
               networks — all in one structured platform powered by real-time intelligence.
             </p>
@@ -118,7 +118,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
             {/* Omnisearch Input */}
             <form
               onSubmit={handleSearchSubmit}
-              className="mt-8 bg-white border border-soft shadow-xl shadow-slate-900/5 rounded-2xl p-2 flex items-center max-w-2xl"
+              className="mt-6 sm:mt-8 bg-white border border-soft shadow-xl shadow-slate-900/5 rounded-2xl p-2 flex items-center max-w-2xl"
             >
               <span className="px-3 text-slate-400 text-lg">⌕</span>
               <input
@@ -129,7 +129,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
               />
               <button
                 type="submit"
-                className="bg-navy text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition"
+                className="bg-navy text-white px-4 sm:px-5 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition"
               >
                 Search
               </button>
@@ -169,11 +169,11 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
       </div>
 
       {/* Showcase Universities Section */}
-      <div className="max-w-7xl mx-auto px-5 py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-5 py-10 sm:py-16">
         <div className="flex items-end justify-between mb-8">
           <div>
             <div className="text-xs font-bold text-blue-600 uppercase tracking-widest">Explore</div>
-            <h2 className="text-3xl font-black navy mt-2">Universities on the network</h2>
+            <h2 className="text-2xl sm:text-3xl font-black navy mt-2">Universities on the network</h2>
           </div>
           <button
             onClick={() => onNavigate('universities')}
@@ -223,7 +223,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
 
       {/* Live News Highlights Section */}
       <div className="bg-slate-50/60 border-t border-b border-soft py-16">
-        <div className="max-w-7xl mx-auto px-5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-5">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-2">
