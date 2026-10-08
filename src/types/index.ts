@@ -71,6 +71,9 @@ export interface University {
   website?: string;
   createdAt?: string;
   updatedAt?: string;
+  sourceUrl?: string;
+  verifiedAt?: string;
+  verified?: boolean;
 }
 
 export type PostReactionType = 'like' | 'love' | 'scholar' | 'insightful' | 'celebrate';
