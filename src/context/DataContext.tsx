@@ -126,6 +126,7 @@ interface DataContextType {
   removeAdminAssignment: (id: string) => Promise<void>;
 
   saveUniversity: (uni: Partial<University>) => Promise<void>;
+  deleteUniversity: (uniId: string) => Promise<void>;
   updateUniversityLogo: (uniIdOrName: string, logoUrl: string) => Promise<void>;
   saveDepartment: (dept: Partial<Department>) => Promise<void>;
   updateUniversityDepartments: (uniName: string, deptNames: string[]) => Promise<void>;
@@ -295,10 +296,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubUniversities = onSnapshot(
       collection(db, 'universities'),
       (snap) => {
-        const list: University[] = [];
-        snap.forEach((d) => list.push(d.data() as University));
-        if (list.length > 0) {
-          setUniversities(list);
+        const dbUnis: University[] = [];
+        snap.forEach((d) => {
+          const item = d.data() as University;
+          dbUnis.push({ ...item, id: d.id || item.id });
+        });
+        if (dbUnis.length > 0) {
+          setUniversities((prev) => {
+            const map = new Map<string, University>();
+            for (const u of prev) map.set(u.id, u);
+            for (const du of dbUnis) {
+              map.set(du.id, { ...map.get(du.id), ...du });
+            }
+            return Array.from(map.values());
+          });
         }
       },
       (error) => {
@@ -309,10 +320,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubDepartments = onSnapshot(
       collection(db, 'departments'),
       (snap) => {
-        const list: Department[] = [];
-        snap.forEach((d) => list.push(d.data() as Department));
-        if (list.length > 0) {
-          setDepartments(list);
+        const dbDepts: Department[] = [];
+        snap.forEach((d) => {
+          const item = d.data() as Department;
+          dbDepts.push({
+            ...item,
+            id: d.id || item.id,
+            verified: item.verified ?? true,
+            status: item.status || 'Active',
+          });
+        });
+        if (dbDepts.length > 0) {
+          setDepartments((prev) => {
+            const map = new Map<string, Department>();
+            for (const d of prev) map.set(d.id, d);
+            for (const dd of dbDepts) {
+              map.set(dd.id, { ...map.get(dd.id), ...dd });
+            }
+            return Array.from(map.values());
+          });
         }
       },
       (error) => {
@@ -1428,31 +1454,99 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // University & Department management
   const saveUniversity = async (uni: Partial<University>) => {
-    const id = uni.id || 'uni-' + encodeURIComponent((uni.name || '').toLowerCase().replace(/[^a-z0-9]/g, '-'));
-    await setDoc(
-      doc(db, 'universities', id),
-      {
-        ...uni,
-        id,
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
-    await logAudit('UNIVERSITY_SAVED', 'UNIVERSITY', id, `Saved university ${uni.name}`);
+    const trimmedName = (uni.name || '').trim();
+    const id = uni.id || 'uni-' + encodeURIComponent(trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+    const fullUni: University = {
+      id,
+      name: trimmedName,
+      shortName: uni.shortName ? String(uni.shortName).trim() : '',
+      code: uni.code ? String(uni.code).trim() : '',
+      type: (uni.type || 'Public') as 'Public' | 'Private' | 'International',
+      location: uni.location ? String(uni.location).trim() : '',
+      logoUrl: uni.logoUrl || getUniversityLogo(trimmedName),
+      status: uni.status || 'Active',
+      verified: uni.verified ?? true,
+      alumniCount: uni.alumniCount ?? 0,
+      studentCount: uni.studentCount ?? 0,
+      followersCount: uni.followersCount ?? 0,
+      departmentCount: uni.departmentCount ?? 0,
+      employmentRate: uni.employmentRate ?? 0,
+      higherStudiesRate: uni.higherStudiesRate ?? 0,
+      countriesCount: uni.countriesCount ?? 0,
+      companiesCount: uni.companiesCount ?? 0,
+      overview: uni.overview ? String(uni.overview).trim() : '',
+      website: uni.website ? String(uni.website).trim() : '',
+      updatedAt: new Date().toISOString(),
+      createdAt: uni.createdAt || new Date().toISOString(),
+    };
+
+    try {
+      await setDoc(doc(db, 'universities', id), fullUni, { merge: true });
+    } catch (e) {
+      console.warn('Firestore university save note:', e);
+    }
+
+    if (fullUni.logoUrl) {
+      setCustomLogo(id, fullUni.logoUrl);
+      setCustomLogo(trimmedName, fullUni.logoUrl);
+    }
+
+    try {
+      await fetch('/api/admin/universities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fullUni),
+      });
+    } catch (e) {}
+
+    setUniversities((prev) => {
+      const exists = prev.some((u) => u.id === id);
+      if (exists) {
+        return prev.map((u) => (u.id === id ? { ...u, ...fullUni } : u));
+      }
+      return [fullUni, ...prev];
+    });
+
+    await logAudit('UNIVERSITY_SAVED', 'UNIVERSITY', id, `Saved university ${trimmedName}`);
   };
 
   const saveDepartment = async (dept: Partial<Department>) => {
-    const id = dept.id || 'dept-' + encodeURIComponent((dept.name || '').toLowerCase().replace(/[^a-z0-9]/g, '-'));
-    await setDoc(
-      doc(db, 'departments', id),
-      {
-        ...dept,
-        id,
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
-    await logAudit('DEPARTMENT_SAVED', 'DEPARTMENT', id, `Saved department ${dept.name}`);
+    const uniName = (dept.university || '').trim();
+    const deptName = (dept.name || '').trim();
+    const id = dept.id || 'dept-' + encodeURIComponent((uniName + '-' + deptName).toLowerCase().replace(/[^a-z0-9]/g, '-'));
+    const fullDept: Department = {
+      id,
+      name: deptName,
+      university: uniName,
+      faculty: dept.faculty || dept.group || 'General',
+      group: (dept.group || 'Engineering') as any,
+      status: dept.status || 'Active',
+      verified: true,
+      alumniCount: dept.alumniCount ?? 0,
+      studentCount: dept.studentCount ?? 0,
+      employmentRate: dept.employmentRate ?? 0,
+      higherStudiesRate: dept.higherStudiesRate ?? 0,
+      countriesCount: dept.countriesCount ?? 0,
+      companiesCount: dept.companiesCount ?? 0,
+      updatedAt: new Date().toISOString(),
+      createdAt: dept.createdAt || new Date().toISOString(),
+    };
+
+    try {
+      await setDoc(doc(db, 'departments', id), fullDept, { merge: true });
+    } catch (e) {
+      console.warn('Firestore department save note:', e);
+    }
+
+    setDepartments((prev) => {
+      const exists = prev.some((d) => d.id === id);
+      if (exists) {
+        return prev.map((d) => (d.id === id ? { ...d, ...fullDept } : d));
+      }
+      return [fullDept, ...prev];
+    });
+
+    await logAudit('DEPARTMENT_SAVED', 'DEPARTMENT', id, `Saved department ${deptName} under ${uniName}`);
   };
 
   const updateUniversityLogo = async (uniIdOrName: string, logoUrl: string) => {
@@ -1562,6 +1656,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setDepartments((prev) => prev.filter((d) => d.id !== deptId));
     await logAudit('DEPARTMENT_DELETED', 'DEPARTMENT', deptId, `Deleted department ${deptId}`);
+  };
+
+  const deleteUniversity = async (uniId: string) => {
+    try {
+      await deleteDoc(doc(db, 'universities', uniId));
+    } catch (e) {
+      console.warn('Firestore delete university doc warning:', e);
+    }
+    try {
+      await fetch(`/api/admin/universities/${encodeURIComponent(uniId)}`, {
+        method: 'DELETE',
+      });
+    } catch (e) {}
+    setUniversities((prev) => prev.filter((u) => u.id !== uniId));
+    await logAudit('UNIVERSITY_DELETED', 'UNIVERSITY', uniId, `Deleted university ${uniId}`);
   };
 
   const markNotificationRead = async (id: string) => {
@@ -1752,6 +1861,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         assignAdmin,
         removeAdminAssignment,
         saveUniversity,
+        deleteUniversity,
         updateUniversityLogo,
         saveDepartment,
         updateUniversityDepartments,

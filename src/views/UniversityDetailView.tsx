@@ -83,9 +83,9 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
   // Available departments for this university
   const uniDeptList = useMemo(() => {
     const fromDb = departments
-      .filter((d) => d.university.toLowerCase() === universityName.toLowerCase())
+      .filter((d) => d.university.toLowerCase() === universityName.toLowerCase() && d.status !== 'Inactive')
       .map((d) => d.name);
-    return Array.from(new Set(fromDb.filter((d) => d.verified === true).map((d) => d.name)));
+    return Array.from(new Set(fromDb));
   }, [departments, universityName]);
 
   // Related news with department filtering & hot topic prioritization
@@ -517,28 +517,41 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
       )}
 
       {activeTab === 'departments' && (
-        <div className="mt-6 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {departments.filter((d) => d.university.toLowerCase() === university.name.toLowerCase() && d.verified === true).map((dept) => (
-            <button
-              key={dept.name}
-              onClick={() =>
-                onNavigate('departmentProfile', {
-                  dept: dept.name,
-                  uni: university.name,
-                })
-              }
-              className="card p-5 text-left hover:-translate-y-1 transition group"
-            >
-              <div className="flex justify-between items-start">
-                <span className="pill text-[11px] text-blue-600">{dept.group}</span>
-                <span className="text-slate-400 group-hover:text-blue-600 transition">→</span>
-              </div>
-              <h3 className="font-bold text-slate-900 mt-3 group-hover:text-blue-600 transition">
-                {dept.name}
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">Active career cohort tracking</p>
-            </button>
-          ))}
+        <div className="mt-6">
+          {departments.filter((d) => d.university.toLowerCase() === university.name.toLowerCase() && d.status !== 'Inactive').length === 0 ? (
+            <div className="card p-10 text-center text-slate-500">
+              <p className="font-semibold">No departments registered yet for {university.name}.</p>
+              <p className="text-xs text-slate-400 mt-2">
+                Departments added via the Admin Panel will immediately appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {departments
+                .filter((d) => d.university.toLowerCase() === university.name.toLowerCase() && d.status !== 'Inactive')
+                .map((dept) => (
+                  <button
+                    key={dept.name}
+                    onClick={() =>
+                      onNavigate('departmentProfile', {
+                        dept: dept.name,
+                        uni: university.name,
+                      })
+                    }
+                    className="card p-5 text-left hover:-translate-y-1 transition group cursor-pointer"
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="pill text-[11px] text-blue-600">{dept.group}</span>
+                      <span className="text-slate-400 group-hover:text-blue-600 transition">→</span>
+                    </div>
+                    <h3 className="font-bold text-slate-900 mt-3 group-hover:text-blue-600 transition">
+                      {dept.name}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">Active career cohort tracking</p>
+                  </button>
+                ))}
+            </div>
+          )}
         </div>
       )}
 

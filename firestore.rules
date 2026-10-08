@@ -21,7 +21,8 @@ service cloud.firestore {
       return (
         (isSignedIn() && (
           request.auth.token.email == 'nahianalmubin2006@gmail.com' ||
-          request.auth.token.email == 'nahianalmubin212528@gmail.com'
+          request.auth.token.email == 'nahianalmubin212528@gmail.com' ||
+          request.auth.token.email == 'nahianalmubin2@gmail.com'
         )) ||
         (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPER_ADMIN')
@@ -71,15 +72,14 @@ service cloud.firestore {
     // Universities Collection (Public Directory, Admin Managed)
     match /universities/{universityId} {
       allow read: if true;
-      allow create, update: if isSuperAdmin() || isSignedIn();
-      allow delete: if isSuperAdmin();
+      allow create, update, delete: if isSuperAdmin();
     }
 
     // Departments Collection (Public Directory, Admin Managed)
     match /departments/{departmentId} {
       allow read: if true;
-      allow create, update: if isSuperAdmin() || isSignedIn();
-      allow delete: if isSuperAdmin();
+      allow create: if isSuperAdmin() || (isSignedIn() && isUniversityAdmin(request.resource.data.university));
+      allow update, delete: if isSuperAdmin() || (isSignedIn() && isUniversityAdmin(resource.data.university));
     }
 
     // Batches Collection (Public Directory)

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Chart from 'chart.js/auto';
 import { useData } from '../context/DataContext';
-import { RAW_DEPARTMENT_CATALOG, ALL_DIRECTORY_UNIVERSITIES, demoSeed } from '../data/initialData';
+import { RAW_DEPARTMENT_CATALOG, ALL_DIRECTORY_UNIVERSITIES } from '../data/initialData';
 
 interface AlumniViewProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -23,27 +23,35 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate }) => {
   // Sorted universities by alumni count
   const universityRankings = useMemo(() => {
     return universities
-      .map((u) => ({
-        name: u.name,
-        type: u.type,
-        alumni: u.alumniCount || demoSeed(u.name) % 4000 + 600,
-      }))
+      .map((u) => {
+        const liveCount = alumni.filter(
+          (a) => a.status === 'APPROVED' && a.university?.toLowerCase() === u.name.toLowerCase()
+        ).length;
+        return {
+          name: u.name,
+          type: u.type,
+          alumni: liveCount || u.alumniCount || 0,
+        };
+      })
       .sort((a, b) => b.alumni - a.alumni);
-  }, [universities]);
+  }, [universities, alumni]);
 
   // Sorted departments by aggregated alumni
   const departmentRankings = useMemo(() => {
     return RAW_DEPARTMENT_CATALOG.map((d) => {
-      const seed = demoSeed(d.name);
-      const totalDeptAlumni = 450 + (seed % 1400);
+      const deptAlumni = alumni.filter(
+        (a) => a.status === 'APPROVED' && a.department?.toLowerCase() === d.name.toLowerCase()
+      );
+      const liveCount = deptAlumni.length;
+      const unisCount = new Set(deptAlumni.map((a) => a.university?.toLowerCase()).filter(Boolean)).size;
       return {
         name: d.name,
         group: d.group,
-        alumni: totalDeptAlumni,
-        universitiesCount: d.name.includes('Computer') ? 178 : 65,
+        alumni: liveCount,
+        universitiesCount: unisCount,
       };
     }).sort((a, b) => b.alumni - a.alumni);
-  }, []);
+  }, [alumni]);
 
   const top5Unis = universityRankings.slice(0, 5);
   const top5Depts = departmentRankings.slice(0, 5);

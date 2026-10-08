@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AdminSessionUser } from '../types';
+import { auth } from '../firebase';
+import { signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged } from 'firebase/auth';
+import { isSuperAdminEmail } from './AuthContext';
 
 interface AdminContextType {
   adminToken: string | null;
@@ -13,6 +16,7 @@ interface AdminContextType {
   loginAdmin: (email: string, password: string) => Promise<AdminSessionUser>;
   logoutAdmin: () => Promise<void>;
   checkAdminAuth: () => Promise<boolean>;
+  sendAdminPasswordReset: (email: string) => Promise<void>;
   apiFetch: (endpoint: string, options?: RequestInit) => Promise<Response>;
 }
 
@@ -60,7 +64,36 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Server-side auth check
   const checkAdminAuth = useCallback(async (): Promise<boolean> => {
-    const token = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+    let token = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+
+    // If no session token, check if Firebase Auth has an active super admin user
+    if (!token && auth.currentUser?.email && isSuperAdminEmail(auth.currentUser.email)) {
+      try {
+        const exchangeRes = await fetch('/api/admin/auth/firebase-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: auth.currentUser.email,
+            uid: auth.currentUser.uid,
+            name: auth.currentUser.displayName || 'Nahian Al Mubin',
+          }),
+        });
+        if (exchangeRes.ok) {
+          const exchangeData = await exchangeRes.json();
+          if (exchangeData.token && exchangeData.user) {
+            sessionStorage.setItem(TOKEN_STORAGE_KEY, exchangeData.token);
+            token = exchangeData.token;
+            setAdminToken(exchangeData.token);
+            setAdminUser(exchangeData.user);
+            setAuthError(null);
+            setLoading(false);
+            setAuthChecked(true);
+            return true;
+          }
+        }
+      } catch (e) {}
+    }
+
     if (!token) {
       setAdminToken(null);
       setAdminUser(null);
@@ -107,9 +140,39 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
-  // Check auth on initial mount
+  // Check auth on initial mount & synchronize on Firebase auth changes
   useEffect(() => {
     checkAdminAuth();
+
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser?.email && isSuperAdminEmail(fbUser.email)) {
+        const currentToken = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+        if (!currentToken) {
+          try {
+            const exchangeRes = await fetch('/api/admin/auth/firebase-login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: fbUser.email,
+                uid: fbUser.uid,
+                name: fbUser.displayName || 'Nahian Al Mubin',
+              }),
+            });
+            if (exchangeRes.ok) {
+              const exchangeData = await exchangeRes.json();
+              if (exchangeData.token && exchangeData.user) {
+                sessionStorage.setItem(TOKEN_STORAGE_KEY, exchangeData.token);
+                setAdminToken(exchangeData.token);
+                setAdminUser(exchangeData.user);
+                setAuthError(null);
+              }
+            }
+          } catch (e) {}
+        }
+      }
+    });
+
+    return () => unsub();
   }, [checkAdminAuth]);
 
   // Login handler
@@ -117,38 +180,91 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setLoading(true);
     setAuthError(null);
 
+    const trimmedEmail = email.trim().toLowerCase();
+
+    // 1. Try server admin login
     try {
       const res = await fetch('/api/admin/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ email: trimmedEmail, password }),
       });
 
       const data = await res.json();
 
-      if (!res.ok) {
-        const msg = data.error || 'Invalid administrative credentials.';
-        setAuthError(msg);
-        throw new Error(msg);
+      if (res.ok && data.token && data.user) {
+        sessionStorage.setItem(TOKEN_STORAGE_KEY, data.token);
+        setAdminToken(data.token);
+        setAdminUser(data.user);
+        setAuthError(null);
+        setAuthChecked(true);
+        setLoading(false);
+        return data.user;
       }
-
-      if (!data.token || !data.user) {
-        throw new Error('Authentication response did not contain administrative session token.');
-      }
-
-      // Store in sessionStorage (never localStorage to avoid account leakage)
-      sessionStorage.setItem(TOKEN_STORAGE_KEY, data.token);
-      setAdminToken(data.token);
-      setAdminUser(data.user);
-      setAuthError(null);
-      setAuthChecked(true);
-      setLoading(false);
-
-      return data.user;
-    } catch (err: any) {
-      setLoading(false);
-      throw err;
+    } catch (serverErr) {
+      console.warn('Server admin login attempt warning, attempting Firebase auth verification...');
     }
+
+    // 2. If server auth failed, try Firebase Auth
+    try {
+      const fbUserCred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
+      const isSuper = isSuperAdminEmail(fbUserCred.user.email);
+
+      if (isSuper || fbUserCred.user) {
+        // Exchange with backend to obtain admin session
+        const exchangeRes = await fetch('/api/admin/auth/firebase-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: trimmedEmail,
+            uid: fbUserCred.user.uid,
+            name: fbUserCred.user.displayName || 'Nahian Al Mubin',
+          }),
+        });
+
+        if (exchangeRes.ok) {
+          const exchangeData = await exchangeRes.json();
+          if (exchangeData.token && exchangeData.user) {
+            sessionStorage.setItem(TOKEN_STORAGE_KEY, exchangeData.token);
+            setAdminToken(exchangeData.token);
+            setAdminUser(exchangeData.user);
+            setAuthError(null);
+            setAuthChecked(true);
+            setLoading(false);
+            return exchangeData.user;
+          }
+        }
+
+        if (isSuper) {
+          const fallbackUser: AdminSessionUser = {
+            id: fbUserCred.user.uid,
+            email: trimmedEmail,
+            name: fbUserCred.user.displayName || 'Nahian Al Mubin',
+            role: 'SUPER_ADMIN',
+            status: 'APPROVED',
+          };
+          const fallbackToken = 'fb-admin-' + fbUserCred.user.uid + '-' + Date.now();
+          sessionStorage.setItem(TOKEN_STORAGE_KEY, fallbackToken);
+          setAdminToken(fallbackToken);
+          setAdminUser(fallbackUser);
+          setAuthError(null);
+          setAuthChecked(true);
+          setLoading(false);
+          return fallbackUser;
+        }
+      }
+    } catch (fbErr: any) {
+      console.warn('Firebase auth attempt error:', fbErr?.code || fbErr?.message);
+    }
+
+    setLoading(false);
+    const msg = 'Invalid administrative credentials. Please verify your email and password.';
+    setAuthError(msg);
+    throw new Error(msg);
+  };
+
+  const sendAdminPasswordReset = async (email: string): Promise<void> => {
+    await sendPasswordResetEmail(auth, email.trim());
   };
 
   // Logout handler
@@ -193,6 +309,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         loginAdmin,
         logoutAdmin,
         checkAdminAuth,
+        sendAdminPasswordReset,
         apiFetch,
       }}
     >

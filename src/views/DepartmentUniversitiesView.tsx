@@ -62,16 +62,17 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
         .filter((d) => normalizeDepartmentName(d.name) === normalizeDepartmentName(departmentName))
         .map((d) => d.university.toLowerCase()),
       ...departments
-        .filter((d) => d.name.toLowerCase() === departmentName.toLowerCase() && d.verified === true)
+        .filter((d) => d.status !== 'Inactive' && normalizeDepartmentName(d.name) === normalizeDepartmentName(departmentName))
         .map((d) => d.university.toLowerCase()),
     ]);
-    return universities.filter((u) => offered.has(u.name.toLowerCase())).filter((u) => {
-      // General availability rule
-      const q = search.trim().toLowerCase();
-      const matchesSearch = !q || u.name.toLowerCase().includes(q);
-      return matchesSearch;
-    });
-  }, [departments, universities, alumni, search]);
+    return universities
+      .filter((u) => u.status !== 'Inactive' && offered.has(u.name.toLowerCase()))
+      .filter((u) => {
+        const q = search.trim().toLowerCase();
+        const matchesSearch = !q || u.name.toLowerCase().includes(q);
+        return matchesSearch;
+      });
+  }, [departments, universities, alumni, search, departmentName]);
 
   return (
     <div className="max-w-7xl mx-auto px-5 py-10">

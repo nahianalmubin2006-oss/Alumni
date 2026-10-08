@@ -38,6 +38,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
     registerUser,
     loginWithGoogle,
     logout,
+    resetPasswordWithEmail,
     updateProfileData,
   } = useAuth();
 
@@ -52,8 +53,8 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
     universities,
   } = useData();
 
-  // Mode: 'signedOut', 'login', 'signupChoice', 'signupStudent', 'signupAlumni', 'edit'
-  const [viewState, setViewState] = useState<'default' | 'login' | 'choice' | 'form' | 'edit'>('default');
+  // Mode: 'signedOut', 'login', 'signupChoice', 'signupStudent', 'signupAlumni', 'edit', 'forgot'
+  const [viewState, setViewState] = useState<'default' | 'login' | 'choice' | 'form' | 'edit' | 'forgot'>('default');
   const [profileType, setProfileType] = useState<ProfileType>('Student');
 
   // Profile sub-tabs: 'posts' | 'followed' | 'dossier'
@@ -169,6 +170,31 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
         setErrorMsg('Incorrect email or password. Please verify your credentials or create an account.');
       } else {
         setErrorMsg(err.message || 'Login failed. Please verify credentials.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      setErrorMsg('Please enter your registered Gmail/email address.');
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      await resetPasswordWithEmail(email.trim());
+      setSuccessMsg(`Password reset link sent to ${email.trim()}! Please check your Gmail or email inbox to reset your password.`);
+    } catch (err: any) {
+      if (err?.code === 'auth/user-not-found') {
+        setErrorMsg('No user account found with this email address.');
+      } else if (err?.code === 'auth/invalid-email') {
+        setErrorMsg('Please enter a valid email address.');
+      } else {
+        setErrorMsg(err.message || 'Failed to send password reset email.');
       }
     } finally {
       setLoading(false);
@@ -1119,7 +1145,20 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-500">Password *</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-500">Password *</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewState('forgot');
+                      setErrorMsg('');
+                      setSuccessMsg('');
+                    }}
+                    className="text-xs text-blue-600 hover:underline font-semibold cursor-pointer"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
                 <input
                   type="password"
                   value={password}
@@ -1155,6 +1194,64 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
                 className="font-bold text-blue-600 hover:underline"
               >
                 Create an account
+              </button>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 3b. Forgot Password Form */}
+      {!currentUser && viewState === 'forgot' && (
+        <div className="max-w-md mx-auto mt-8">
+          <div className="card p-7 shadow-xl">
+            <button
+              onClick={() => {
+                setViewState('login');
+                setErrorMsg('');
+                setSuccessMsg('');
+              }}
+              className="text-xs text-slate-500 hover:text-slate-800 transition mb-3 cursor-pointer"
+            >
+              ← Back to Log in
+            </button>
+            <h2 className="text-2xl font-black navy">Reset Password</h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Enter your registered Gmail or email address. We will send an official password recovery link to your inbox.
+            </p>
+
+            <form onSubmit={handleForgotPassword} className="mt-6 space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-500">Registered Email Address *</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="account-input mt-1"
+                  placeholder="name@example.com"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-navy text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? 'Sending recovery link...' : 'Send Password Reset Link'}
+              </button>
+            </form>
+
+            <p className="text-xs text-slate-500 mt-5 text-center">
+              Remembered your password?{' '}
+              <button
+                onClick={() => {
+                  setViewState('login');
+                  setErrorMsg('');
+                  setSuccessMsg('');
+                }}
+                className="font-bold text-blue-600 hover:underline cursor-pointer"
+              >
+                Log in instead
               </button>
             </p>
           </div>

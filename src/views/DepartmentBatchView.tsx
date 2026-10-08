@@ -78,6 +78,16 @@ export const DepartmentBatchView: React.FC<DepartmentBatchViewProps> = ({
     }
   };
 
+  const seed = useMemo(() => {
+    let hash = 0;
+    const str = `${universityName}:${departmentName}:${batchYear}`;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash);
+  }, [universityName, departmentName, batchYear]);
+
   const studentsCount = 0;
   const employedRate = 78 + (seed % 17);
   const higherStudyRate = 8 + ((seed >> 4) % 9);

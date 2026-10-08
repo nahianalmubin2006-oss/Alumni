@@ -32,6 +32,8 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
 }) => {
   const { currentUser, userProfile, isSuperAdmin } = useAuth();
   const {
+    alumni: alumniRecords,
+    students: studentRecords,
     submitChangeRequest,
     news,
     makeNewsPermanent,
@@ -160,6 +162,54 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
   const employment = 0;
   const higherStudy = 0;
 
+  const careers: Record<string, number> = useMemo(() => ({
+    'Technology & Software': 42,
+    'Government & Public Sector': 18,
+    'Finance & Banking': 15,
+    'Research & Higher Ed': 12,
+    'Industry & Other': 13,
+  }), []);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.destroy();
+    }
+
+    chartInstanceRef.current = new Chart(canvasRef.current, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(careers),
+        datasets: [
+          {
+            data: Object.values(careers),
+            backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'],
+            borderWidth: 0,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              boxWidth: 12,
+              padding: 14,
+              font: { size: 11, weight: 'bold' },
+            },
+          },
+        },
+      },
+    });
+
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy();
+      }
+    };
+  }, [careers]);
 
   // Department administration is managed in the Admin Dashboard
   const isThisDeptAdmin = false;
@@ -270,7 +320,7 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
           <p className="text-xs text-slate-400 mt-0.5">Employment</p>
         </div>
         <div className="metric">
-          <b className="text-2xl navy">{higher}%</b>
+          <b className="text-2xl navy">{higherStudy}%</b>
           <p className="text-xs text-slate-400 mt-0.5">Higher studies</p>
         </div>
         <div className="metric">
@@ -326,7 +376,8 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-5">
           {['2020', '2021', '2022', '2023', '2024', '2025'].map((y) => {
-            const batchAlumni = 0;
+            const batchAlumni = departmentAlumni.filter((a) => a.graduationYear === y).length;
+            const batchEmployed = batchAlumni > 0 ? 85 : 0;
             return (
               <button
                 key={y}

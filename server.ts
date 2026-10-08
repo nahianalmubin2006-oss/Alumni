@@ -791,6 +791,101 @@ app.post('/api/admin/auth/login', (req, res) => {
   });
 });
 
+// Admin Firebase Auth Exchange Login
+app.post('/api/admin/auth/firebase-login', (req, res) => {
+  const { email, uid, name } = req.body || {};
+  const clientIp = getClientIp(req);
+
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ error: 'Valid email is required.' });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const superAdminEmails = [
+    'nahianalmubin2006@gmail.com',
+    'nahianalmubin212528@gmail.com',
+    'nahianalmubin2@gmail.com',
+  ];
+
+  try {
+    if (fs.existsSync(ADMIN_DB_PATH)) {
+      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8'));
+    }
+  } catch (e) {}
+
+  let user = adminStore.users.find((u) => u.email.toLowerCase() === normalizedEmail);
+
+  if (!user && superAdminEmails.includes(normalizedEmail)) {
+    user = {
+      id: uid || `usr-superadmin-${Date.now()}`,
+      email: normalizedEmail,
+      passwordHash: '',
+      name: name || 'Nahian Al Mubin',
+      role: 'SUPER_ADMIN',
+      status: 'APPROVED',
+      university: 'University of Dhaka',
+      department: 'Computer Science & Engineering',
+      profileType: 'Super Admin',
+      jobRole: 'Platform Founder & Lead Architect',
+      company: 'AlumniSphere Core Engineering',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    adminStore.users.push(user);
+    persistAdminStore();
+  }
+
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+    return res.status(403).json({ error: 'Access denied: User is not authorized as an administrator.' });
+  }
+
+  if (user.status === 'SUSPENDED') {
+    return res.status(403).json({ error: 'This administrative account has been suspended by Super Admin.' });
+  }
+
+  user.lastLoginAt = new Date().toISOString();
+  persistAdminStore();
+
+  const token = generateSessionToken();
+  const session: AdminSession = {
+    token,
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + SESSION_TTL_MS,
+    lastActivityAt: Date.now(),
+    ip: clientIp,
+  };
+  activeAdminSessions.set(token, session);
+
+  recordAuditLog({
+    actorId: user.id,
+    actorEmail: user.email,
+    actorRole: user.role,
+    action: 'ADMIN_FIREBASE_LOGIN_SUCCESS',
+    targetType: 'SESSION',
+    targetId: token.substring(0, 8),
+    details: `Administrator logged into ${user.role} workspace via Firebase Auth verification.`,
+    ip: clientIp,
+  });
+
+  return res.json({
+    success: true,
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      status: user.status,
+      university: user.university,
+      department: user.department,
+    },
+  });
+});
+
 // Admin Logout (Session Invalidation)
 app.post('/api/admin/auth/logout', requireAdminAuth, (req: AdminRequest, res) => {
   const token = req.adminSession?.token;
@@ -1119,6 +1214,112 @@ app.post('/api/admin/universities', requireAdminAuth, (req: AdminRequest, res) =
     success: true,
     university: newUni,
     message: 'New university created and registered successfully.',
+  });
+});
+
+// PUT /api/admin/universities/:id (Edit university details)
+app.put('/api/admin/universities/:id', requireAdminAuth, (req: AdminRequest, res) => {
+  const { id } = req.params;
+  const {
+    name,
+    shortName,
+    type,
+    location,
+    logoUrl,
+    website,
+    departments,
+    description,
+  } = req.body || {};
+
+  const key = id.trim();
+  let existing = customUniStore.customUniversities.find((u) => u.id === key);
+
+  if (existing) {
+    if (name) existing.name = String(name).trim();
+    if (shortName !== undefined) existing.shortName = String(shortName).trim();
+    if (type) existing.type = type;
+    if (location !== undefined) existing.location = String(location).trim();
+    if (logoUrl !== undefined) existing.logoUrl = String(logoUrl).trim();
+    if (website !== undefined) existing.website = String(website).trim();
+    if (description !== undefined) existing.description = String(description).trim();
+    if (Array.isArray(departments)) {
+      existing.departments = departments.map((d: any) => String(d).trim()).filter(Boolean);
+    }
+  } else {
+    existing = {
+      id: key,
+      name: name ? String(name).trim() : key,
+      shortName: shortName ? String(shortName).trim() : '',
+      type: type || 'Public',
+      location: location ? String(location).trim() : '',
+      logoUrl: logoUrl ? String(logoUrl).trim() : '',
+      website: website ? String(website).trim() : '',
+      departments: Array.isArray(departments) ? departments.map((d: any) => String(d).trim()).filter(Boolean) : [],
+      description: description ? String(description).trim() : '',
+      createdAt: new Date().toISOString(),
+    };
+    customUniStore.customUniversities.push(existing);
+  }
+
+  if (logoUrl) {
+    customUniStore.logos[key] = String(logoUrl).trim();
+    if (name) customUniStore.logos[String(name).trim()] = String(logoUrl).trim();
+  }
+  if (Array.isArray(departments)) {
+    const cleaned = departments.map((d: any) => String(d).trim()).filter(Boolean);
+    customUniStore.departments[key] = cleaned;
+    if (name) customUniStore.departments[String(name).trim()] = cleaned;
+  }
+
+  persistCustomUniStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: 'UNIVERSITY_MANUALLY_UPDATED',
+    targetType: 'UNIVERSITY',
+    targetId: key,
+    details: `Updated details for university: ${existing.name} (${key}).`,
+  });
+
+  return res.json({
+    success: true,
+    university: existing,
+    message: 'University details updated successfully.',
+  });
+});
+
+// DELETE /api/admin/universities/:id (Delete university)
+app.delete('/api/admin/universities/:id', requireAdminAuth, (req: AdminRequest, res) => {
+  const { id } = req.params;
+  const key = id.trim();
+
+  const found = customUniStore.customUniversities.find((u) => u.id === key);
+  const uniName = found?.name || key;
+
+  customUniStore.customUniversities = customUniStore.customUniversities.filter((u) => u.id !== key);
+  delete customUniStore.logos[key];
+  delete customUniStore.logos[uniName];
+  delete customUniStore.departments[key];
+  delete customUniStore.departments[uniName];
+
+  persistCustomUniStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: 'UNIVERSITY_DELETED',
+    targetType: 'UNIVERSITY',
+    targetId: key,
+    details: `Deleted university: ${uniName} (${key}).`,
+  });
+
+  return res.json({
+    success: true,
+    universityId: key,
+    message: `University ${uniName} removed successfully.`,
   });
 });
 

@@ -59,17 +59,17 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
     });
 
     departments.forEach((d) => {
-      if (d.verified !== true) return;
+      if (d.status === 'Inactive') return;
       const key = normalizeDepartmentName(d.name);
       const existing = merged.get(key);
       if (existing) {
-        existing.universities.add(d.university);
+        if (d.university) existing.universities.add(d.university);
         existing.verified = true;
       } else {
         merged.set(key, {
           name: d.name,
-          group: d.group,
-          universities: new Set([d.university]),
+          group: (d.group || 'Engineering') as any,
+          universities: new Set(d.university ? [d.university] : []),
           verified: true,
         });
       }

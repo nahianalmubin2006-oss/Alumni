@@ -67,6 +67,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const SUPER_ADMIN_EMAILS = [
   'nahianalmubin2006@gmail.com',
   'nahianalmubin212528@gmail.com',
+  'nahianalmubin2@gmail.com',
 ];
 
 export const isSuperAdminEmail = (email?: string | null): boolean => {
@@ -74,7 +75,7 @@ export const isSuperAdminEmail = (email?: string | null): boolean => {
   return SUPER_ADMIN_EMAILS.some((adminEmail) => adminEmail.toLowerCase() === email.toLowerCase());
 };
 
-export const SUPER_ADMIN_EMAIL = 'nahianalmubin212528@gmail.com';
+export const SUPER_ADMIN_EMAIL = 'nahianalmubin2006@gmail.com';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -88,13 +89,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const snap = await getDoc(userDocRef);
       if (snap.exists()) {
         const data = snap.data() as UserProfile;
-        // On public website, user behaves as a normal verified member
         if (isSuperAdminEmail(user.email)) {
           const updated = {
             ...data,
-            profileType: (data.profileType === 'Admin' ? 'Alumni' : data.profileType) as ProfileType,
-            role: (data.role === 'SUPER_ADMIN' ? 'ALUMNI' : data.role) as Role,
+            role: 'SUPER_ADMIN' as Role,
             status: 'APPROVED' as UserStatus,
+            profileType: (data.profileType || 'Admin') as ProfileType,
             isVerifiedAlumni: true,
           };
           return updated;
@@ -108,14 +108,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           uid: user.uid,
           email: user.email || '',
           name: user.displayName || (isMasterAdmin ? 'Nahian Al Mubin' : user.email?.split('@')[0]) || 'Member',
-          role: isMasterAdmin ? 'ALUMNI' : 'STUDENT',
+          role: isMasterAdmin ? 'SUPER_ADMIN' : 'STUDENT',
           status: isMasterAdmin ? 'APPROVED' : 'PENDING',
-          profileType: isMasterAdmin ? 'Alumni' : 'Student',
+          profileType: isMasterAdmin ? 'Admin' : 'Student',
           university: isMasterAdmin ? 'University of Dhaka' : '',
           department: isMasterAdmin ? 'Computer Science & Engineering' : '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          bio: isMasterAdmin ? 'Platform Creator & DU CSE Alumnus' : '',
+          bio: isMasterAdmin ? 'Platform Creator & Lead Architect' : '',
           isVerifiedAlumni: isMasterAdmin,
         };
         await setDoc(userDocRef, initialProfile);
@@ -348,10 +348,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Public website role: public members operate as regular students or alumni
   const effectiveRole: Role = userProfile?.role || 'STUDENT';
 
-  // Admin access is strictly separated to the dedicated server-authenticated admin panel
-  const isSuperAdmin = false;
-  const isUniversityAdmin = false;
-  const isDepartmentAdmin = false;
+  // Role calculations
+  const isSuperAdmin = isSuperAdminEmail(currentUser?.email) || userProfile?.role === 'SUPER_ADMIN';
+  const isUniversityAdmin = isSuperAdmin || userProfile?.role === 'UNIVERSITY_ADMIN';
+  const isDepartmentAdmin = isSuperAdmin || userProfile?.role === 'DEPARTMENT_ADMIN';
 
   return (
     <AuthContext.Provider

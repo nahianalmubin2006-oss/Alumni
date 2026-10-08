@@ -468,13 +468,6 @@ export const INITIAL_POSTS = [
   }
 ];
 
-// Seed calculation helper
-export function demoSeed(str: string): number {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
-  return h;
-}
-
 export function universityInitials(name: string): string {
   if (name.toLowerCase().includes('dhaka university') || name.toLowerCase() === 'university of dhaka') {
     return 'DU';

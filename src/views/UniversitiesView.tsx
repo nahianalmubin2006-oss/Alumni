@@ -39,22 +39,72 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
 
   // Merge full directory list with dynamic stored database universities
   const list = useMemo(() => {
-    const dbMap = new Map(universities.map((u) => [u.name.toLowerCase(), u]));
+    const uniMap = new Map<string, University>();
 
-    const combined = ALL_DIRECTORY_UNIVERSITIES.map((u) => {
-      const match = dbMap.get(u.name.toLowerCase());
-      const liveAlumni = alumni.filter((a) => a.status === 'APPROVED' && a.university.toLowerCase() === u.name.toLowerCase()).length;
-      const liveStudents = students.filter((s) => s.status === 'APPROVED' && s.university.toLowerCase() === u.name.toLowerCase()).length;
-      const liveDepartments = departments.filter((d) => d.university.toLowerCase() === u.name.toLowerCase() && d.verified === true).length;
-      if (match) return { ...match, logoUrl: match.logoUrl || getUniversityLogo(match.name), alumniCount: liveAlumni, studentCount: liveStudents, departmentCount: liveDepartments };
-      return {
-        id: 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
-        name: u.name, type: u.type, location: '', logoUrl: getUniversityLogo(u.name),
-        verified: false, alumniCount: 0, studentCount: 0, followersCount: 0,
-        departmentCount: liveDepartments, employmentRate: 0, higherStudiesRate: 0, countriesCount: 0, companiesCount: 0,
-        alumniCount: liveAlumni, studentCount: liveStudents,
-      };
+    // 1. Baseline UGC directory
+    ALL_DIRECTORY_UNIVERSITIES.forEach((u) => {
+      const id = 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+      uniMap.set(u.name.toLowerCase(), {
+        id,
+        name: u.name,
+        type: u.type,
+        location: '',
+        logoUrl: getUniversityLogo(u.name),
+        status: 'Active',
+        verified: false,
+        followersCount: 0,
+        departmentCount: 0,
+        employmentRate: 0,
+        higherStudiesRate: 0,
+        countriesCount: 0,
+        companiesCount: 0,
+        alumniCount: 0,
+        studentCount: 0,
+      });
     });
+
+    // 2. Database universities override or add new
+    universities.forEach((u) => {
+      const existing = uniMap.get(u.name.toLowerCase());
+      uniMap.set(u.name.toLowerCase(), {
+        ...existing,
+        ...u,
+        logoUrl: u.logoUrl || existing?.logoUrl || getUniversityLogo(u.name),
+      });
+    });
+
+    // 3. Calculate live stats from real Firebase data for every active university
+    const combined: University[] = Array.from(uniMap.values())
+      .filter((u) => u.status !== 'Inactive')
+      .map((u) => {
+        const liveAlumni = alumni.filter(
+          (a) => a.status === 'APPROVED' && a.university.toLowerCase() === u.name.toLowerCase()
+        ).length;
+        const liveStudents = students.filter(
+          (s) => s.status === 'APPROVED' && s.university.toLowerCase() === u.name.toLowerCase()
+        ).length;
+        const liveDepartments = departments.filter(
+          (d) =>
+            d.university.toLowerCase() === u.name.toLowerCase() &&
+            d.status !== 'Inactive' &&
+            d.verified !== false
+        ).length;
+
+        const matchingAlumni = alumni.filter(
+          (a) => a.status === 'APPROVED' && a.university.toLowerCase() === u.name.toLowerCase()
+        );
+        const liveCountries = new Set(matchingAlumni.map((a) => a.country).filter(Boolean)).size;
+        const liveCompanies = new Set(matchingAlumni.map((a) => a.company).filter(Boolean)).size;
+
+        return {
+          ...u,
+          alumniCount: liveAlumni,
+          studentCount: liveStudents,
+          departmentCount: liveDepartments,
+          countriesCount: liveCountries,
+          companiesCount: liveCompanies,
+        };
+      });
 
     const q = search.trim().toLowerCase();
 

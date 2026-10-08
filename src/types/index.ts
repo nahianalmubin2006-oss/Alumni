@@ -55,10 +55,13 @@ export interface UserProfile {
 export interface University {
   id: string;
   name: string;
+  shortName?: string;
+  code?: string;
   type: 'Public' | 'Private' | 'International';
   location: string;
   logoUrl?: string;
   verified?: boolean;
+  status?: 'Active' | 'Inactive';
   alumniCount: number;
   studentCount?: number;
   followersCount?: number;
@@ -73,7 +76,6 @@ export interface University {
   updatedAt?: string;
   sourceUrl?: string;
   verifiedAt?: string;
-  verified?: boolean;
 }
 
 export type PostReactionType = 'like' | 'love' | 'scholar' | 'insightful' | 'celebrate';
@@ -103,7 +105,9 @@ export interface Department {
   id: string;
   name: string;
   university: string;
-  group: 'Engineering' | 'Science' | 'Business' | 'Arts' | 'Law' | 'Health' | 'Agriculture';
+  faculty?: string;
+  group: 'Engineering' | 'Science' | 'Business' | 'Arts' | 'Law' | 'Health' | 'Agriculture' | 'Other';
+  status?: 'Active' | 'Inactive';
   alumniCount: number;
   studentCount?: number;
   employmentRate: number;

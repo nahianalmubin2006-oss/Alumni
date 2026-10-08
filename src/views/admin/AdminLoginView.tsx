@@ -11,16 +11,44 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
   onNavigatePublic,
   onLoginSuccess,
 }) => {
-  const { loginAdmin } = useAdmin();
+  const { loginAdmin, sendAdminPasswordReset } = useAdmin();
+  const [mode, setMode] = useState<'login' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setSuccessMessage('');
+
+    if (mode === 'forgot') {
+      if (!email.trim()) {
+        setErrorMessage('Please enter your administrator Gmail address.');
+        return;
+      }
+      setLoading(true);
+      try {
+        await sendAdminPasswordReset(email.trim());
+        setSuccessMessage(
+          `Password reset link successfully sent to ${email.trim()}! Please check your Gmail inbox or spam folder, reset your password, and return here to log in.`
+        );
+      } catch (err: any) {
+        if (err?.code === 'auth/user-not-found') {
+          setErrorMessage('No administrator account found with that email address.');
+        } else if (err?.code === 'auth/invalid-email') {
+          setErrorMessage('Please enter a valid email address.');
+        } else {
+          setErrorMessage(err.message || 'Failed to send password reset email. Please try again.');
+        }
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
 
     if (!email.trim() || !password) {
       setErrorMessage('Please enter both your administrator email and password.');
@@ -45,7 +73,7 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
         {/* Top return link */}
         <button
           onClick={onNavigatePublic}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition mb-6 group"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition mb-6 group cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
           <span>Return to Public Website</span>
@@ -62,12 +90,22 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
               Security Access Control
             </div>
             <h1 className="text-2xl font-black tracking-tight text-white mt-1">
-              Admin Portal
+              {mode === 'login' ? 'Admin Portal' : 'Admin Password Recovery'}
             </h1>
             <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-              Restricted management console. All access requests are cryptographically verified and recorded to the security audit trail.
+              {mode === 'login'
+                ? 'Restricted management console. All access requests are cryptographically verified and recorded to the security audit trail.'
+                : 'Enter your registered administrator email address to receive an official password recovery link.'}
             </p>
           </div>
+
+          {/* Success notice */}
+          {successMessage && (
+            <div className="mt-5 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
+              <Shield className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+              <div className="leading-relaxed">{successMessage}</div>
+            </div>
+          )}
 
           {/* Error notice */}
           {errorMessage && (
@@ -89,7 +127,7 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@alumnisphere.edu"
+                  placeholder="nahianalmubin2006@gmail.com"
                   required
                   autoComplete="email"
                   className="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-10 pr-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
@@ -97,50 +135,81 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
               </div>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  Password
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="text-[11px] text-blue-400 hover:text-blue-300 transition"
-                >
-                  {showPassword ? 'Hide' : 'Show'}
-                </button>
+            {mode === 'login' && (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    Password
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-[11px] text-blue-400 hover:text-blue-300 transition cursor-pointer"
+                    >
+                      {showPassword ? 'Hide' : 'Show'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('forgot');
+                        setErrorMessage('');
+                        setSuccessMessage('');
+                      }}
+                      className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold transition cursor-pointer"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                </div>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    required
+                    autoComplete="current-password"
+                    className="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-10 pr-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+                  />
+                </div>
               </div>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  required
-                  autoComplete="current-password"
-                  className="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-10 pr-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
-                />
-              </div>
-            </div>
+            )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-bold text-sm py-3 rounded-xl transition shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 mt-2"
+              className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-bold text-sm py-3 rounded-xl transition shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 mt-2 cursor-pointer"
             >
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Verifying clearance...</span>
+                  <span>{mode === 'login' ? 'Verifying clearance...' : 'Sending reset link...'}</span>
                 </>
               ) : (
                 <>
                   <KeyRound className="w-4 h-4" />
-                  <span>Authenticate & Enter</span>
+                  <span>{mode === 'login' ? 'Authenticate & Enter' : 'Send Password Reset Email'}</span>
                 </>
               )}
             </button>
+
+            {mode === 'forgot' && (
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('login');
+                    setErrorMessage('');
+                    setSuccessMessage('');
+                  }}
+                  className="text-xs text-blue-400 hover:text-blue-300 font-bold transition cursor-pointer"
+                >
+                  ← Back to Admin Login
+                </button>
+              </div>
+            )}
           </form>
         </div>
 

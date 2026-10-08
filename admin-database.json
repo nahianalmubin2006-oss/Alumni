@@ -3,7 +3,7 @@
     {
       "id": "usr-superadmin-nahian",
       "email": "nahianalmubin2006@gmail.com",
-      "passwordHash": "a1b558a7564151cf97e2f69b67a4071c:38341000183cee7f2332c1c16ee79e81a7c8990db7fc71e8a30ec02ac74c35768f662cef72d3eb610327d731ebe9e3de464ba5de4f6ca1d82bfd21ae3078ba9d",
+      "passwordHash": "5c449793852fce31f7eddfd0b58ba8ce:54dcb7ea6e24458c56123b219e63bd40f600a13f50e6b0e98d3ff40b95a06344b2e2e453e7a0e300da97b14befff0d228d8a21c39190fe47d0b7e9b92674b843",
       "name": "Nahian Al Mubin",
       "role": "SUPER_ADMIN",
       "status": "APPROVED",
@@ -19,7 +19,7 @@
     {
       "id": "usr-superadmin-nahian-212528",
       "email": "nahianalmubin212528@gmail.com",
-      "passwordHash": "a1b558a7564151cf97e2f69b67a4071c:38341000183cee7f2332c1c16ee79e81a7c8990db7fc71e8a30ec02ac74c35768f662cef72d3eb610327d731ebe9e3de464ba5de4f6ca1d82bfd21ae3078ba9d",
+      "passwordHash": "5c449793852fce31f7eddfd0b58ba8ce:54dcb7ea6e24458c56123b219e63bd40f600a13f50e6b0e98d3ff40b95a06344b2e2e453e7a0e300da97b14befff0d228d8a21c39190fe47d0b7e9b92674b843",
       "name": "Nahian Al Mubin",
       "role": "SUPER_ADMIN",
       "status": "APPROVED",
@@ -30,6 +30,22 @@
       "company": "AlumniSphere Core Engineering",
       "createdAt": "2026-10-08T13:49:00.000Z",
       "updatedAt": "2026-10-08T13:49:00.000Z",
+      "lastLoginAt": null
+    },
+    {
+      "id": "usr-superadmin-nahian-2",
+      "email": "nahianalmubin2@gmail.com",
+      "passwordHash": "5c449793852fce31f7eddfd0b58ba8ce:54dcb7ea6e24458c56123b219e63bd40f600a13f50e6b0e98d3ff40b95a06344b2e2e453e7a0e300da97b14befff0d228d8a21c39190fe47d0b7e9b92674b843",
+      "name": "Nahian Al Mubin",
+      "role": "SUPER_ADMIN",
+      "status": "APPROVED",
+      "university": "University of Dhaka",
+      "department": "Computer Science & Engineering",
+      "profileType": "Super Admin",
+      "jobRole": "Platform Founder & Lead Architect",
+      "company": "AlumniSphere Core Engineering",
+      "createdAt": "2026-10-08T15:30:00.000Z",
+      "updatedAt": "2026-10-08T15:30:00.000Z",
       "lastLoginAt": null
     }
   ],
