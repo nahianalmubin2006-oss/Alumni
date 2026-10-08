@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Chart from 'chart.js/auto';
-import { universityInitials, demoSeed, getUniversityLogo } from '../data/initialData';
+import { universityInitials, getUniversityLogo } from '../data/initialData';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import {
@@ -141,67 +141,33 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
     setNewIsHot(false);
   };
 
-  // Generate dynamic stats based on department and university
-  const seed = demoSeed(universityName + '|' + departmentName);
-  const alumni = 120 + (seed % 720);
-  const employment = 75 + (seed % 19);
-  const higher = 6 + ((seed >> 3) % 12);
-  const countries = 7 + ((seed >> 5) % 20);
-  const companies = 35 + ((seed >> 7) % 120);
+  // All department metrics are derived from approved live records. Unknown values stay 0.
+  const departmentRecord = departments.find(
+    (d) =>
+      d.verified === true &&
+      d.university.toLowerCase() === universityName.toLowerCase() &&
+      d.name.toLowerCase() === departmentName.toLowerCase()
+  );
 
-  const careers: Record<string, number> = {
-    'Technology & Software': 32 + (seed % 15),
-    'Government & Public Sector': 12 + ((seed >> 4) % 10),
-    'Finance & Banking': 10 + ((seed >> 7) % 9),
-    'Research & Higher Education': 9 + ((seed >> 10) % 8),
-    'Healthcare & Industry': 6 + ((seed >> 13) % 7),
-    'Consulting & Other': 9 + ((seed >> 16) % 8),
-  };
+  const departmentAlumni = alumniRecords.filter(
+    (a) =>
+      a.status === 'APPROVED' &&
+      a.university.toLowerCase() === universityName.toLowerCase() &&
+      a.department.toLowerCase() === departmentName.toLowerCase()
+  );
+  const departmentStudents = studentRecords.filter(
+    (s) =>
+      s.status === 'APPROVED' &&
+      s.university.toLowerCase() === universityName.toLowerCase() &&
+      s.department.toLowerCase() === departmentName.toLowerCase()
+  );
+  const alumni = departmentAlumni.length;
+  const students = departmentStudents.length;
+  const companies = new Set(departmentAlumni.map((a) => a.company).filter(Boolean)).size;
+  const countries = new Set(departmentAlumni.map((a) => a.country).filter(Boolean)).size;
+  const employment = 0;
+  const higherStudy = 0;
 
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    if (chartInstanceRef.current) chartInstanceRef.current.destroy();
-
-    chartInstanceRef.current = new Chart(canvasRef.current, {
-      type: 'doughnut',
-      data: {
-        labels: Object.keys(careers),
-        datasets: [
-          {
-            data: Object.values(careers),
-            backgroundColor: [
-              '#2563eb',
-              '#10b981',
-              '#f59e0b',
-              '#8b5cf6',
-              '#ec4899',
-              '#64748b',
-            ],
-            borderWidth: 0,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '62%',
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              usePointStyle: true,
-              boxWidth: 8,
-              font: { size: 11 },
-            },
-          },
-        },
-      },
-    });
-
-    return () => {
-      if (chartInstanceRef.current) chartInstanceRef.current.destroy();
-    };
-  }, [departmentName, universityName]);
 
   // Department administration is managed in the Admin Dashboard
   const isThisDeptAdmin = false;
@@ -368,10 +334,7 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-5">
           {['2020', '2021', '2022', '2023', '2024', '2025'].map((y) => {
-            const batchSeed = demoSeed(universityName + '|' + departmentName + '|' + y);
-            const batchAlumni = 85 + (batchSeed % 60);
-            const batchEmployed = 75 + (batchSeed % 18);
-
+            const batchAlumni = 0;
             return (
               <button
                 key={y}
