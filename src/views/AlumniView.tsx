@@ -150,13 +150,13 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate }) => {
   }, [alumni]);
 
   return (
-    <div className="max-w-7xl mx-auto px-5 py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-5 py-7 sm:py-10">
       <div className="text-xs font-bold text-blue-600 uppercase tracking-widest">
         Alumni Intelligence
       </div>
       <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mt-2">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-black navy">
+          <h1 className="text-2xl sm:text-4xl font-black navy">
             Alumni by University & Department
           </h1>
           <p className="text-slate-500 mt-2 max-w-3xl">
@@ -170,9 +170,9 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate }) => {
       </div>
 
       {/* Top 5 Lists Grid */}
-      <div className="grid lg:grid-cols-2 gap-6 mt-8">
+      <div className="grid lg:grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
         {/* Top Universities */}
-        <div className="card p-6">
+        <div className="card p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
             <div>
               <h2 className="text-xl font-black navy">Top universities by alumni</h2>
@@ -181,7 +181,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate }) => {
             <select
               value={selectedUni}
               onChange={(e) => setSelectedUni(e.target.value)}
-              className="border border-soft rounded-xl px-3 py-2 bg-white text-xs max-w-[220px] outline-none"
+              className="border border-soft rounded-xl px-3 py-2 bg-white text-xs w-full sm:max-w-[220px] outline-none"
             >
               <option value="">All other universities...</option>
               {universityRankings.slice(5).map((u) => (
@@ -227,7 +227,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate }) => {
         </div>
 
         {/* Top Departments */}
-        <div className="card p-6">
+        <div className="card p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
             <div>
               <h2 className="text-xl font-black navy">Top departments by alumni</h2>
@@ -236,7 +236,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate }) => {
             <select
               value={selectedDept}
               onChange={(e) => setSelectedDept(e.target.value)}
-              className="border border-soft rounded-xl px-3 py-2 bg-white text-xs max-w-[220px] outline-none"
+              className="border border-soft rounded-xl px-3 py-2 bg-white text-xs w-full sm:max-w-[220px] outline-none"
             >
               <option value="">All other departments...</option>
               {departmentRankings.slice(5).map((d) => (
@@ -291,7 +291,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate }) => {
 
       {/* Charts Row */}
       <div className="grid lg:grid-cols-2 gap-6 mt-6">
-        <div className="card p-6">
+        <div className="card p-4 sm:p-6">
           <h2 className="text-xl font-black navy">University alumni distribution</h2>
           <p className="text-xs text-slate-400 mt-1">Top 10 institutions visual proportion</p>
           <div className="h-80 mt-4 relative">
@@ -299,7 +299,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        <div className="card p-6">
+        <div className="card p-4 sm:p-6">
           <h2 className="text-xl font-black navy">Department alumni distribution</h2>
           <p className="text-xs text-slate-400 mt-1">Top 10 academic disciplines proportion</p>
           <div className="h-80 mt-4 relative">
@@ -309,8 +309,8 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate }) => {
       </div>
 
       {/* Aggregate Metrics Bar */}
-      <div className="card p-6 mt-6">
-        <div className="grid md:grid-cols-3 gap-4">
+      <div className="card p-4 sm:p-6 mt-6">
+        <div className="grid sm:grid-cols-3 gap-3 sm:gap-4">
           <div className="metric">
             <div className="text-2xl font-black navy">{stats.totalUniversities}</div>
             <div className="text-xs text-slate-400 mt-0.5">Universities represented</div>
@@ -327,7 +327,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate }) => {
       </div>
 
       {/* Alumni Directory Table / Profiles */}
-      <div className="card p-6 mt-8">
+      <div className="card p-4 sm:p-6 mt-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
             <h2 className="text-2xl font-black navy">Verified Alumni Directory</h2>
