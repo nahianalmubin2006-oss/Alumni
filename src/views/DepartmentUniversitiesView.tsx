@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ALL_DIRECTORY_UNIVERSITIES, universityInitials, demoSeed } from '../data/initialData';
+import { universityInitials } from '../data/initialData';
 import { useData } from '../context/DataContext';
 import { Bot, Flame, Award, Shield, Clock, RefreshCw, ExternalLink } from 'lucide-react';
 
@@ -14,7 +14,7 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
   departmentGroup,
   onNavigate,
 }) => {
-  const { news, triggerAINewsBotScan } = useData();
+  const { news, departments, universities, triggerAINewsBotScan } = useData();
   const [search, setSearch] = useState('');
   const [isScanningDept, setIsScanningDept] = useState(false);
 
@@ -54,13 +54,14 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
 
   // Filter universities offering this department
   const list = useMemo(() => {
-    return ALL_DIRECTORY_UNIVERSITIES.filter((u) => {
+    const offered = new Set(departments.filter((d) => d.name.toLowerCase() === departmentName.toLowerCase() && d.verified !== false).map((d) => d.university.toLowerCase()));
+    return universities.filter((u) => offered.has(u.name.toLowerCase())).filter((u) => {
       // General availability rule
       const q = search.trim().toLowerCase();
       const matchesSearch = !q || u.name.toLowerCase().includes(q);
       return matchesSearch;
     });
-  }, [search]);
+  }, [departments, universities, search]);
 
   return (
     <div className="max-w-7xl mx-auto px-5 py-10">
@@ -206,10 +207,9 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
         {list.slice(0, 36).map((u) => {
           const initials = universityInitials(u.name);
-          const seed = demoSeed(u.name + departmentName);
-          const alumniCount = 120 + (seed % 650);
-          const employmentRate = 78 + (seed % 17);
-          const countriesCount = 8 + (seed % 16);
+          const alumniCount = 0;
+          const employmentRate = 0;
+          const countriesCount = 0;
 
           return (
             <button
@@ -242,7 +242,7 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
                   <p className="text-slate-400 text-[10px] mt-0.5">Alumni</p>
                 </div>
                 <div className="bg-slate-50 rounded-lg p-2">
-                  <b className="text-emerald-600 text-sm">{employmentRate}%</b>
+                  <b className="text-emerald-600 text-sm">{employmentRate ? `${employmentRate}%` : '—'}</b>
                   <p className="text-slate-400 text-[10px] mt-0.5">Employed</p>
                 </div>
                 <div className="bg-slate-50 rounded-lg p-2">
