@@ -141,15 +141,7 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
         {filtered.map((d) => {
           const meta = DEPARTMENT_GROUP_META[d.group] || { icon: '•' };
           // Number of universities offering this department
-          const uniCount = d.name.includes('Computer Science')
-            ? 178
-            : d.group === 'Engineering'
-            ? 65
-            : d.group === 'Business'
-            ? 120
-            : d.group === 'Health'
-            ? 35
-            : 50;
+          const uniCount = departments.filter((item) => item.name.toLowerCase() === d.name.toLowerCase()).length;
 
           return (
             <button
