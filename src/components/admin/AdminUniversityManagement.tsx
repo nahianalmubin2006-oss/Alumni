@@ -405,9 +405,9 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
         name: trimmed,
         university: activeUni.name,
         faculty: newDeptFaculty.trim() || newDeptGroup,
-        group: newDeptGroup,
+        group: newDeptGroup as any,
         status: newDeptStatus,
-        verified: true,
+        verified: false,
         alumniCount: 0,
         studentCount: 0,
         employmentRate: 0,
@@ -482,7 +482,6 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
         group: editDeptGroup as any,
         status: editDeptStatus,
         university: activeUni.name,
-        verified: true,
         updatedAt: new Date().toISOString(),
       });
       setEditingDept(null);
