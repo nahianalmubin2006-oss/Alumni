@@ -142,13 +142,6 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
   };
 
   // All department metrics are derived from approved live records. Unknown values stay 0.
-  const departmentRecord = departments.find(
-    (d) =>
-      d.verified === true &&
-      d.university.toLowerCase() === universityName.toLowerCase() &&
-      d.name.toLowerCase() === departmentName.toLowerCase()
-  );
-
   const departmentAlumni = alumniRecords.filter(
     (a) =>
       a.status === 'APPROVED' &&
@@ -162,7 +155,6 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
       s.department.toLowerCase() === departmentName.toLowerCase()
   );
   const alumni = departmentAlumni.length;
-  const students = departmentStudents.length;
   const companies = new Set(departmentAlumni.map((a) => a.company).filter(Boolean)).size;
   const countries = new Set(departmentAlumni.map((a) => a.country).filter(Boolean)).size;
   const employment = 0;
