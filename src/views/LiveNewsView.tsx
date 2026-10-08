@@ -322,7 +322,7 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
             <span>AUTONOMOUS LIVE NEWS WIRE</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black navy mt-2">
+          <h1 className="text-2xl sm:text-4xl font-black navy mt-2">
             University & Alumni Intelligence Network
           </h1>
           <p className="text-slate-500 mt-2 max-w-2xl text-sm leading-relaxed">
@@ -344,7 +344,7 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
       </div>
 
       {/* AI Bot Control & 24h Rotation Deck */}
-      <div className="mt-8 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-navy text-white shadow-xl border border-slate-800">
+      <div className="mt-6 sm:mt-8 p-4 sm:p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-navy text-white shadow-xl border border-slate-800">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
@@ -426,7 +426,7 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
             </span>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {hotTopicsList.slice(0, 3).map((article, idx) => (
               <div
                 key={article.id || `hot-topic-${idx}-${article.title}`}
@@ -628,7 +628,7 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
       </div>
 
       {/* Main News Cards Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-6 sm:mt-8">
         {publishedList.map((article, idx) => {
           const daysLeft = article.expiresAt
             ? Math.max(
