@@ -562,13 +562,20 @@ function generateSessionToken(): string {
 const ADMIN_DB_PATH = path.resolve(__dirname, 'admin-database.json');
 
 function initDefaultAdminStore(): AdminStoreData {
-  const defaultPassword = 'Admin@2026!';
+  const bootstrapPasswordHash = process.env.SUPER_ADMIN_PASSWORD_HASH;
+  if (!bootstrapPasswordHash) {
+    throw new Error(
+      'No admin database was found. Set SUPER_ADMIN_PASSWORD_HASH in the environment before starting the server.'
+    );
+  }
+
+  const email = (process.env.SUPER_ADMIN_EMAIL || 'nahianalmubin2006@gmail.com').trim().toLowerCase();
   return {
     users: [
       {
         id: 'usr-superadmin-nahian',
-        email: 'nahianalmubin2006@gmail.com',
-        passwordHash: hashPassword(defaultPassword),
+        email,
+        passwordHash: bootstrapPasswordHash,
         name: 'Nahian Al Mubin',
         role: 'SUPER_ADMIN',
         status: 'APPROVED',
@@ -580,119 +587,16 @@ function initDefaultAdminStore(): AdminStoreData {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
-      {
-        id: 'usr-admin-demo',
-        email: 'admin@alumnisphere.edu',
-        passwordHash: hashPassword(defaultPassword),
-        name: 'Institutional Administrator',
-        role: 'ADMIN',
-        status: 'APPROVED',
-        university: 'Bangladesh University of Engineering & Technology',
-        department: 'Electrical & Electronic Engineering',
-        profileType: 'Admin',
-        jobRole: 'Institutional Records Director',
-        company: 'University Administration',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'usr-member-1',
-        email: 'tanvir.cse@du.ac.bd',
-        passwordHash: hashPassword(defaultPassword),
-        name: 'Tanvir Ahmed',
-        role: 'USER',
-        status: 'APPROVED',
-        university: 'University of Dhaka',
-        department: 'Computer Science & Engineering',
-        profileType: 'Student',
-        studentId: 'DU-CSE-2022-041',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'usr-member-2',
-        email: 'sadia.eee@buet.ac.bd',
-        passwordHash: hashPassword(defaultPassword),
-        name: 'Sadia Islam',
-        role: 'USER',
-        status: 'APPROVED',
-        university: 'Bangladesh University of Engineering & Technology',
-        department: 'Electrical & Electronic Engineering',
-        profileType: 'Alumni',
-        jobRole: 'Senior Firmware Engineer',
-        company: 'Tech Solutions Inc',
-        graduationYear: '2023',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'usr-member-3',
-        email: 'rafiq.bba@nsu.edu',
-        passwordHash: hashPassword(defaultPassword),
-        name: 'Rafiqul Islam',
-        role: 'USER',
-        status: 'PENDING',
-        university: 'North South University',
-        department: 'Business Administration',
-        profileType: 'Student',
-        studentId: 'NSU-BBA-2024-819',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
     ],
-    auditLogs: [
-      {
-        id: 'log-init-1',
-        timestamp: new Date().toISOString(),
-        actorId: 'system',
-        actorEmail: 'system@alumnisphere.internal',
-        actorRole: 'SYSTEM',
-        action: 'SYSTEM_INITIALIZED',
-        targetType: 'SYSTEM',
-        targetId: 'core-platform',
-        details: 'Admin RBAC security subsystem and initial audit registry initialized.',
-        ip: '127.0.0.1',
-      },
-    ],
-    verifications: [
-      {
-        id: 'verif-1',
-        userId: 'usr-member-2',
-        userName: 'Sadia Islam',
-        userEmail: 'sadia.eee@buet.ac.bd',
-        university: 'Bangladesh University of Engineering & Technology',
-        department: 'Electrical & Electronic Engineering',
-        graduationYear: '2023',
-        status: 'PENDING',
-        proofUrl: 'https://alumnisphere.edu/records/buet/2023/sadia-cert.pdf',
-        notes: 'Submitted certified degree certificate and institutional LinkedIn profile verification.',
-        createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-      },
-    ],
-    changeRequests: [
-      {
-        id: 'cr-1',
-        requesterId: 'usr-admin-demo',
-        requesterName: 'Institutional Administrator',
-        requesterEmail: 'admin@alumnisphere.edu',
-        requesterRole: 'ADMIN',
-        targetType: 'UNIVERSITY',
-        targetId: 'uni-buet',
-        targetTitle: 'Bangladesh University of Engineering & Technology',
-        university: 'Bangladesh University of Engineering & Technology',
-        oldValue: 'Employment Rate: 88%',
-        newValue: 'Employment Rate: 92% (Updated for 2025 cohort)',
-        reason: 'Annual UGC graduate employment registry published official index.',
-        status: 'PENDING',
-        createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
-      },
-    ],
+    auditLogs: [],
+    verifications: [],
+    changeRequests: [],
     settings: {
       maintenanceMode: false,
       allowRegistrations: true,
       requireVerificationReview: true,
       allowAlumniBadges: true,
-      systemVersion: '2.5.0-enterprise',
+      systemVersion: '2.5.0',
       lastUpdated: new Date().toISOString(),
     },
   };
@@ -702,34 +606,21 @@ let adminStore: AdminStoreData = (() => {
   try {
     if (fs.existsSync(ADMIN_DB_PATH)) {
       const content = fs.readFileSync(ADMIN_DB_PATH, 'utf-8');
-      const parsed = JSON.parse(content);
-      const nahianUser = parsed.users.find((u: any) => u.email.toLowerCase() === 'nahianalmubin2006@gmail.com');
-      if (nahianUser) {
-        nahianUser.role = 'SUPER_ADMIN';
-      } else {
-        parsed.users.unshift({
-          id: 'usr-superadmin-nahian',
-          email: 'nahianalmubin2006@gmail.com',
-          passwordHash: hashPassword('Admin@2026!'),
-          name: 'Nahian Al Mubin',
-          role: 'SUPER_ADMIN',
-          status: 'APPROVED',
-          university: 'University of Dhaka',
-          department: 'Computer Science & Engineering',
-          profileType: 'Super Admin',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
+      const parsed = JSON.parse(content) as AdminStoreData;
+      if (!Array.isArray(parsed.users) || !parsed.users.some((u) => u.role === 'SUPER_ADMIN')) {
+        throw new Error('admin-database.json does not contain a SUPER_ADMIN account.');
       }
       return parsed;
     }
   } catch (e) {
-    console.warn('Failed to load existing admin-database.json, generating default store', e);
+    console.warn('Failed to load existing admin-database.json:', e);
   }
   const defaultData = initDefaultAdminStore();
   try {
     fs.writeFileSync(ADMIN_DB_PATH, JSON.stringify(defaultData, null, 2));
-  } catch (e) {}
+  } catch (e) {
+    console.error('Failed to initialize admin-database.json:', e);
+  }
   return defaultData;
 })();
 
@@ -1094,7 +985,7 @@ app.post('/api/admin/users', requireAdminAuth, (req: AdminRequest, res) => {
   const newUser: AdminUser = {
     id: `usr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     email: email.trim().toLowerCase(),
-    passwordHash: hashPassword(password || 'Alumni@2026!'),
+    passwordHash: hashPassword(password),
     name: name.trim(),
     role: role as AdminRole,
     status: status || 'APPROVED',
