@@ -230,17 +230,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
           }
         }
-        const deptSnap = await getDocs(collection(db, 'departments'));
-        if (deptSnap.empty) {
-          for (const seed of VERIFIED_DEPARTMENT_SEEDS) {
-            const id = 'dept-' + encodeURIComponent((seed.university + '-' + seed.name).toLowerCase().replace(/[^a-z0-9]/g, '-'));
-            await setDoc(doc(db, 'departments', id), {
-              id, name: seed.name, university: seed.university, group: seed.group,
-              alumniCount: 0, studentCount: 0, employmentRate: 0, higherStudiesRate: 0,
-              countriesCount: 0, companiesCount: 0, verified: true, sourceUrl: seed.sourceUrl,
-              verifiedAt: new Date().toISOString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-            });
-          }
+        for (const seed of VERIFIED_DEPARTMENT_SEEDS) {
+          const id = 'dept-' + encodeURIComponent((seed.university + '-' + seed.name).toLowerCase().replace(/[^a-z0-9]/g, '-'));
+          await setDoc(doc(db, 'departments', id), {
+            id, name: seed.name, university: seed.university, group: seed.group,
+            alumniCount: 0, studentCount: 0, employmentRate: 0, higherStudiesRate: 0,
+            countriesCount: 0, companiesCount: 0, verified: true, sourceUrl: seed.sourceUrl,
+            verifiedAt: new Date().toISOString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+          }, { merge: true });
         }
       } catch (err) { console.warn('Verified directory initialization note:', err); }
     };
