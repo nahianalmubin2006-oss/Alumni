@@ -40,7 +40,6 @@ import {
   INITIAL_NEWS,
   INITIAL_PLATFORM_SETTINGS,
   INITIAL_POSTS,
-  demoSeed,
   getUniversityLogo,
 } from '../data/initialData';
 import { VERIFIED_DEPARTMENT_SEEDS } from '../data/verifiedDepartments';
