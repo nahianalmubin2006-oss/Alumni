@@ -43,6 +43,7 @@ import {
   demoSeed,
   getUniversityLogo,
 } from '../data/initialData';
+import { VERIFIED_DEPARTMENT_SEEDS } from '../data/verifiedDepartments';
 
 interface DataContextType {
   universities: University[];
@@ -147,53 +148,20 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, userProfile, isSuperAdmin, updateProfileData } = useAuth();
 
-  // Initialize with rich static directory data for instant offline-first rendering
+  // Directory metadata is non-factual until verified; all metrics start at zero.
   const [universities, setUniversities] = useState<University[]>(() =>
-    ALL_DIRECTORY_UNIVERSITIES.map((u) => {
-      const seed = demoSeed('uni-' + u.name);
-      const isDU =
-        u.name.toLowerCase().includes('dhaka') &&
-        !u.name.toLowerCase().includes('engineering') &&
-        !u.name.toLowerCase().includes('international') &&
-        !u.name.toLowerCase().includes('central');
-
-      return {
-        id: 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
-        name: u.name,
-        type: u.type,
-        location: isDU ? 'Nilkhet Rd, Dhaka 1000, Bangladesh' : 'Dhaka, Bangladesh',
-        logoUrl: getUniversityLogo(u.name) || (isDU ? '/du-logo.png' : undefined),
-        verified: true,
-        alumniCount: isDU ? 8920 : 700 + (seed % 3500),
-        studentCount: isDU ? 37500 : 3500 + (seed % 15000),
-        followersCount: isDU ? 14200 : 1200 + (seed % 6000),
-        departmentCount: isDU ? 84 : 30 + (seed % 20),
-        employmentRate: isDU ? 89 : 75 + (seed % 19),
-        higherStudiesRate: isDU ? 18 : 10 + (seed % 12),
-        countriesCount: isDU ? 52 : 18 + (seed % 15),
-        companiesCount: isDU ? 850 : 300 + (seed % 300),
-        overview: isDU
-          ? 'University of Dhaka (DU), established in 1921, is the premier public research university of Bangladesh with an illustrious history of academic distinction and nation-building.'
-          : `${u.name} is a distinguished institution dedicated to academic excellence, student empowerment, and global graduate trajectories.`,
-        website: isDU ? 'https://du.ac.bd' : 'https://ugc.gov.bd',
-      };
-    })
-  );
-  const [departments, setDepartments] = useState<Department[]>(() =>
-    RAW_DEPARTMENT_CATALOG.map((d) => ({
-      id: 'dept-' + encodeURIComponent(d.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
-      name: d.name,
-      university: 'University of Dhaka',
-      group: d.group,
-      alumniCount: 840,
-      employmentRate: 85,
-      higherStudiesRate: 11,
-      countriesCount: 22,
-      companiesCount: 210,
+    ALL_DIRECTORY_UNIVERSITIES.map((u) => ({
+      id: 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
+      name: u.name, type: u.type, location: '', verified: false,
+      alumniCount: 0, studentCount: 0, followersCount: 0, departmentCount: 0,
+      employmentRate: 0, higherStudiesRate: 0, countriesCount: 0, companiesCount: 0,
+      website: '',
     }))
   );
+  const [departments, setDepartments] = useState<Department[]>([]);
+
   const [batches, setBatches] = useState<Batch[]>([]);
-  const [alumni, setAlumni] = useState<AlumniRecord[]>(INITIAL_ALUMNI);
+  const [alumni, setAlumni] = useState<AlumniRecord[]>([]);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [news, setNews] = useState<NewsArticle[]>(INITIAL_NEWS);
   const [posts, setPosts] = useState<UserPost[]>(INITIAL_POSTS);
@@ -248,61 +216,40 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Safe initial database check: only Super Admin writes to prevent unauthenticated network queue flooding
+  // Super Admin synchronizes verified directory metadata and clears fabricated counters.
   useEffect(() => {
     const initializeDatabase = async () => {
-      // Only proceed if authenticated as Super Admin to respect firestore security rules
       if (!isSuperAdmin) return;
       try {
         const uniSnap = await getDocs(collection(db, 'universities'));
-        if (uniSnap.empty) {
-          console.log('Admin seeding initial showcase universities into Firestore...');
-          const showcaseNames = [
-            'University of Dhaka',
-            'Bangladesh University of Engineering & Technology',
-            'North South University',
-            'Jahangirnagar University',
-            'BRAC University',
-            'Bangladesh University of Professionals',
-          ];
+        const knownNames = new Set(ALL_DIRECTORY_UNIVERSITIES.map((u) => u.name.toLowerCase()));
 
-          for (const u of ALL_DIRECTORY_UNIVERSITIES.slice(0, 10)) {
-            const isShowcase = showcaseNames.includes(u.name);
-            const seed = demoSeed('uni-' + u.name);
-            const baseAlumni = isShowcase
-              ? u.name === 'University of Dhaka'
-                ? 8920
-                : u.name === 'Bangladesh University of Engineering & Technology'
-                ? 6240
-                : 5800
-              : 700 + (seed % 3500);
+        for (const u of ALL_DIRECTORY_UNIVERSITIES) {
+          const id = 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+          await setDoc(doc(db, 'universities', id), {
+            id, name: u.name, type: u.type, location: '', verified: false,
+            alumniCount: 0, studentCount: 0, departmentCount: 0,
+            employmentRate: 0, higherStudiesRate: 0, countriesCount: 0, companiesCount: 0,
+            website: '', updatedAt: new Date().toISOString(),
+          }, { merge: true });
+        }
 
-            const uniRecord: University = {
-              id: 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
-              name: u.name,
-              type: u.type,
-              location: 'Dhaka, Bangladesh',
-              logoUrl: getUniversityLogo(u.name),
-              verified: true,
-              alumniCount: baseAlumni,
-              departmentCount: 35 + (seed % 20),
-              employmentRate: 80 + (seed % 15),
-              higherStudiesRate: 10 + (seed % 10),
-              countriesCount: 20 + (seed % 15),
-              companiesCount: 400 + (seed % 300),
-              overview: `${u.name} is a leading institution fostering global excellence and graduate achievements.`,
-              website: 'https://ugc.gov.bd',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            };
-            await setDoc(doc(db, 'universities', uniRecord.id), uniRecord);
+        const deptSnap = await getDocs(collection(db, 'departments'));
+        for (const seed of VERIFIED_DEPARTMENT_SEEDS) {
+          const id = 'dept-' + encodeURIComponent((seed.university + '-' + seed.name).toLowerCase().replace(/[^a-z0-9]/g, '-'));
+          if (!deptSnap.docs.some((d) => d.id === id)) {
+            await setDoc(doc(db, 'departments', id), {
+              id, name: seed.name, university: seed.university, group: seed.group,
+              alumniCount: 0, studentCount: 0, employmentRate: 0, higherStudiesRate: 0,
+              countriesCount: 0, companiesCount: 0, verified: true, sourceUrl: seed.sourceUrl,
+              verifiedAt: new Date().toISOString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+            });
           }
         }
       } catch (err) {
-        console.warn('Admin seeding check note:', err);
+        console.warn('Directory synchronization note:', err);
       }
     };
-
     initializeDatabase();
   }, [isSuperAdmin]);
 
@@ -313,18 +260,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       (snap) => {
         const list: University[] = [];
         snap.forEach((d) => list.push(d.data() as University));
-        if (list.length > 0) setUniversities(list);
-        else {
-          setUniversities(
-            ALL_DIRECTORY_UNIVERSITIES.map((u) => ({
-              id: 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
-              name: u.name,
-              type: u.type,
-              location: 'Dhaka, Bangladesh',
-              alumniCount: (demoSeed(u.name) % 4000) + 500,
-              departmentCount: 35,
-              employmentRate: 84,
-            }))
+        setUniversities(list);))
           );
         }
       },
@@ -338,26 +274,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       (snap) => {
         const list: Department[] = [];
         snap.forEach((d) => list.push(d.data() as Department));
-        if (list.length > 0) setDepartments(list);
-        else {
-          const fallbackUnis = [
-            'University of Dhaka',
-            'Bangladesh University of Engineering & Technology',
-            'Jahangirnagar University',
-            'North South University',
-            'BRAC University',
-            'University of Rajshahi',
-            'University of Chittagong',
-          ];
-          setDepartments(
-            RAW_DEPARTMENT_CATALOG.map((d, idx) => ({
-              id: 'dept-' + encodeURIComponent(d.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
-              name: d.name,
-              university: fallbackUnis[idx % fallbackUnis.length],
-              group: d.group,
-              alumniCount: 842,
-              employmentRate: 84,
-            }))
+        setDepartments(list);))
           );
         }
       },
@@ -373,13 +290,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         snap.forEach((d) => {
           const item = d.data() as AlumniRecord;
           list.push({ ...item, id: d.id });
-        });
-        // Merge initial verified alumni if not already in list
-        const existingIds = new Set(list.map((a) => a.id));
-        INITIAL_ALUMNI.forEach((initAlum) => {
-          if (!existingIds.has(initAlum.id)) {
-            list.push(initAlum);
-          }
         });
         setAlumni(list);
       },
@@ -571,8 +481,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Approved alumni count from database
     const approvedAlumni = alumni.filter((a) => a.status === 'APPROVED');
     // Calculate total base alumni across universities + individual dynamic approved alumni additions
-    const totalBaseAlumni = universities.reduce((sum, u) => sum + (u.alumniCount || 0), 0);
-    const totalAlumni = Math.max(totalBaseAlumni, approvedAlumni.length);
+    const totalAlumni = approvedAlumni.length;
 
     const approvedStudents = students.filter((s) => s.status === 'APPROVED');
     const totalStudents = approvedStudents.length;
@@ -594,8 +503,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       totalStudents,
       totalUniversities: universities.length,
       totalDepartments: departments.length,
-      totalCountries: Math.max(countries.size, 32),
-      totalCompanies: Math.max(companies.size, 510),
+      totalCountries: countries.size,
+      totalCompanies: companies.size,
       pendingApprovalsCount: pendingApprovals,
       pendingNewsCount: pendingNews,
       pendingVerificationsCount: pendingVerifications,
