@@ -38,7 +38,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
     const live = universities.find((u) => u.name.toLowerCase() === item.name.toLowerCase());
     const liveAlumni = alumni.filter((a) => a.status === 'APPROVED' && a.university.toLowerCase() === item.name.toLowerCase()).length;
     return { ...item, alumni: String(liveAlumni), employment: live?.employmentRate ? `${live.employmentRate}%` : '—' };
-  }, [universities, alumni]);
+  });
 
   const publishedNews = useMemo(() => {
     const map = new Map<string, NewsArticle>();
