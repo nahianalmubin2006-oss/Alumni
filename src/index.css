@@ -244,3 +244,24 @@
 .dark-mode footer {
   border-color: #263244;
 }
+
+
+/* Responsive UX refinements */
+@media (max-width: 767px) {
+  html { overflow-x: hidden; }
+  body { overflow-x: hidden; }
+  button, a, select, input, textarea { -webkit-tap-highlight-color: transparent; }
+  button, a { touch-action: manipulation; }
+  .card { border-radius: 16px; }
+  .metric { padding: 14px; }
+  .mobile-scroll-x { overflow-x: auto; scrollbar-width: none; }
+  .mobile-scroll-x::-webkit-scrollbar { display: none; }
+}
+
+@media (min-width: 768px) {
+  .desktop-content-width { max-width: 80rem; margin-inline: auto; }
+}
+
+@media (max-width: 380px) {
+  .mobile-tight-text { font-size: 0.82rem; }
+}
