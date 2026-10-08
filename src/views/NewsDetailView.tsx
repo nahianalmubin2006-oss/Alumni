@@ -22,7 +22,7 @@ interface NewsDetailViewProps {
 }
 
 export const NewsDetailView: React.FC<NewsDetailViewProps> = ({ articleId, onNavigate }) => {
-  const { news, makeNewsPermanent, removeNewsPermanent, deleteNewsArticle } = useData();
+  const { news, makeNewsPermanent, removeNewsPermanent, deleteNewsArticle, canUserManageArticle } = useData();
   const { currentUser, userProfile, isSuperAdmin } = useAuth();
 
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -76,7 +76,7 @@ export const NewsDetailView: React.FC<NewsDetailViewProps> = ({ articleId, onNav
         </button>
 
         {/* Admin Controls */}
-        {canMakePermanent && (
+        {canUserManageArticle(article) && (
           <div className="flex items-center gap-2">
             <button
               onClick={() => {

@@ -38,6 +38,7 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
     removeNewsPermanent,
     triggerAINewsBotScan,
     createNewsArticle,
+    canUserManageArticle,
   } = useData();
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -551,7 +552,7 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
                       )}
 
                       {/* Admin Permanent Control for 3 Admin Types */}
-                      {canMakePermanent && (
+                      {canUserManageArticle(n) && (
                         <button
                           onClick={() => {
                             if (n.isPermanent) {

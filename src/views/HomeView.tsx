@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { GlobalGraph } from '../components/GlobalGraph';
 import { universityInitials } from '../data/initialData';
+import { Flame, Award, Bot, Clock, Shield, RefreshCw } from 'lucide-react';
 
 interface HomeViewProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -9,8 +10,9 @@ interface HomeViewProps {
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
-  const { universities, news } = useData();
+  const { universities, news, botStatus, triggerAINewsBotScan } = useData();
   const [searchInput, setSearchInput] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +58,32 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
     },
   ];
 
-  const publishedNews = news.filter((n) => n.status === 'PUBLISHED').slice(0, 3);
+  const publishedNews = news
+    .filter((n) => n.status === 'PUBLISHED')
+    .sort((a, b) => {
+      if (a.isHotTopic && !b.isHotTopic) return -1;
+      if (!a.isHotTopic && b.isHotTopic) return 1;
+      return (
+        new Date(b.publishedAt || b.createdAt).getTime() -
+        new Date(a.publishedAt || a.createdAt).getTime()
+      );
+    })
+    .slice(0, 6);
+
+  const handleScanWire = async () => {
+    try {
+      setIsScanning(true);
+      await triggerAINewsBotScan({
+        focusType: 'Alumni special achievements, prize winnings, research and fellowships',
+        forceHotTopic: true,
+        count: 2,
+      });
+    } catch (e) {
+      console.warn('Wire scan info:', e);
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   return (
     <div>
@@ -184,58 +211,136 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
         <div className="max-w-7xl mx-auto px-5">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
             <div>
-              <div className="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
-                LIVE UPDATES
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <span className="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                  LIVE UPDATES
+                </span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200">
+                  <Bot className="w-3 h-3 text-purple-600" />
+                  <span>24h AI Wire Bot Active</span>
+                </span>
               </div>
-              <h2 className="text-3xl font-black navy mt-2">University & Alumni News</h2>
+              <h2 className="text-3xl font-black navy">University & Alumni News</h2>
               <p className="text-sm text-slate-500 mt-1">
-                Verified achievements, research milestones, and institutional announcements.
+                Verified achievements, prize winnings, research breakthroughs, and institutional announcements.
               </p>
             </div>
-            <button
-              onClick={() => onNavigate('news')}
-              className="text-sm font-bold text-blue-600 hover:underline self-start md:self-end"
-            >
-              Browse all news →
-            </button>
+            <div className="flex items-center gap-2 self-start md:self-end">
+              <button
+                onClick={handleScanWire}
+                disabled={isScanning}
+                className="bg-white hover:bg-slate-50 text-blue-700 font-bold text-xs px-3 py-2 rounded-xl border border-blue-200 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs"
+                title="Trigger instant AI bot web scan for alumni achievements"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin text-blue-600' : ''}`} />
+                <span>{isScanning ? 'Scanning...' : 'Scan AI Wire'}</span>
+              </button>
+              <button
+                onClick={() => onNavigate('news')}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition cursor-pointer shadow-xs"
+              >
+                Browse all news →
+              </button>
+            </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {publishedNews.map((article) => (
-              <div
-                key={article.id}
-                onClick={() => onNavigate('newsDetail', { id: article.id })}
-                className="card overflow-hidden hover:-translate-y-1 transition cursor-pointer flex flex-col"
-              >
-                {article.imageUrl && (
-                  <div className="h-44 w-full overflow-hidden bg-slate-100 relative">
-                    <img
-                      src={article.imageUrl}
-                      alt={article.title}
-                      className="w-full h-full object-cover transition duration-300 hover:scale-105"
-                    />
-                    <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-full text-[11px] font-bold text-blue-700 shadow-sm">
-                      {article.category}
-                    </span>
-                  </div>
-                )}
-                <div className="p-5 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h3 className="font-bold text-base text-slate-900 line-clamp-2 leading-snug">
-                      {article.title}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed">
-                      {article.summary || article.content.slice(0, 120) + '...'}
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-soft flex items-center justify-between text-xs text-slate-400">
-                    <span>{article.authorName}</span>
-                    <span className="text-blue-600 font-semibold">Read article →</span>
+            {publishedNews.map((article) => {
+              const daysLeft = article.expiresAt
+                ? Math.max(
+                    0,
+                    Math.ceil(
+                      (new Date(article.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                    )
+                  )
+                : null;
+
+              return (
+                <div
+                  key={article.id}
+                  onClick={() => onNavigate('newsDetail', { id: article.id })}
+                  className={`card overflow-hidden hover:-translate-y-1 transition cursor-pointer flex flex-col ${
+                    article.isHotTopic ? 'border-rose-300 ring-2 ring-rose-200/60' : ''
+                  }`}
+                >
+                  {article.imageUrl && (
+                    <div className="h-44 w-full overflow-hidden bg-slate-100 relative">
+                      <img
+                        src={article.imageUrl}
+                        alt={article.title}
+                        className="w-full h-full object-cover transition duration-300 hover:scale-105"
+                      />
+                      <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                        <span className="bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[11px] font-bold text-blue-700 shadow-sm">
+                          {article.category}
+                        </span>
+                        {article.isHotTopic && (
+                          <span className="bg-rose-600 text-white px-2.5 py-1 rounded-full text-[11px] font-black uppercase flex items-center gap-1 shadow-sm animate-pulse">
+                            <Flame className="w-3 h-3 text-amber-300" />
+                            HOT TOPIC
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className="p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                      {article.alumniPrizeName && (
+                        <div className="mb-2 inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                          <Award className="w-3 h-3 text-amber-600" />
+                          <span className="truncate max-w-[220px]">{article.alumniPrizeName}</span>
+                        </div>
+                      )}
+
+                      <h3 className="font-bold text-base text-slate-900 line-clamp-2 leading-snug hover:text-blue-600 transition">
+                        {article.title}
+                      </h3>
+
+                      {article.hotTopicReason && (
+                        <p className="text-[11px] text-rose-700 font-bold mt-1.5">
+                          🔥 {article.hotTopicReason}
+                        </p>
+                      )}
+
+                      <p className="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed">
+                        {article.summary || article.content.slice(0, 120) + '...'}
+                      </p>
+
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                        {article.university && (
+                          <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                            {article.university}
+                          </span>
+                        )}
+                        {article.department && (
+                          <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
+                            {article.department}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-soft flex items-center justify-between text-xs text-slate-400">
+                      <div className="flex items-center gap-2">
+                        {article.isPermanent ? (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                            <Shield className="w-3 h-3 text-emerald-600" />
+                            Permanent
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                            <Clock className="w-3 h-3 text-slate-400" />
+                            {daysLeft}d left
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-blue-600 font-semibold">Read article →</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

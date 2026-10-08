@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import {
+  Bot,
+  Flame,
+  Award,
+  Shield,
+  Clock,
+  Pin,
+  RefreshCw,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 
 interface DepartmentAdminViewProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -8,7 +19,17 @@ interface DepartmentAdminViewProps {
 
 export const DepartmentAdminView: React.FC<DepartmentAdminViewProps> = ({ onNavigate }) => {
   const { isDepartmentAdmin, userProfile } = useAuth();
-  const { alumni, students, submitChangeRequest } = useData();
+  const {
+    alumni,
+    students,
+    news,
+    submitChangeRequest,
+    makeNewsPermanent,
+    removeNewsPermanent,
+    deleteNewsArticle,
+    triggerAINewsBotScan,
+    createNewsArticle,
+  } = useData();
 
   const assignedUni =
     userProfile?.assignedUniversity ||
@@ -31,11 +52,79 @@ export const DepartmentAdminView: React.FC<DepartmentAdminViewProps> = ({ onNavi
       s.department.toLowerCase() === assignedDept.toLowerCase()
   );
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'batches' | 'change'>('overview');
+  const deptNews = news.filter(
+    (n) =>
+      (!n.university || n.university.toLowerCase() === assignedUni.toLowerCase()) &&
+      (!n.department || n.department.toLowerCase() === assignedDept.toLowerCase())
+  );
+
+  const [activeTab, setActiveTab] = useState<'overview' | 'news' | 'batches' | 'change'>('overview');
   const [achievements, setAchievements] = useState('');
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState('');
+
+  // AI News Bot interaction states
+  const [isScanningWire, setIsScanningWire] = useState(false);
+  const [showAddNewsModal, setShowAddNewsModal] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newCategory, setNewCategory] = useState<any>('Alumni special achievements');
+  const [newSummary, setNewSummary] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [newPrizeName, setNewPrizeName] = useState('');
+  const [newIsHot, setNewIsHot] = useState(false);
+
+  const handleScanDepartmentWire = async () => {
+    try {
+      setIsScanningWire(true);
+      await triggerAINewsBotScan({
+        university: assignedUni,
+        department: assignedDept,
+        focusType: 'Alumni special achievements, prize winnings, research papers, grants',
+        forceHotTopic: true,
+        count: 2,
+      });
+      setMsg('AI Bot successfully scanned web information and updated department wire!');
+    } catch (err: any) {
+      setMsg('AI scan encountered an issue.');
+    } finally {
+      setIsScanningWire(false);
+    }
+  };
+
+  const handleCreateDeptNews = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userProfile) return;
+    try {
+      await createNewsArticle({
+        title: newTitle.trim(),
+        category: newCategory,
+        summary: newSummary.trim(),
+        content: newContent.trim(),
+        university: assignedUni,
+        department: assignedDept,
+        alumniPrizeName: newPrizeName.trim() || undefined,
+        isHotTopic: newIsHot,
+        hotTopicReason: newIsHot ? 'Department alumni achievement milestone' : undefined,
+        authorId: userProfile.uid,
+        authorName: userProfile.name,
+        status: 'PUBLISHED',
+        isPermanent: true, // Department Admin can publish permanent records for their department
+        views: 1,
+        imageUrl:
+          'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80',
+      });
+      setShowAddNewsModal(false);
+      setNewTitle('');
+      setNewSummary('');
+      setNewContent('');
+      setNewPrizeName('');
+      setNewIsHot(false);
+      setMsg('Department achievement published to permanent archive!');
+    } catch (err) {
+      setMsg('Failed to publish department achievement.');
+    }
+  };
 
   if (!isDepartmentAdmin) {
     return (
@@ -127,18 +216,31 @@ export const DepartmentAdminView: React.FC<DepartmentAdminViewProps> = ({ onNavi
           <b className="text-2xl navy mt-1 block">6 cohorts</b>
         </div>
         <div className="metric">
+          <span className="text-xs text-slate-400 block">Department News</span>
+          <b className="text-2xl navy mt-1 block">{deptNews.length}</b>
+        </div>
+        <div className="metric">
           <span className="text-xs text-slate-400 block">Employment Target</span>
           <b className="text-2xl text-emerald-600 mt-1 block">85%</b>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="mt-8 flex gap-2 border-b border-soft pb-2">
+      <div className="mt-8 flex flex-wrap gap-2 border-b border-soft pb-2">
         <button
           onClick={() => setActiveTab('overview')}
           className={`pill cursor-pointer ${activeTab === 'overview' ? 'bg-navy text-white' : ''}`}
         >
           Overview & Members
+        </button>
+        <button
+          onClick={() => setActiveTab('news')}
+          className={`pill cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'news' ? 'bg-navy text-white' : 'bg-blue-50 text-blue-700'
+          }`}
+        >
+          <Bot className="w-3.5 h-3.5" />
+          <span>Department Live Wire ({deptNews.length})</span>
         </button>
         <button
           onClick={() => setActiveTab('batches')}
@@ -153,6 +255,289 @@ export const DepartmentAdminView: React.FC<DepartmentAdminViewProps> = ({ onNavi
           Submit Changes
         </button>
       </div>
+
+      {/* Tab: Department Live Wire */}
+      {activeTab === 'news' && (
+        <div className="mt-6 space-y-6">
+          <div className="card p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="p-1 bg-purple-100 text-purple-700 rounded-lg">
+                  <Bot className="w-4 h-4 text-purple-700" />
+                </span>
+                <h3 className="font-black navy text-lg">
+                  {assignedDept} Alumni Wire & Achievements
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 max-w-xl">
+                As Department Administrator for {assignedDept} ({assignedUni}), you can seal alumni achievements into permanent records, cancel 10-day TTL expiration, and trigger automated web intelligence scans.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                onClick={handleScanDepartmentWire}
+                disabled={isScanningWire}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isScanningWire ? 'animate-spin' : ''}`} />
+                <span>{isScanningWire ? 'Scanning Web Wire...' : 'Scan Department AI Wire'}</span>
+              </button>
+
+              <button
+                onClick={() => setShowAddNewsModal(true)}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Achievement</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Add News Modal */}
+          {showAddNewsModal && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="card p-6 max-w-xl w-full max-h-[90vh] overflow-y-auto">
+                <h3 className="text-lg font-black navy mb-1">Record Department Alumni Achievement</h3>
+                <p className="text-xs text-slate-500 mb-4">
+                  Permanently archived for {assignedDept} at {assignedUni}.
+                </p>
+
+                <form onSubmit={handleCreateDeptNews} className="space-y-3.5">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Headline *</label>
+                    <input
+                      required
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      placeholder="e.g. CSE 2021 Alumnus receives IEEE Fellowship or wins international prize"
+                      className="w-full text-xs border border-soft rounded-xl px-3 py-2.5 outline-none focus:border-blue-400"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Category</label>
+                      <select
+                        value={newCategory}
+                        onChange={(e) => setNewCategory(e.target.value as any)}
+                        className="w-full text-xs border border-soft rounded-xl px-3 py-2 outline-none"
+                      >
+                        <option value="Alumni special achievements">Alumni special achievements</option>
+                        <option value="Department announcements">Department announcements</option>
+                        <option value="Research">Research</option>
+                        <option value="Scholarships">Scholarships</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">
+                        Award / Medal / Prize Name
+                      </label>
+                      <input
+                        value={newPrizeName}
+                        onChange={(e) => setNewPrizeName(e.target.value)}
+                        placeholder="e.g. ACM Innovation Prize ($100,000)"
+                        className="w-full text-xs border border-soft rounded-xl px-3 py-2 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Summary</label>
+                    <textarea
+                      required
+                      rows={2}
+                      value={newSummary}
+                      onChange={(e) => setNewSummary(e.target.value)}
+                      placeholder="1-2 sentences summarizing the breakthrough"
+                      className="w-full text-xs border border-soft rounded-xl px-3 py-2 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Full Content</label>
+                    <textarea
+                      required
+                      rows={4}
+                      value={newContent}
+                      onChange={(e) => setNewContent(e.target.value)}
+                      placeholder="Full narrative of the alumni accomplishment and impact"
+                      className="w-full text-xs border border-soft rounded-xl px-3 py-2 outline-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id="isHotDeptCheckbox"
+                      checked={newIsHot}
+                      onChange={(e) => setNewIsHot(e.target.checked)}
+                      className="rounded"
+                    />
+                    <label htmlFor="isHotDeptCheckbox" className="text-xs font-bold text-rose-700 flex items-center gap-1 cursor-pointer">
+                      <Flame className="w-3.5 h-3.5" />
+                      Mark as Breaking HOT TOPIC
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-soft">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddNewsModal(false)}
+                      className="px-3 py-1.5 rounded-xl border border-soft text-xs font-bold text-slate-600 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold cursor-pointer"
+                    >
+                      Publish
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Department News List */}
+          <div className="grid gap-4">
+            {deptNews.length === 0 ? (
+              <div className="card p-12 text-center text-slate-400">
+                <Bot className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="font-bold navy text-sm">No stories published for {assignedDept} yet.</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Click "Scan Department AI Wire" to browse web archives for verified alumni prize winners.
+                </p>
+              </div>
+            ) : (
+              deptNews.map((n) => {
+                const daysLeft = n.expiresAt
+                  ? Math.max(
+                      0,
+                      Math.ceil(
+                        (new Date(n.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                      )
+                    )
+                  : null;
+
+                return (
+                  <div
+                    key={n.id}
+                    className={`card p-5 border transition ${
+                      n.isHotTopic
+                        ? 'border-rose-300 bg-gradient-to-r from-rose-50/40 via-white to-amber-50/30'
+                        : 'border-soft bg-white'
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {n.isHotTopic && (
+                          <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-rose-700 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded-full animate-pulse">
+                            <Flame className="w-3 h-3 text-rose-600" />
+                            <span>HOT TOPIC</span>
+                          </span>
+                        )}
+
+                        {n.alumniPrizeName && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                            <Award className="w-3 h-3 text-amber-600" />
+                            <span>{n.alumniPrizeName}</span>
+                          </span>
+                        )}
+
+                        <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
+                          {n.category}
+                        </span>
+                      </div>
+
+                      {/* Permanence & Actions */}
+                      <div className="flex items-center gap-2">
+                        {n.isPermanent ? (
+                          <span
+                            className="flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200"
+                            title={
+                              n.permanentBy
+                                ? `Made permanent by ${n.permanentBy.role} ${n.permanentBy.userName}`
+                                : 'Permanent archive'
+                            }
+                          >
+                            <Shield className="w-3 h-3 text-emerald-600" />
+                            <span>Permanent</span>
+                          </span>
+                        ) : (
+                          <span
+                            className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-lg"
+                            title="Auto-purged after 10 days unless confirmed permanent"
+                          >
+                            <Clock className="w-3 h-3 text-slate-400" />
+                            <span>Expires in {daysLeft}d</span>
+                          </span>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            if (n.isPermanent) {
+                              removeNewsPermanent(n.id);
+                            } else {
+                              makeNewsPermanent(n.id);
+                            }
+                          }}
+                          className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition cursor-pointer flex items-center gap-1 ${
+                            n.isPermanent
+                              ? 'bg-slate-50 text-slate-600 border-slate-300 hover:bg-slate-100'
+                              : 'bg-emerald-600 text-white border-emerald-700 hover:bg-emerald-700 shadow-xs'
+                          }`}
+                          title="Department Admin action to seal news as permanent"
+                        >
+                          <Pin className="w-3 h-3" />
+                          <span>{n.isPermanent ? 'Unpin' : 'Make Permanent'}</span>
+                        </button>
+
+                        <button
+                          onClick={() => deleteNewsArticle(n.id, 'Department Admin deletion')}
+                          className="text-[10px] font-bold text-rose-600 border border-rose-200 hover:bg-rose-50 px-2 py-1 rounded-lg transition cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <h4
+                      onClick={() => onNavigate('newsDetail', { id: n.id })}
+                      className="text-base font-black navy hover:text-blue-600 transition cursor-pointer"
+                    >
+                      {n.title}
+                    </h4>
+
+                    {n.isHotTopic && n.hotTopicReason && (
+                      <div className="mt-1.5 text-xs text-rose-700 font-bold bg-rose-50/80 p-2 rounded-lg border border-rose-200/80 flex items-center gap-1.5">
+                        <Flame className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                        <span>{n.hotTopicReason}</span>
+                      </div>
+                    )}
+
+                    <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                      {n.summary || n.content.slice(0, 180) + '...'}
+                    </p>
+
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-soft text-[11px] text-slate-400">
+                      <span>By {n.authorName} · {new Date(n.publishedAt || n.createdAt).toLocaleDateString()}</span>
+                      <button
+                        onClick={() => onNavigate('newsDetail', { id: n.id })}
+                        className="text-purple-600 font-bold hover:underline"
+                      >
+                        Read details →
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Tab: Overview */}
       {activeTab === 'overview' && (

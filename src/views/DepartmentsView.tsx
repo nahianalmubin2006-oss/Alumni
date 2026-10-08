@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { RAW_DEPARTMENT_CATALOG, ALL_DIRECTORY_UNIVERSITIES } from '../data/initialData';
+import { useData } from '../context/DataContext';
+import { Flame, Award, Bot, ArrowRight } from 'lucide-react';
 
 interface DepartmentsViewProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -16,8 +18,16 @@ const DEPARTMENT_GROUP_META: Record<string, { icon: string }> = {
 };
 
 export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) => {
+  const { news } = useData();
   const [search, setSearch] = useState('');
   const [group, setGroup] = useState('All');
+
+  // Hot topics and prize winners across all departments
+  const departmentHighlights = useMemo(() => {
+    return news
+      .filter((n) => n.status === 'PUBLISHED' && (n.isHotTopic || n.alumniPrizeName))
+      .slice(0, 3);
+  }, [news]);
 
   // Filter departments
   const filtered = useMemo(() => {
@@ -46,6 +56,59 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
           {filtered.length} departments cataloged
         </span>
       </div>
+
+      {/* Highlights Radar across Departments */}
+      {departmentHighlights.length > 0 && (
+        <div className="mt-6 p-4 rounded-2xl bg-gradient-to-r from-blue-900 to-indigo-950 text-white shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <span className="p-1 bg-rose-500 text-white rounded-lg animate-pulse">
+                <Flame className="w-4 h-4" />
+              </span>
+              <span className="text-xs font-black uppercase tracking-wider text-rose-300">
+                Department Alumni Achievements Radar
+              </span>
+            </div>
+            <button
+              onClick={() => onNavigate('news')}
+              className="text-xs font-bold text-blue-300 hover:text-white transition flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+            >
+              <span>Explore All Live News</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-3">
+            {departmentHighlights.map((art) => (
+              <div
+                key={art.id}
+                onClick={() => onNavigate('newsDetail', { id: art.id })}
+                className="bg-white/10 hover:bg-white/15 transition p-3 rounded-xl cursor-pointer border border-white/10"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  {art.isHotTopic && (
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-500 text-white">
+                      Hot Topic
+                    </span>
+                  )}
+                  {art.department && (
+                    <span className="text-[10px] font-semibold text-blue-200 truncate">
+                      {art.department}
+                    </span>
+                  )}
+                </div>
+                <h4 className="text-xs font-bold text-white line-clamp-2">{art.title}</h4>
+                {art.alumniPrizeName && (
+                  <p className="text-[11px] text-amber-300 font-semibold mt-1 flex items-center gap-1">
+                    <Award className="w-3 h-3 text-amber-400 shrink-0" />
+                    <span className="truncate">{art.alumniPrizeName}</span>
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Search & Group Filter */}
       <div className="card p-5 mt-7">

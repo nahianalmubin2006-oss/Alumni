@@ -28,10 +28,32 @@ const UNIVERSITIES = [
   'BRAC University',
   'Shahjalal University of Science & Technology',
   'Jahangirnagar University',
+  'University of Rajshahi',
+  'University of Chittagong',
   'Rajshahi University of Engineering & Technology',
   'Khulna University of Engineering & Technology',
+  'Chittagong University of Engineering & Technology',
+  'Dhaka University of Engineering & Technology',
   'Independent University, Bangladesh',
   'East West University',
+  'United International University',
+  'American International University-Bangladesh',
+  'Ahsanullah University of Science and Technology',
+  'Daffodil International University',
+  'Bangladesh University of Professionals',
+  'Bangladesh University of Textiles',
+  'Sher-e-Bangla Agricultural University',
+  'Bangladesh Agricultural University',
+  'Islamic University of Technology (IUT), Gazipur',
+  'Khulna University',
+  'Jagannath University',
+  'Comilla University',
+  'Patuakhali Science And Technology University',
+  'Noakhali Science & Technology University',
+  'Jashore University of Science & Technology',
+  'Begum Rokeya University, Rangpur',
+  'University of Liberal Arts Bangladesh',
+  'Asian University for Women',
 ];
 
 const DEPARTMENTS = [
@@ -45,6 +67,28 @@ const DEPARTMENTS = [
   'Biotechnology & Genetic Engineering',
   'Architecture',
   'Law & Justice',
+  'Software Engineering',
+  'Information & Communication Technology',
+  'Data Science',
+  'Industrial & Production Engineering',
+  'Textile Engineering',
+  'Physics',
+  'Chemistry',
+  'Mathematics',
+  'Statistics',
+  'Biochemistry & Molecular Biology',
+  'Microbiology',
+  'Accounting',
+  'Finance',
+  'Marketing',
+  'Management Information Systems',
+  'English',
+  'Public Administration',
+  'International Relations',
+  'Environmental Science',
+  'Agricultural Engineering',
+  'Food Engineering & Technology',
+  'Aerospace & Aviation Engineering',
 ];
 
 // Fallback dynamic news generator for resilience
@@ -56,7 +100,7 @@ function generateCuratedNews(params: {
 }) {
   const targetUni = params.university || UNIVERSITIES[Math.floor(Math.random() * UNIVERSITIES.length)];
   const targetDept = params.department || DEPARTMENTS[Math.floor(Math.random() * DEPARTMENTS.length)];
-  const isHot = params.forceHotTopic || Math.random() > 0.4;
+  const isHot = params.forceHotTopic !== undefined ? params.forceHotTopic : Math.random() > 0.35;
   const now = new Date();
   const tenDaysLater = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -78,7 +122,7 @@ function generateCuratedNews(params: {
       category: 'Research' as const,
       alumniPrizeName: 'National Science Council Excellence Award',
       isHotTopic: isHot,
-      hotTopicReason: 'Multi-million collaborative grant secured across 4 leading institutes',
+      hotTopicReason: 'Multi-million collaborative grant secured across leading research institutes',
       summary: `${targetUni}'s ${targetDept} department has secured an inter-institutional research endowment to spearhead next-generation autonomous infrastructure.`,
       content: `The Department of ${targetDept} at ${targetUni} has spearheaded a premier multi-institutional research initiative. Backed by corporate alumni partners and public innovation grants, the initiative provides graduate research fellowships and direct student mentorship from industry pioneers abroad.`,
       imageUrl: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format&fit=crop&q=80',
@@ -98,13 +142,37 @@ function generateCuratedNews(params: {
       sourceName: 'Venture Capital & Alumni Wire',
     },
     {
+      title: `${targetUni} ${targetDept} Alumnus Awarded ACM Young Investigator Recognition`,
+      category: 'Alumni special achievements' as const,
+      alumniPrizeName: 'ACM SIGCOMM Outstanding Doctoral Thesis & Young Investigator Prize',
+      isHotTopic: isHot,
+      hotTopicReason: 'Global ACM recognition for foundational work in resilient decentralized networks',
+      summary: `An alumnus of ${targetUni} from the ${targetDept} cohort has received the ACM Outstanding Young Investigator Prize for breakthroughs in high-throughput network topologies.`,
+      content: `In a landmark tribute to university academic pedigree, a graduate of ${targetUni} (${targetDept}) received the prestigious Association for Computing Machinery (ACM) Young Investigator Recognition. The research, focused on fault-tolerant distributed networks, has been adopted across premier cloud computing platforms globally.`,
+      imageUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80',
+      sourceUrl: 'https://awards.acm.org',
+      sourceName: 'ACM Computing News Wire',
+    },
+    {
+      title: `${targetUni} ${targetDept} Graduate Receives International Climate Resilience Medal`,
+      category: 'Alumni special achievements' as const,
+      alumniPrizeName: 'United Nations Earthshot Innovation Medal ($250,000)',
+      isHotTopic: true,
+      hotTopicReason: 'Top international climate innovation medal awarded for delta restoration systems',
+      summary: `Alumnus from ${targetUni}'s ${targetDept} honored at the World Climate Summit for deploying low-cost hydrological sensor networks across coastal deltas.`,
+      content: `A distinguished graduate from ${targetUni} (${targetDept}) was decorated with the United Nations Earthshot Innovation Medal. The project delivers real-time flood warning telemetry and agricultural soil restoration frameworks deployed across vulnerable river deltas.`,
+      imageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80',
+      sourceUrl: 'https://unep.org/awards',
+      sourceName: 'UN Global Environmental Wire',
+    },
+    {
       title: `${targetUni} ${targetDept} Annual Symposium Announces 2026 Merit Scholarships & Mentorship`,
       category: 'Scholarships' as const,
       alumniPrizeName: 'Alumni Legacy Gold Medal & Endowed Scholarship',
       isHotTopic: false,
       hotTopicReason: '',
       summary: `Alumni association partners with ${targetUni} to fund 40 full-ride merit scholarships for undergraduate research scholars in ${targetDept}.`,
-      content: `The Department of ${targetDept} at ${targetUni} has unveiled an endowed scholarship initiative funded entirely by alumni cohorts from 2010 to 2022. The program covers full tuition, technology stipends, and guaranteed international internships.`,
+      content: `The Department of ${targetDept} at ${targetUni} has unveiled an endowed scholarship initiative funded entirely by alumni cohorts from 2010 to 2024. The program covers full tuition, technology stipends, and guaranteed international internships.`,
       imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80',
       sourceUrl: 'https://alumni.org/press',
       sourceName: 'AlumniSphere Higher Education Press',
@@ -130,119 +198,138 @@ function generateCuratedNews(params: {
   };
 }
 
-// Route 1: Trigger AI Bot Live Web Scan & Generation
-app.post('/api/ai-news-bot/generate', async (req, res) => {
-  try {
-    const { focusType, university, department, forceHotTopic, count = 2 } = req.body || {};
-    const generatedArticles: any[] = [];
-    const now = new Date();
-    const tenDaysLater = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000).toISOString();
+// Reusable function to generate news with Gemini 3.8 Flash web browsing or curated fallback
+async function generateArticlesWithAi(params: {
+  focusType?: string;
+  university?: string;
+  department?: string;
+  forceHotTopic?: boolean;
+  count?: number;
+}) {
+  const { focusType, university, department, forceHotTopic, count = 2 } = params;
+  const generatedArticles: any[] = [];
+  const now = new Date();
+  const tenDaysLater = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000).toISOString();
 
-    const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
 
-    if (apiKey) {
-      try {
-        const ai = new GoogleGenAI();
-        const targetUni = university || UNIVERSITIES[Math.floor(Math.random() * UNIVERSITIES.length)];
-        const targetDept = department || DEPARTMENTS[Math.floor(Math.random() * DEPARTMENTS.length)];
+  if (apiKey) {
+    try {
+      const ai = new GoogleGenAI();
+      const targetUni = university || UNIVERSITIES[Math.floor(Math.random() * UNIVERSITIES.length)];
+      const targetDept = department || DEPARTMENTS[Math.floor(Math.random() * DEPARTMENTS.length)];
 
-        const prompt = `You are an automated AI Live News Wire Bot for a university alumni intelligence network.
-Your mission: Scan web information or generate authentic, high-impact news stories covering universities, departments, and alumni special achievements (prize winning, awards, prestigious grants, international recognitions, career breakthroughs).
+      const prompt = `You are an automated AI Live News Wire Bot for a university alumni intelligence network.
+Your mission: Scan web information or generate authentic, high-impact news stories covering universities, departments, and alumni special achievements (prize winning, awards, prestigious grants, international recognitions, career breakthroughs, startup funding).
 
-Generate ${Math.min(count, 3)} diverse news articles for:
+Generate ${Math.min(count, 4)} diverse news articles for:
 Target University: ${targetUni}
 Target Department: ${targetDept}
-Focus Category: ${focusType || 'Alumni achievements and department breakthroughs'}
-Ensure at least one article is marked as a HOT TOPIC ("isHotTopic": true) with high-priority breakthrough/prize winning details.
+Focus Category: ${focusType || 'Alumni special achievements, prize winnings, and department breakthroughs'}
+Ensure at least one article is marked as a HOT TOPIC ("isHotTopic": true) with high-priority breakthrough/prize winning details and a compelling "hotTopicReason".
 
-Return ONLY a JSON array of objects with the exact schema:
+Return ONLY a valid JSON array of objects with the exact schema:
 [
   {
-    "title": "Clear headline with institution and achievement",
+    "title": "Clear headline with institution and alumni achievement",
     "summary": "1-2 sentence compelling executive summary",
-    "content": "Detailed 2-3 paragraph news report highlighting background, prize/achievement, alumni names, impact",
+    "content": "Detailed 2-3 paragraph news report highlighting background, prize/achievement name, alumni names, impact, and future work",
     "category": "Alumni special achievements" | "University announcements" | "Department announcements" | "Research" | "Scholarships" | "Jobs",
     "university": "${targetUni}",
     "department": "${targetDept}",
     "isHotTopic": true or false,
-    "hotTopicReason": "Brief reason why this is hot/breaking (e.g. Won $100k ACM prize, IEEE Fellow award)",
-    "alumniPrizeName": "Name of prestigious award/medal if applicable",
+    "hotTopicReason": "Brief reason why this is hot/breaking (e.g. Won $150k International Prize, Forbes 30 Under 30 selection, IEEE Fellow award)",
+    "alumniPrizeName": "Name of prestigious award/medal/grant if applicable",
     "sourceUrl": "Realistic web url or news source url",
-    "sourceName": "Name of news wire or publication (e.g. IEEE Spectrum, TechCrunch, University Press)"
+    "sourceName": "Name of news wire or publication (e.g. IEEE Spectrum, TechCrunch, University Press, Nature Awards)"
   }
 ]`;
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt,
-          config: {
-            tools: [{ googleSearch: {} }],
-          },
-        });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+        },
+      });
 
-        const text = response.text || '';
-        // Extract JSON from response
-        const jsonMatch = text.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          for (const item of parsed) {
-            generatedArticles.push({
-              title: item.title,
-              summary: item.summary,
-              content: item.content,
-              category: item.category || 'Alumni special achievements',
-              university: item.university || targetUni,
-              department: item.department || targetDept,
-              imageUrl:
-                'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80',
-              authorId: 'ai-news-bot',
-              authorName: 'AI Intelligence Wire Bot',
-              status: 'PUBLISHED',
-              featured: !!item.isHotTopic,
-              trending: !!item.isHotTopic,
-              views: Math.floor(Math.random() * 200) + 50,
-              isHotTopic: !!item.isHotTopic,
-              hotTopicReason: item.hotTopicReason || '',
-              alumniPrizeName: item.alumniPrizeName || '',
-              sourceUrl: item.sourceUrl || 'https://news.google.com',
-              sourceName: item.sourceName || 'Web Intelligence Crawler',
-              isAiGenerated: true,
-              isPermanent: false,
-              expiresAt: tenDaysLater,
-              createdAt: now.toISOString(),
-              publishedAt: now.toISOString(),
-            });
-          }
+      const text = response.text || '';
+      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        for (const item of parsed) {
+          generatedArticles.push({
+            title: item.title,
+            summary: item.summary,
+            content: item.content,
+            category: item.category || 'Alumni special achievements',
+            university: item.university || targetUni,
+            department: item.department || targetDept,
+            imageUrl:
+              'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80',
+            authorId: 'ai-news-bot',
+            authorName: 'AI Intelligence Wire Bot',
+            status: 'PUBLISHED',
+            featured: !!item.isHotTopic,
+            trending: !!item.isHotTopic,
+            views: Math.floor(Math.random() * 200) + 50,
+            isHotTopic: !!item.isHotTopic,
+            hotTopicReason: item.hotTopicReason || (item.isHotTopic ? 'Breaking alumni achievement' : ''),
+            alumniPrizeName: item.alumniPrizeName || '',
+            sourceUrl: item.sourceUrl || 'https://news.google.com',
+            sourceName: item.sourceName || 'Web Intelligence Crawler',
+            isAiGenerated: true,
+            isPermanent: false,
+            expiresAt: tenDaysLater,
+            createdAt: now.toISOString(),
+            publishedAt: now.toISOString(),
+          });
         }
-      } catch (geminiErr) {
-        console.warn('Gemini API call warning, falling back to curated AI generation:', geminiErr);
       }
+    } catch (geminiErr) {
+      console.warn('Gemini API call warning, falling back to curated AI generation:', geminiErr);
     }
+  }
 
-    // If Gemini didn't return articles, generate using fallback
-    if (generatedArticles.length === 0) {
-      const needed = Math.max(1, count);
-      for (let i = 0; i < needed; i++) {
-        generatedArticles.push(
-          generateCuratedNews({
-            focusType,
-            university,
-            department,
-            forceHotTopic: i === 0 || forceHotTopic,
-          })
-        );
-      }
+  // If Gemini didn't return articles, generate using fallback
+  if (generatedArticles.length === 0) {
+    const needed = Math.max(1, count);
+    for (let i = 0; i < needed; i++) {
+      generatedArticles.push(
+        generateCuratedNews({
+          focusType,
+          university,
+          department,
+          forceHotTopic: i === 0 || forceHotTopic,
+        })
+      );
     }
+  }
 
-    // Update bot state
-    botState.lastScanAt = now.toISOString();
-    botState.totalGenerated += generatedArticles.length;
+  // Update bot state
+  botState.lastScanAt = now.toISOString();
+  botState.totalGenerated += generatedArticles.length;
+
+  return generatedArticles;
+}
+
+// Route 1: Trigger AI Bot Live Web Scan & Generation
+app.post('/api/ai-news-bot/generate', async (req, res) => {
+  try {
+    const { focusType, university, department, forceHotTopic, count = 2 } = req.body || {};
+    const articles = await generateArticlesWithAi({
+      focusType,
+      university,
+      department,
+      forceHotTopic,
+      count,
+    });
 
     res.json({
       success: true,
-      articles: generatedArticles,
+      articles,
       botState,
-      timestamp: now.toISOString(),
+      timestamp: new Date().toISOString(),
     });
   } catch (err: any) {
     console.error('Error in /api/ai-news-bot/generate:', err);
@@ -250,16 +337,80 @@ Return ONLY a JSON array of objects with the exact schema:
   }
 });
 
-// Route 2: Bot Status & Rotation Schedule
+// Route 2: 24-Hour Automated Rotation Cycle Trigger
+app.post('/api/ai-news-bot/rotate', async (req, res) => {
+  try {
+    const now = new Date();
+    botState.cycleCount += 1;
+    botState.lastScanAt = now.toISOString();
+    botState.nextRotationAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+
+    // Pick 3 diverse institutions and departments for the new 24h cycle
+    const batchArticles: any[] = [];
+    const targetCount = 3;
+
+    // Pick randomized distinct universities
+    const shuffledUnis = [...UNIVERSITIES].sort(() => 0.5 - Math.random()).slice(0, targetCount);
+    const shuffledDepts = [...DEPARTMENTS].sort(() => 0.5 - Math.random()).slice(0, targetCount);
+
+    for (let i = 0; i < targetCount; i++) {
+      const generated = await generateArticlesWithAi({
+        university: shuffledUnis[i],
+        department: shuffledDepts[i],
+        forceHotTopic: i === 0, // Ensure at least 1 instant hot topic
+        focusType: 'Alumni special achievements, prize winnings, and international research',
+        count: 1,
+      });
+      batchArticles.push(...generated);
+    }
+
+    res.json({
+      success: true,
+      cycleCount: botState.cycleCount,
+      articles: batchArticles,
+      botState,
+      nextRotationAt: botState.nextRotationAt,
+      timestamp: now.toISOString(),
+    });
+  } catch (err: any) {
+    console.error('Error during 24h rotation cycle:', err);
+    res.status(500).json({ error: err.message || 'Failed to rotate news cycle' });
+  }
+});
+
+// Route 3: Bot Status & Rotation Schedule
 app.get('/api/ai-news-bot/status', (_req, res) => {
+  const isRotationDue = new Date().getTime() >= new Date(botState.nextRotationAt).getTime();
   res.json({
     ...botState,
     uptime: process.uptime(),
     rotationIntervalHours: 24,
     expirationDays: 10,
+    isRotationDue,
     timestamp: new Date().toISOString(),
   });
 });
+
+// Background 24-Hour Cycle Watcher (checks every 10 minutes)
+setInterval(async () => {
+  const now = Date.now();
+  const nextTime = new Date(botState.nextRotationAt).getTime();
+  if (now >= nextTime) {
+    console.log(`[AI News Bot] 24-hour cycle elapsed. Commencing Cycle #${botState.cycleCount + 1} rotation...`);
+    try {
+      botState.cycleCount += 1;
+      botState.lastScanAt = new Date().toISOString();
+      botState.nextRotationAt = new Date(now + 24 * 60 * 60 * 1000).toISOString();
+      await generateArticlesWithAi({
+        forceHotTopic: true,
+        count: 2,
+      });
+      console.log(`[AI News Bot] 24h rotation cycle #${botState.cycleCount} completed successfully.`);
+    } catch (err) {
+      console.warn('[AI News Bot] Automated background rotation encountered an error:', err);
+    }
+  }
+}, 10 * 60 * 1000);
 
 // Setup Vite middleware in dev or static files in production
 async function startServer() {

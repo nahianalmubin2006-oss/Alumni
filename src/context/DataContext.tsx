@@ -89,6 +89,7 @@ interface DataContextType {
   deleteNewsArticle: (id: string, reason?: string) => Promise<void>;
   makeNewsPermanent: (id: string, actor?: { uid: string; name: string; role: Role }) => Promise<void>;
   removeNewsPermanent: (id: string) => Promise<void>;
+  canUserManageArticle: (article: NewsArticle) => boolean;
   triggerAINewsBotScan: (options?: {
     focusType?: string;
     university?: string;
@@ -96,6 +97,7 @@ interface DataContextType {
     forceHotTopic?: boolean;
     count?: number;
   }) => Promise<NewsArticle[]>;
+  trigger24HourRotationCycle: () => Promise<NewsArticle[]>;
   cleanupExpiredNews: () => Promise<number>;
   botStatus: {
     active: boolean;
@@ -1289,6 +1291,115 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Permission helper: 3 types of admins can make news permanent or delete
+  const canUserManageArticle = (article: NewsArticle): boolean => {
+    if (isSuperAdmin || userProfile?.role === 'SUPER_ADMIN') return true;
+    if (!userProfile) return false;
+    if (userProfile.role === 'UNIVERSITY_ADMIN') {
+      const assignedUni = userProfile.assignedUniversity || userProfile.university;
+      return Boolean(
+        assignedUni &&
+          (!article.university || article.university.toLowerCase() === assignedUni.toLowerCase())
+      );
+    }
+    if (userProfile.role === 'DEPARTMENT_ADMIN') {
+      const assignedUni = userProfile.assignedUniversity || userProfile.university;
+      const assignedDept = userProfile.assignedDepartment || userProfile.department;
+      const uniMatch = Boolean(
+        assignedUni &&
+          (!article.university || article.university.toLowerCase() === assignedUni.toLowerCase())
+      );
+      const deptMatch = Boolean(
+        assignedDept &&
+          (!article.department || article.department.toLowerCase() === assignedDept.toLowerCase())
+      );
+      return uniMatch && deptMatch;
+    }
+    return false;
+  };
+
+  const trigger24HourRotationCycle = async (): Promise<NewsArticle[]> => {
+    try {
+      const resp = await fetch('/api/ai-news-bot/rotate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!resp.ok) {
+        throw new Error(`Rotation API status ${resp.status}`);
+      }
+      const data = await resp.json();
+      const articles = data.articles || [];
+      const savedArticles: NewsArticle[] = [];
+
+      for (const item of articles) {
+        const docRef = await addDoc(collection(db, 'news'), item);
+        savedArticles.push({ ...item, id: docRef.id });
+
+        if (item.isHotTopic) {
+          await logAudit(
+            'AI_HOT_TOPIC_DETECTED',
+            'NEWS',
+            docRef.id,
+            `🔥 [24h Cycle #${data.cycleCount}] Instant Hot Topic Flagged: "${item.title}" (${item.hotTopicReason || 'Milestone achievement'}). Added instantly to live wire.`,
+            {
+              severity: 'WARNING',
+              targetName: item.title,
+              metadata: {
+                university: item.university,
+                department: item.department,
+                hotTopicReason: item.hotTopicReason,
+                sourceUrl: item.sourceUrl,
+                cycleCount: data.cycleCount,
+              },
+            }
+          );
+        } else {
+          await logAudit(
+            'AI_NEWS_ROTATION_INDEXED',
+            'NEWS',
+            docRef.id,
+            `[24h Cycle #${data.cycleCount}] Rotating news story indexed: "${item.title}" for ${item.university} (${item.department}). 10-day retention countdown started.`,
+            {
+              severity: 'INFO',
+              targetName: item.title,
+              metadata: { cycleCount: data.cycleCount },
+            }
+          );
+        }
+      }
+
+      if (data.botState) {
+        setBotStatus((prev) => ({ ...prev, ...data.botState }));
+      }
+
+      await cleanupExpiredNews();
+      return savedArticles;
+    } catch (err) {
+      console.error('Error triggering 24h rotation cycle:', err);
+      throw err;
+    }
+  };
+
+  // Automated 24h Rotation and 10-day TTL cleanup monitor
+  useEffect(() => {
+    const checkRotation = async () => {
+      const nextTime = new Date(botStatus.nextRotationAt).getTime();
+      if (Date.now() >= nextTime) {
+        console.log('[DataContext] 24-hour cycle timer expired. Commencing automated rotation...');
+        try {
+          await trigger24HourRotationCycle();
+        } catch (e) {
+          console.warn('[DataContext] Rotation check caught error:', e);
+        }
+      }
+      cleanupExpiredNews().catch(() => {});
+    };
+
+    checkRotation();
+    const interval = setInterval(checkRotation, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [botStatus.nextRotationAt]);
+
   const deleteUser = async (userId: string, reason?: string) => {
     const targetUser = allUsers.find((u) => u.uid === userId || u.id === userId);
     const targetName = targetUser?.name || 'User';
@@ -1468,7 +1579,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteNewsArticle,
         makeNewsPermanent,
         removeNewsPermanent,
+        canUserManageArticle,
         triggerAINewsBotScan,
+        trigger24HourRotationCycle,
         cleanupExpiredNews,
         botStatus,
         deleteUser,

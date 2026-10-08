@@ -34,6 +34,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     makeNewsPermanent,
     removeNewsPermanent,
     triggerAINewsBotScan,
+    canUserManageArticle,
   } = useData();
   const { currentUser, userProfile, isSuperAdmin } = useAuth();
 
@@ -651,7 +652,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
                             </span>
                           )}
 
-                          {canMakePermanent && (
+                          {canUserManageArticle(n) && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();

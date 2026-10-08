@@ -47,6 +47,8 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
     removeNewsPermanent,
     deleteNewsArticle,
     triggerAINewsBotScan,
+    trigger24HourRotationCycle,
+    canUserManageArticle,
     cleanupExpiredNews,
     botStatus,
     universities,
@@ -220,6 +222,23 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
     }
   };
 
+  // Explicit 24-Hour Automated Cycle Rotation Trigger
+  const handleTrigger24hRotation = async () => {
+    try {
+      setIsScanning(true);
+      setBotFeedback(null);
+      const generated = await trigger24HourRotationCycle();
+      setBotFeedback(
+        `✓ AI Bot successfully rotated 24h cycle: Indexed ${generated.length} fresh intelligence stories across institutions.`
+      );
+    } catch (err: any) {
+      setBotFeedback(`Notice: ${err.message || 'Error executing 24h cycle rotation.'}`);
+    } finally {
+      setIsScanning(false);
+      setTimeout(() => setBotFeedback(null), 6000);
+    }
+  };
+
   // Run cleanup for expired temporary news (> 10 days old)
   const handleRunCleanup = async () => {
     try {
@@ -350,22 +369,32 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              onClick={handleTrigger24hRotation}
+              disabled={isScanning}
+              className="bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="Execute full 24-hour cycle rotation with randomized university & department sampling"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
+              <span>Rotate 24h Cycle (Cycle #{botStatus.cycleCount})</span>
+            </button>
+
             <button
               onClick={handleTriggerBotScan}
               disabled={isScanning}
-              className="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
-              title="Trigger web browsing scan and rotate 24h daily stories now"
+              className="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="Trigger web browsing scan for currently selected university/department"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
-              <span>{isScanning ? 'Scanning Live Web...' : 'Rotate 24h Wire / Scan Web'}</span>
+              <Bot className="w-3.5 h-3.5" />
+              <span>{isScanning ? 'Scanning Live Web...' : 'Scan Web Wire'}</span>
             </button>
 
             {canMakePermanent && (
               <button
                 onClick={handleRunCleanup}
                 disabled={isCleaning}
-                className="bg-white/10 hover:bg-white/20 text-slate-200 border border-white/20 font-bold text-xs px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="bg-white/10 hover:bg-white/20 text-slate-200 border border-white/20 font-bold text-xs px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 title="Run background routine to purge temporary stories exceeding 10-day TTL"
               >
                 <Clock className="w-3.5 h-3.5 text-amber-400" />
@@ -458,7 +487,7 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {canMakePermanent && (
+                    {canUserManageArticle(article) && (
                       <button
                         onClick={() => {
                           if (article.isPermanent) {
@@ -729,7 +758,7 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
 
                   {/* 3 Admin Types Action Buttons */}
                   <div className="flex items-center gap-1.5">
-                    {canMakePermanent && (
+                    {canUserManageArticle(article) && (
                       <>
                         <button
                           onClick={() => {

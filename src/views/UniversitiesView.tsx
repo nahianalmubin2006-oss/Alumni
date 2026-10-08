@@ -1,17 +1,25 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { ALL_DIRECTORY_UNIVERSITIES, universityInitials, demoSeed } from '../data/initialData';
+import { Flame, Award, ArrowRight, Bot, Sparkles } from 'lucide-react';
 
 interface UniversitiesViewProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
 }
 
 export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }) => {
-  const { universities } = useData();
+  const { universities, news } = useData();
 
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'All' | 'Public' | 'Private' | 'International'>('All');
   const [sortBy, setSortBy] = useState<'name' | 'type' | 'alumni'>('name');
+
+  // Highlights of hot topics or alumni prize winners across universities
+  const universityHighlights = useMemo(() => {
+    return news
+      .filter((n) => n.status === 'PUBLISHED' && (n.isHotTopic || n.alumniPrizeName))
+      .slice(0, 3);
+  }, [news]);
 
   // Merge full directory list with dynamic stored database universities
   const list = useMemo(() => {
@@ -64,6 +72,59 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
           {list.length} institutions shown
         </div>
       </div>
+
+      {/* University Alumni Live Wire & Breakthroughs Radar */}
+      {universityHighlights.length > 0 && (
+        <div className="mt-6 p-4 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <span className="p-1 bg-rose-500 text-white rounded-lg animate-pulse">
+                <Flame className="w-4 h-4" />
+              </span>
+              <span className="text-xs font-black uppercase tracking-wider text-rose-300">
+                Institutional Alumni Breakthroughs & Live Wire
+              </span>
+            </div>
+            <button
+              onClick={() => onNavigate('news')}
+              className="text-xs font-bold text-blue-300 hover:text-white transition flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+            >
+              <span>Explore Live News Room</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-3">
+            {universityHighlights.map((art) => (
+              <div
+                key={art.id}
+                onClick={() => onNavigate('newsDetail', { id: art.id })}
+                className="bg-white/10 hover:bg-white/15 transition p-3 rounded-xl cursor-pointer border border-white/10"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  {art.isHotTopic && (
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-500 text-white animate-pulse">
+                      Hot Topic
+                    </span>
+                  )}
+                  {art.university && (
+                    <span className="text-[10px] font-semibold text-blue-200 truncate">
+                      {art.university}
+                    </span>
+                  )}
+                </div>
+                <h4 className="text-xs font-bold text-white line-clamp-2">{art.title}</h4>
+                {art.alumniPrizeName && (
+                  <p className="text-[11px] text-amber-300 font-semibold mt-1 flex items-center gap-1">
+                    <Award className="w-3 h-3 text-amber-400 shrink-0" />
+                    <span className="truncate">{art.alumniPrizeName}</span>
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filter Card */}
       <div className="card p-5 mt-7">

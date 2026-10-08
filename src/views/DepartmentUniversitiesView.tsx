@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ALL_DIRECTORY_UNIVERSITIES, universityInitials, demoSeed } from '../data/initialData';
+import { useData } from '../context/DataContext';
+import { Bot, Flame, Award, Shield, Clock, RefreshCw, ExternalLink } from 'lucide-react';
 
 interface DepartmentUniversitiesViewProps {
   departmentName: string;
@@ -12,7 +14,43 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
   departmentGroup,
   onNavigate,
 }) => {
+  const { news, triggerAINewsBotScan } = useData();
   const [search, setSearch] = useState('');
+  const [isScanningDept, setIsScanningDept] = useState(false);
+
+  // Relevant news for this department across all universities
+  const deptNews = useMemo(() => {
+    return news
+      .filter(
+        (n) =>
+          n.department?.toLowerCase() === departmentName.toLowerCase() &&
+          n.status === 'PUBLISHED'
+      )
+      .sort((a, b) => {
+        if (a.isHotTopic && !b.isHotTopic) return -1;
+        if (!a.isHotTopic && b.isHotTopic) return 1;
+        return (
+          new Date(b.publishedAt || b.createdAt).getTime() -
+          new Date(a.publishedAt || a.createdAt).getTime()
+        );
+      });
+  }, [news, departmentName]);
+
+  const handleScanDeptWire = async () => {
+    try {
+      setIsScanningDept(true);
+      await triggerAINewsBotScan({
+        department: departmentName,
+        focusType: 'Alumni special achievements, prize winnings, research papers, grants',
+        forceHotTopic: true,
+        count: 2,
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsScanningDept(false);
+    }
+  };
 
   // Filter universities offering this department
   const list = useMemo(() => {
@@ -55,6 +93,114 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
           className="w-full border border-soft rounded-xl px-4 py-3 outline-none focus:border-blue-300 bg-white"
           placeholder="Filter university by name..."
         />
+      </div>
+
+      {/* Live Department Achievement & News Wire */}
+      <div className="card p-6 mt-7 shadow-lg bg-white border-soft">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-soft">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="p-1 bg-purple-100 text-purple-700 rounded-lg">
+                <Bot className="w-4 h-4 text-purple-700" />
+              </span>
+              <h2 className="text-lg font-black navy">
+                {departmentName} Alumni Live Wire & Breakthroughs
+              </h2>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Real-time achievements, prestigious awards, and scholarly breakthroughs across all universities offering this discipline.
+            </p>
+          </div>
+
+          <button
+            onClick={handleScanDeptWire}
+            disabled={isScanningDept}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 self-start sm:self-auto shrink-0 shadow-xs"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isScanningDept ? 'animate-spin' : ''}`} />
+            <span>{isScanningDept ? 'Scanning Web Wire...' : 'Scan Department AI Wire'}</span>
+          </button>
+        </div>
+
+        {deptNews.length === 0 ? (
+          <div className="py-8 text-center text-slate-400">
+            <Bot className="w-8 h-8 text-slate-300 mx-auto mb-1.5" />
+            <p className="text-xs font-semibold navy">No active wire stories for {departmentName} yet.</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Click "Scan Department AI Wire" to crawl scholarly databases and web publications.
+            </p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-3.5 mt-4">
+            {deptNews.slice(0, 4).map((item) => {
+              const daysLeft = item.expiresAt
+                ? Math.max(
+                    0,
+                    Math.ceil(
+                      (new Date(item.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                    )
+                  )
+                : null;
+
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => onNavigate('newsDetail', { id: item.id })}
+                  className={`p-4 rounded-xl border transition hover:shadow-md cursor-pointer ${
+                    item.isHotTopic
+                      ? 'border-rose-300 bg-rose-50/30'
+                      : 'border-soft bg-slate-50/50'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {item.isHotTopic && (
+                        <span className="flex items-center gap-1 text-[10px] font-black uppercase text-rose-700 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded-full animate-pulse">
+                          <Flame className="w-3 h-3 text-rose-600" />
+                          <span>HOT TOPIC</span>
+                        </span>
+                      )}
+
+                      {item.alumniPrizeName && (
+                        <span className="flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                          <Award className="w-3 h-3 text-amber-600" />
+                          <span className="truncate max-w-[160px]">{item.alumniPrizeName}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {item.isPermanent ? (
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                        <Shield className="w-2.5 h-2.5 text-emerald-600" />
+                        <span>Permanent</span>
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5 text-slate-400" />
+                        <span>{daysLeft}d left</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <h3 className="font-bold text-xs navy hover:text-blue-600 transition line-clamp-2">
+                    {item.title}
+                  </h3>
+
+                  {item.hotTopicReason && (
+                    <p className="text-[11px] text-rose-700 font-semibold mt-1">
+                      🔥 {item.hotTopicReason}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2.5 pt-2 border-t border-soft">
+                    <span>{item.university || 'Nationwide Institutions'}</span>
+                    <span className="text-blue-600 font-bold">Read story →</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
