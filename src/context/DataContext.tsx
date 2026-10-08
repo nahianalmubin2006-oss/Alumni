@@ -1456,6 +1456,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const saveUniversity = async (uni: Partial<University>) => {
     const trimmedName = (uni.name || '').trim();
     const id = uni.id || 'uni-' + encodeURIComponent(trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+    const existingUni = universities.find((u) => u.id === id);
     const fullUni: University = {
       id,
       name: trimmedName,
@@ -1465,7 +1466,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       location: uni.location ? String(uni.location).trim() : '',
       logoUrl: uni.logoUrl || getUniversityLogo(trimmedName),
       status: uni.status || 'Active',
-      verified: uni.verified ?? true,
+      verified: uni.verified ?? existingUni?.verified ?? false,
       alumniCount: uni.alumniCount ?? 0,
       studentCount: uni.studentCount ?? 0,
       followersCount: uni.followersCount ?? 0,
@@ -1514,6 +1515,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const uniName = (dept.university || '').trim();
     const deptName = (dept.name || '').trim();
     const id = dept.id || 'dept-' + encodeURIComponent((uniName + '-' + deptName).toLowerCase().replace(/[^a-z0-9]/g, '-'));
+    const existingDept = departments.find((d) => d.id === id);
     const fullDept: Department = {
       id,
       name: deptName,
@@ -1521,7 +1523,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       faculty: dept.faculty || dept.group || 'General',
       group: (dept.group || 'Engineering') as any,
       status: dept.status || 'Active',
-      verified: true,
+      verified: dept.verified ?? existingDept?.verified ?? false,
       alumniCount: dept.alumniCount ?? 0,
       studentCount: dept.studentCount ?? 0,
       employmentRate: dept.employmentRate ?? 0,
@@ -1603,6 +1605,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             name: dTrimmed,
             university: trimmedUni,
             group: 'Engineering',
+            verified: departments.some(
+              (d) =>
+                d.id === deptId &&
+                d.university.toLowerCase().trim() === trimmedUni.toLowerCase() &&
+                d.verified === true
+            ),
             alumniCount: 0,
             studentCount: 0,
             employmentRate: 0,
