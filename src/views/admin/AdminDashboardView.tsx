@@ -468,7 +468,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       )}
 
       {/* Top Header */}
-      <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40">
+      <header className="min-h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur px-3 sm:px-6 py-2 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-black text-white text-base shadow-sm">
             A
@@ -495,7 +495,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         </div>
 
         {/* Right header actions */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 whitespace-nowrap">
           <button
             onClick={onNavigatePublic}
             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-700/80 bg-slate-800/80 text-xs text-slate-300 hover:text-white hover:border-slate-600 transition"
@@ -522,7 +522,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       </header>
 
       {/* Main Body */}
-      <div className="flex-1 flex flex-col md:flex-row">
+      <div className="flex-1 flex flex-col md:flex-row min-h-0">
         {/* Sidebar */}
         <aside className="w-full md:w-64 border-b md:border-b-0 md:border-r border-slate-800 bg-slate-900/40 p-3 sm:p-4 space-y-1 shrink-0">
           <button
@@ -620,7 +620,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         </aside>
 
         {/* Content Pane */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+        <main className="flex-1 p-3 sm:p-6 lg:p-8 overflow-y-auto min-w-0">
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
@@ -635,7 +635,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               </div>
 
               {/* KPI Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
                 <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
                   <div className="text-xs text-slate-400 font-semibold">Total Registered Users</div>
                   <div className="text-3xl font-black text-white mt-2">{stats.totalUsers}</div>
@@ -742,7 +742,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               </div>
 
               {/* Filters */}
-              <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row gap-3 items-center justify-between">
+              <div className="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-2xl flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
                 <div className="w-full md:w-80 relative">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                   <input
