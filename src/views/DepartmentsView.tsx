@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 
 import { useData } from '../context/DataContext';
+import { RAW_DEPARTMENT_CATALOG } from '../data/initialData';
+import { VERIFIED_DEPARTMENT_SEEDS } from '../data/verifiedDepartments';
 import { Flame, Award, Bot, ArrowRight } from 'lucide-react';
 
 interface DepartmentsViewProps {
@@ -29,15 +31,69 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
       .slice(0, 3);
   }, [news]);
 
-  // Filter departments
+  // Master directory: always show the complete department taxonomy.
+  // Verified university offerings are merged from the source-backed catalog and live Firestore.
+  const directoryDepartments = useMemo(() => {
+    const merged = new Map<string, {
+      name: string;
+      group: typeof RAW_DEPARTMENT_CATALOG[number]['group'];
+      universities: Set<string>;
+      verified: boolean;
+    }>();
+
+    RAW_DEPARTMENT_CATALOG.forEach((d) => {
+      merged.set(d.name.toLowerCase(), {
+        name: d.name,
+        group: d.group,
+        universities: new Set(),
+        verified: false,
+      });
+    });
+
+    VERIFIED_DEPARTMENT_SEEDS.forEach((d) => {
+      const key = d.name.toLowerCase();
+      const existing = merged.get(key);
+      if (existing) {
+        existing.universities.add(d.university);
+        existing.verified = true;
+      } else {
+        merged.set(key, {
+          name: d.name,
+          group: d.group,
+          universities: new Set([d.university]),
+          verified: true,
+        });
+      }
+    });
+
+    departments.forEach((d) => {
+      if (d.verified !== true) return;
+      const key = d.name.toLowerCase();
+      const existing = merged.get(key);
+      if (existing) {
+        existing.universities.add(d.university);
+        existing.verified = true;
+      } else {
+        merged.set(key, {
+          name: d.name,
+          group: d.group,
+          universities: new Set([d.university]),
+          verified: true,
+        });
+      }
+    });
+
+    return Array.from(merged.values());
+  }, [departments]);
+
   const filtered = useMemo(() => {
-    return departments.filter((d) => d.verified === true).filter((d) => {
+    return directoryDepartments.filter((d) => {
       const matchesGroup = group === 'All' || d.group === group;
-      const hay = [d.name, d.group].join(' ').toLowerCase();
+      const hay = [d.name, d.group, ...Array.from(d.universities)].join(' ').toLowerCase();
       const matchesSearch = !search || hay.includes(search.trim().toLowerCase());
       return matchesGroup && matchesSearch;
     });
-  }, [departments, search, group]);
+  }, [directoryDepartments, search, group]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-5 py-7 sm:py-10">
@@ -141,7 +197,7 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
         {filtered.map((d) => {
           const meta = DEPARTMENT_GROUP_META[d.group] || { icon: '•' };
           // Number of universities offering this department
-          const uniCount = departments.filter((item) => item.name.toLowerCase() === d.name.toLowerCase()).length;
+          const uniCount = d.universities.size;
 
           return (
             <button
