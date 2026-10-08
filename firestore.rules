@@ -57,7 +57,7 @@ service cloud.firestore {
 
     // Users Collection
     match /users/{userId} {
-      allow read: if true;
+      allow read: if isSuperAdmin() || isOwner(userId);
       allow create: if isOwner(userId) && request.resource.data.uid == request.auth.uid;
       allow update: if isSuperAdmin() || (
         isOwner(userId) &&
@@ -131,7 +131,7 @@ service cloud.firestore {
 
     // Change Requests Collection
     match /changeRequests/{requestId} {
-      allow read: if true;
+      allow read: if isSuperAdmin() || (isSignedIn() && resource.data.requesterId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.requesterId == request.auth.uid;
       allow update: if isSuperAdmin() || (isSignedIn() && resource.data.requesterId == request.auth.uid);
       allow delete: if isSuperAdmin();
@@ -162,7 +162,7 @@ service cloud.firestore {
 
     // Admin Assignments Collection
     match /adminAssignments/{assignmentId} {
-      allow read: if true;
+      allow read: if isSuperAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow create, update, delete: if isSuperAdmin();
     }
 
