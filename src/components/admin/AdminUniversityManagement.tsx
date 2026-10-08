@@ -127,9 +127,7 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
   const [newUniLogoFile, setNewUniLogoFile] = useState<File | null>(null);
   const [newUniLogoPreview, setNewUniLogoPreview] = useState('');
   const [newUniOverview, setNewUniOverview] = useState('');
-  const [initialDeptsText, setInitialDeptsText] = useState(
-    'Computer Science & Engineering\nElectrical & Electronic Engineering\nBusiness Administration'
-  );
+  const [initialDeptsText, setInitialDeptsText] = useState('');
   const [createFeedback, setCreateFeedback] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isCreatingUni, setIsCreatingUni] = useState(false);
 
@@ -592,7 +590,7 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
             university: trimmedName,
             group: 'Engineering',
             status: 'Active',
-            verified: true,
+            verified: false,
             alumniCount: 0,
             studentCount: 0,
             employmentRate: 0,
