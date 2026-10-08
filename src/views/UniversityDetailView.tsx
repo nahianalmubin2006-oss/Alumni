@@ -70,45 +70,11 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
   const canMakePermanent = false;
 
   // Find university record or generate representation
-  const university: University = useMemo(() => {
-    const found = universities.find((u) => u.name.toLowerCase() === universityName.toLowerCase());
-    if (found) return found;
-
-    const inCatalog = ALL_DIRECTORY_UNIVERSITIES.find(
-      (u) => u.name.toLowerCase() === universityName.toLowerCase()
-    );
-    const uniType = inCatalog
-      ? inCatalog.type
-      : universityName.includes('Engineering') || universityName.includes('Dhaka')
-      ? 'Public'
-      : 'Private';
-
-    const seed = demoSeed('uni-' + universityName);
-    const isDU =
-      universityName.toLowerCase().includes('dhaka') &&
-      !universityName.toLowerCase().includes('engineering') &&
-      !universityName.toLowerCase().includes('international') &&
-      !universityName.toLowerCase().includes('central');
-
-    return {
-      id: 'uni-' + encodeURIComponent(universityName.toLowerCase().replace(/[^a-z0-9]/g, '-')),
-      name: universityName,
-      type: uniType as any,
-      location: isDU ? 'Nilkhet Rd, Dhaka 1000, Bangladesh' : 'Dhaka, Bangladesh',
-      logoUrl: getUniversityLogo(universityName),
-      verified: true,
-      alumniCount: isDU ? 8920 : 2840 + (seed % 3500),
-      studentCount: isDU ? 37500 : 3500 + (seed % 15000),
-      followersCount: isDU ? 14200 : 1200 + (seed % 6000),
-      departmentCount: isDU ? 84 : 36 + (seed % 28),
-      employmentRate: isDU ? 89 : 78 + (seed % 18),
-      higherStudiesRate: isDU ? 18 : 10 + (seed % 14),
-      countriesCount: isDU ? 52 : 22 + (seed % 20),
-      companiesCount: isDU ? 850 : 420 + (seed % 400),
-      overview: isDU
-        ? 'University of Dhaka (DU), founded in 1921, is Bangladesh’s flagship public research university. Celebrated historically as the Oxford of the East, it is the intellectual cornerstone of the nation.'
-        : `${universityName} is a prestigious center of higher learning dedicated to academic excellence, innovative student research, and high-impact industry collaboration.`,
-      website: isDU ? 'https://du.ac.bd' : 'https://ugc.gov.bd',
+  const university = useMemo(() => {
+    return universities.find((u) => u.name.toLowerCase() === universityName.toLowerCase()) || {
+      id: '', name: universityName, type: 'Public' as const, location: '', verified: false,
+      alumniCount: 0, studentCount: 0, followersCount: 0, departmentCount: 0,
+      employmentRate: 0, higherStudiesRate: 0, countriesCount: 0, companiesCount: 0,
     };
   }, [universities, universityName]);
 
@@ -122,8 +88,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     const fromDb = departments
       .filter((d) => d.university.toLowerCase() === universityName.toLowerCase())
       .map((d) => d.name);
-    const catalog = RAW_DEPARTMENT_CATALOG.map((d) => d.name);
-    return Array.from(new Set([...fromDb, ...catalog]));
+    return Array.from(new Set(fromDb.filter((d) => d.verified !== false).map((d) => d.name)));
   }, [departments, universityName]);
 
   // Related news with department filtering & hot topic prioritization
@@ -331,17 +296,17 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
             <div className="flex flex-wrap items-center gap-2.5 mt-5 pt-4 border-t border-white/10">
               <div className="hero-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-blue-300" />
-                <span>{university.alumniCount?.toLocaleString() || '2,840'} Registered Alumni</span>
+                <span>{university.alumniCount?.toLocaleString() || '0'} Registered Alumni</span>
               </div>
 
               <div className="hero-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5 text-indigo-300" />
-                <span>{university.departmentCount || 48} Academic Departments</span>
+                <span>{university.departmentCount || departments.filter((d) => d.university.toLowerCase() === university.name.toLowerCase()).length} Academic Departments</span>
               </div>
 
               <div className="hero-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5">
                 <Globe className="w-3.5 h-3.5 text-emerald-300" />
-                <span>{university.countriesCount || 28} Destination Countries</span>
+                <span>{university.countriesCount || 0} Destination Countries</span>
               </div>
 
               {university.website && (
@@ -368,7 +333,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
             <Heart className="w-4 h-4 text-rose-500" />
           </div>
           <b className="text-2xl sm:text-3xl font-black text-rose-600">
-            {university.followersCount?.toLocaleString() || '14,200'}
+            {university.followersCount?.toLocaleString() || '0'}
           </b>
           <p className="text-[11px] text-slate-400 mt-1">Community members</p>
         </div>
@@ -379,7 +344,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
             <Users className="w-4 h-4 text-blue-500" />
           </div>
           <b className="text-2xl sm:text-3xl font-black text-[#0b1f3a]">
-            {university.alumniCount?.toLocaleString() || '8,920'}
+            {university.alumniCount?.toLocaleString() || '0'}
           </b>
           <p className="text-[11px] text-slate-400 mt-1">Graduated alumni</p>
         </div>
@@ -390,7 +355,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
             <GraduationCap className="w-4 h-4 text-indigo-500" />
           </div>
           <b className="text-2xl sm:text-3xl font-black text-indigo-600">
-            {university.studentCount?.toLocaleString() || '37,500'}
+            {university.studentCount?.toLocaleString() || '0'}
           </b>
           <p className="text-[11px] text-slate-400 mt-1">Current study body</p>
         </div>
@@ -401,7 +366,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
             <Briefcase className="w-4 h-4 text-emerald-500" />
           </div>
           <b className="text-2xl sm:text-3xl font-black text-emerald-600">
-            {university.employmentRate || 84}%
+            {university.employmentRate ? `${university.employmentRate}%` : '—'}
           </b>
           <p className="text-[11px] text-emerald-700 font-medium mt-1">Industry placement</p>
         </div>
@@ -412,7 +377,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
             <Globe className="w-4 h-4 text-cyan-500" />
           </div>
           <b className="text-2xl sm:text-3xl font-black text-[#0b1f3a]">
-            {university.countriesCount || 28}
+            {university.countriesCount || 0}
           </b>
           <p className="text-[11px] text-slate-400 mt-1">Host nations worldwide</p>
         </div>
@@ -556,7 +521,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
 
       {activeTab === 'departments' && (
         <div className="mt-6 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {RAW_DEPARTMENT_CATALOG.slice(0, 15).map((dept) => (
+          {departments.filter((d) => d.university.toLowerCase() === university.name.toLowerCase() && d.verified !== false).map((dept) => (
             <button
               key={dept.name}
               onClick={() =>
