@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 
 import { useData } from '../context/DataContext';
-import { RAW_DEPARTMENT_CATALOG } from '../data/initialData';
 import { VERIFIED_DEPARTMENT_SEEDS } from '../data/verifiedDepartments';
 import { Flame, Award, Bot, ArrowRight } from 'lucide-react';
 
@@ -38,19 +37,10 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
   const directoryDepartments = useMemo(() => {
     const merged = new Map<string, {
       name: string;
-      group: typeof RAW_DEPARTMENT_CATALOG[number]['group'];
+      group: 'Engineering' | 'Science' | 'Business' | 'Arts' | 'Law' | 'Health' | 'Agriculture';
       universities: Set<string>;
       verified: boolean;
     }>();
-
-    RAW_DEPARTMENT_CATALOG.forEach((d) => {
-      merged.set(normalizeDepartmentName(d.name), {
-        name: d.name,
-        group: d.group,
-        universities: new Set(),
-        verified: false,
-      });
-    });
 
     VERIFIED_DEPARTMENT_SEEDS.forEach((d) => {
       const key = normalizeDepartmentName(d.name);
@@ -85,7 +75,7 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
       }
     });
 
-    return Array.from(merged.values());
+    return Array.from(merged.values()).filter((d) => d.verified);
   }, [departments]);
 
   const filtered = useMemo(() => {
