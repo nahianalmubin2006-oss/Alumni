@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getUniversityLogo, universityInitials } from '../data/initialData';
 
 interface UniversityLogoProps {
@@ -17,6 +17,16 @@ export const UniversityLogo: React.FC<UniversityLogoProps> = ({
   showInitialsFallback = true,
 }) => {
   const [hasError, setHasError] = useState(false);
+  const [, setCustomVersion] = useState(0);
+
+  useEffect(() => {
+    const handler = () => {
+      setHasError(false);
+      setCustomVersion((v) => v + 1);
+    };
+    window.addEventListener('alumni-custom-logos-changed', handler);
+    return () => window.removeEventListener('alumni-custom-logos-changed', handler);
+  }, []);
 
   // Determine logo source
   const src = !hasError ? (logoUrl || getUniversityLogo(name)) : undefined;

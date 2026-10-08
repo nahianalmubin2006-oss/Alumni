@@ -41,6 +41,7 @@ import {
   INITIAL_PLATFORM_SETTINGS,
   INITIAL_POSTS,
   getUniversityLogo,
+  setCustomLogo,
 } from '../data/initialData';
 import { VERIFIED_DEPARTMENT_SEEDS } from '../data/verifiedDepartments';
 
@@ -125,7 +126,10 @@ interface DataContextType {
   removeAdminAssignment: (id: string) => Promise<void>;
 
   saveUniversity: (uni: Partial<University>) => Promise<void>;
+  updateUniversityLogo: (uniIdOrName: string, logoUrl: string) => Promise<void>;
   saveDepartment: (dept: Partial<Department>) => Promise<void>;
+  updateUniversityDepartments: (uniName: string, deptNames: string[]) => Promise<void>;
+  deleteDepartment: (deptId: string) => Promise<void>;
 
   markNotificationRead: (id: string) => Promise<void>;
   clearNotifications: () => Promise<void>;
@@ -254,13 +258,47 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Set up real-time listeners for public Firestore collections
   useEffect(() => {
+    // Hydrate server custom universities & logos
+    fetch('/api/universities/custom')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        if (data.logos) {
+          for (const [k, v] of Object.entries(data.logos)) {
+            setCustomLogo(k, v as string);
+          }
+        }
+        if (Array.isArray(data.customUniversities) && data.customUniversities.length > 0) {
+          setUniversities((prev) => {
+            const map = new Map<string, University>();
+            for (const u of prev) map.set(u.id, u);
+            for (const cu of data.customUniversities) {
+              map.set(cu.id, {
+                id: cu.id,
+                name: cu.name,
+                type: cu.type || 'Public',
+                location: cu.location || '',
+                logoUrl: cu.logoUrl || '',
+                website: cu.website || '',
+                alumniCount: 0,
+                departmentCount: cu.departments?.length || 0,
+                employmentRate: 0,
+                overview: cu.description || '',
+              });
+            }
+            return Array.from(map.values());
+          });
+        }
+      })
+      .catch(() => {});
+
     const unsubUniversities = onSnapshot(
       collection(db, 'universities'),
       (snap) => {
         const list: University[] = [];
         snap.forEach((d) => list.push(d.data() as University));
-        setUniversities(list);))
-          );
+        if (list.length > 0) {
+          setUniversities(list);
         }
       },
       (error) => {
@@ -273,8 +311,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       (snap) => {
         const list: Department[] = [];
         snap.forEach((d) => list.push(d.data() as Department));
-        setDepartments(list);))
-          );
+        if (list.length > 0) {
+          setDepartments(list);
         }
       },
       (error) => {
@@ -1417,6 +1455,115 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await logAudit('DEPARTMENT_SAVED', 'DEPARTMENT', id, `Saved department ${dept.name}`);
   };
 
+  const updateUniversityLogo = async (uniIdOrName: string, logoUrl: string) => {
+    const trimmedUrl = logoUrl.trim();
+    setCustomLogo(uniIdOrName, trimmedUrl);
+
+    const found = universities.find(
+      (u) => u.id === uniIdOrName || u.name.toLowerCase() === uniIdOrName.toLowerCase()
+    );
+    const id = found?.id || 'uni-' + encodeURIComponent(uniIdOrName.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+    const name = found?.name || uniIdOrName;
+
+    try {
+      await setDoc(
+        doc(db, 'universities', id),
+        {
+          id,
+          name,
+          logoUrl: trimmedUrl,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    } catch (e) {
+      console.warn('Firestore university logo update warning:', e);
+    }
+
+    try {
+      await fetch(`/api/admin/universities/${encodeURIComponent(id)}/logo`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logoUrl: trimmedUrl, universityName: name }),
+      });
+    } catch (e) {}
+
+    setUniversities((prev) =>
+      prev.map((u) => (u.id === id || u.name.toLowerCase() === name.toLowerCase() ? { ...u, logoUrl: trimmedUrl } : u))
+    );
+
+    await logAudit('UNIVERSITY_LOGO_UPDATED', 'UNIVERSITY', id, `Updated logo for ${name}`);
+  };
+
+  const updateUniversityDepartments = async (uniName: string, deptNames: string[]) => {
+    const trimmedUni = uniName.trim();
+    for (const dName of deptNames) {
+      const dTrimmed = dName.trim();
+      if (!dTrimmed) continue;
+      const deptId = 'dept-' + encodeURIComponent((trimmedUni + '-' + dTrimmed).toLowerCase().replace(/[^a-z0-9]/g, '-'));
+      try {
+        await setDoc(
+          doc(db, 'departments', deptId),
+          {
+            id: deptId,
+            name: dTrimmed,
+            university: trimmedUni,
+            group: 'Engineering',
+            alumniCount: 0,
+            studentCount: 0,
+            employmentRate: 0,
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
+      } catch (e) {}
+    }
+
+    try {
+      const uniId = 'uni-' + encodeURIComponent(trimmedUni.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+      await fetch(`/api/admin/universities/${encodeURIComponent(uniId)}/departments`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ departments: deptNames, universityName: trimmedUni }),
+      });
+    } catch (e) {}
+
+    setDepartments((prev) => {
+      const others = prev.filter((d) => d.university.toLowerCase() !== trimmedUni.toLowerCase());
+      const newEntries: Department[] = deptNames.map((dName) => {
+        const existing = prev.find(
+          (d) => d.university.toLowerCase() === trimmedUni.toLowerCase() && d.name.toLowerCase() === dName.toLowerCase()
+        );
+        return existing || {
+          id: 'dept-' + encodeURIComponent((trimmedUni + '-' + dName).toLowerCase().replace(/[^a-z0-9]/g, '-')),
+          name: dName.trim(),
+          university: trimmedUni,
+          group: 'Engineering',
+          alumniCount: 0,
+          employmentRate: 0,
+        };
+      });
+      return [...others, ...newEntries];
+    });
+
+    await logAudit(
+      'UNIVERSITY_DEPARTMENTS_UPDATED',
+      'UNIVERSITY',
+      trimmedUni,
+      `Updated department catalogue for ${trimmedUni} (${deptNames.length} departments)`
+    );
+  };
+
+  const deleteDepartment = async (deptId: string) => {
+    try {
+      await deleteDoc(doc(db, 'departments', deptId));
+    } catch (e) {
+      console.warn('Firestore delete doc warning:', e);
+    }
+    setDepartments((prev) => prev.filter((d) => d.id !== deptId));
+    await logAudit('DEPARTMENT_DELETED', 'DEPARTMENT', deptId, `Deleted department ${deptId}`);
+  };
+
   const markNotificationRead = async (id: string) => {
     await updateDoc(doc(db, 'notifications', id), { read: true });
   };
@@ -1605,7 +1752,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         assignAdmin,
         removeAdminAssignment,
         saveUniversity,
+        updateUniversityLogo,
         saveDepartment,
+        updateUniversityDepartments,
+        deleteDepartment,
         markNotificationRead,
         clearNotifications,
         logAudit,

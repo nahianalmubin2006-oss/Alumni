@@ -482,5 +482,11 @@ export function universityInitials(name: string): string {
   return name.split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
-export { getUniversityLogo, UNIVERSITY_LOGO_MAP } from './universityLogos';
+export {
+  getUniversityLogo,
+  UNIVERSITY_LOGO_MAP,
+  getCustomLogoMap,
+  setCustomLogo,
+  removeCustomLogo,
+} from './universityLogos';
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAdmin } from '../../context/AdminContext';
+import { AdminUniversityManagement } from '../../components/admin/AdminUniversityManagement';
 import {
   Shield,
   Users,
@@ -64,7 +65,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
   // Active Admin Sidebar Tab
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'users' | 'approvals' | 'news' | 'audit' | 'settings'
+    'overview' | 'users' | 'universities' | 'approvals' | 'news' | 'audit' | 'settings'
   >('overview');
 
   // Stats
@@ -557,6 +558,23 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveTab('universities')}
+            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition ${
+              activeTab === 'universities'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Building2 className="w-4 h-4" />
+              <span>Universities & Logos</span>
+            </div>
+            <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.5 rounded-md font-bold">
+              Director
+            </span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('approvals')}
             className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition ${
               activeTab === 'approvals'
@@ -904,6 +922,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 )}
               </div>
             </div>
+          )}
+
+          {/* TAB: UNIVERSITIES & DEPARTMENT MANAGEMENT */}
+          {activeTab === 'universities' && (
+            <AdminUniversityManagement />
           )}
 
           {/* TAB 3: APPROVALS & VERIFICATIONS */}

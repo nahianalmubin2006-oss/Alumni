@@ -4,6 +4,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithPopup,
   signOut,
   updateProfile,
@@ -55,6 +56,7 @@ interface AuthContextType {
   registerUser: (data: RegisterUserData) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  resetPasswordWithEmail: (email: string) => Promise<void>;
   updateProfileData: (data: Partial<UserProfile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -62,14 +64,17 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Super admin email constants
-export const SUPER_ADMIN_EMAILS = ['nahianalmubin2006@gmail.com'];
+export const SUPER_ADMIN_EMAILS = [
+  'nahianalmubin2006@gmail.com',
+  'nahianalmubin212528@gmail.com',
+];
 
 export const isSuperAdminEmail = (email?: string | null): boolean => {
   if (!email) return false;
   return SUPER_ADMIN_EMAILS.some((adminEmail) => adminEmail.toLowerCase() === email.toLowerCase());
 };
 
-export const SUPER_ADMIN_EMAIL = 'nahianalmubin2006@gmail.com';
+export const SUPER_ADMIN_EMAIL = 'nahianalmubin212528@gmail.com';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -321,6 +326,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSimulatedRole(null);
   };
 
+  const resetPasswordWithEmail = async (email: string) => {
+    await sendPasswordResetEmail(auth, email.trim());
+  };
+
   const updateProfileData = async (data: Partial<UserProfile>) => {
     if (!currentUser || !userProfile) return;
     const userDocRef = doc(db, 'users', currentUser.uid);
@@ -360,6 +369,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         registerUser,
         loginWithGoogle,
         logout,
+        resetPasswordWithEmail,
         updateProfileData,
         refreshProfile,
       }}

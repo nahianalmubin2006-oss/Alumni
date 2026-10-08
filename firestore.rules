@@ -20,7 +20,8 @@ service cloud.firestore {
     function isSuperAdmin() {
       return (
         (isSignedIn() && (
-          request.auth.token.email == 'nahianalmubin2006@gmail.com'
+          request.auth.token.email == 'nahianalmubin2006@gmail.com' ||
+          request.auth.token.email == 'nahianalmubin212528@gmail.com'
         )) ||
         (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPER_ADMIN')
@@ -70,16 +71,14 @@ service cloud.firestore {
     // Universities Collection (Public Directory, Admin Managed)
     match /universities/{universityId} {
       allow read: if true;
-      allow create: if isSuperAdmin();
-      allow update: if isSuperAdmin() || (isSignedIn() && getUserData().role == 'UNIVERSITY_ADMIN');
+      allow create, update: if isSuperAdmin() || isSignedIn();
       allow delete: if isSuperAdmin();
     }
 
     // Departments Collection (Public Directory, Admin Managed)
     match /departments/{departmentId} {
       allow read: if true;
-      allow create: if isSuperAdmin() || (isSignedIn() && getUserData().role == 'UNIVERSITY_ADMIN');
-      allow update: if isSuperAdmin() || (isSignedIn() && (getUserData().role == 'UNIVERSITY_ADMIN' || getUserData().role == 'DEPARTMENT_ADMIN'));
+      allow create, update: if isSuperAdmin() || isSignedIn();
       allow delete: if isSuperAdmin();
     }
 

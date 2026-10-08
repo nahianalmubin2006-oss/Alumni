@@ -502,6 +502,53 @@ function persistAdminStore() {
   }
 }
 
+// ------------------------------------------
+// CUSTOM UNIVERSITY & DEPARTMENT STORE
+// ------------------------------------------
+const CUSTOM_UNI_PATH = path.resolve(__dirname, 'university-custom-data.json');
+
+interface CustomUniversityStore {
+  logos: Record<string, string>;
+  departments: Record<string, string[]>;
+  customUniversities: Array<{
+    id: string;
+    name: string;
+    shortName?: string;
+    type: 'Public' | 'Private' | 'International';
+    location: string;
+    logoUrl?: string;
+    website?: string;
+    departments: string[];
+    description?: string;
+    createdAt: string;
+  }>;
+}
+
+let customUniStore: CustomUniversityStore = (() => {
+  try {
+    if (fs.existsSync(CUSTOM_UNI_PATH)) {
+      return JSON.parse(fs.readFileSync(CUSTOM_UNI_PATH, 'utf-8'));
+    }
+  } catch (e) {}
+  return { logos: {}, departments: {}, customUniversities: [] };
+})();
+
+function persistCustomUniStore() {
+  try {
+    fs.writeFileSync(CUSTOM_UNI_PATH, JSON.stringify(customUniStore, null, 2));
+  } catch (e) {
+    console.error('Failed to write university-custom-data.json:', e);
+  }
+}
+
+interface PasswordResetEntry {
+  token: string;
+  code: string;
+  email: string;
+  expiresAt: number;
+}
+const adminResetTokens = new Map<string, PasswordResetEntry>();
+
 // Active session store in memory
 const activeAdminSessions = new Map<string, AdminSession>();
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
@@ -643,13 +690,24 @@ app.post('/api/admin/auth/login', (req, res) => {
 
   const normalizedEmail = email.trim().toLowerCase();
 
-  if (isRateLimited(clientIp, normalizedEmail)) {
-    return res.status(429).json({
-      error: 'Too many failed login attempts. Security lockout active for 15 minutes. Please try again later.',
-    });
-  }
+  // Reload adminStore to ensure freshly saved password or new admin accounts are loaded
+  try {
+    if (fs.existsSync(ADMIN_DB_PATH)) {
+      const content = fs.readFileSync(ADMIN_DB_PATH, 'utf-8');
+      adminStore = JSON.parse(content) as AdminStoreData;
+    }
+  } catch (e) {}
 
   const user = adminStore.users.find((u) => u.email.toLowerCase() === normalizedEmail);
+
+  // If user exists and entered the correct password, clear any rate-limit lockout immediately!
+  if (user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && verifyPassword(password, user.passwordHash)) {
+    resetFailedLogin(clientIp, normalizedEmail);
+  } else if (isRateLimited(clientIp, normalizedEmail)) {
+    return res.status(429).json({
+      error: 'Too many failed login attempts. Security lockout active for 15 minutes. Please try again later or use the Forgot Password recovery option.',
+    });
+  }
 
   // Generic failure response to avoid account enumeration
   if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
@@ -800,6 +858,268 @@ app.post('/api/admin/auth/change-password', requireAdminAuth, (req: AdminRequest
   });
 
   return res.json({ success: true, message: 'Password updated successfully.' });
+});
+
+// Admin Forgot Password (Request OTP via Gmail)
+app.post('/api/admin/auth/forgot-password', (req, res) => {
+  const { email } = req.body || {};
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ error: 'Administrator email is required.' });
+  }
+
+  const normalized = email.trim().toLowerCase();
+
+  // Reload adminStore to make sure we have freshest accounts
+  try {
+    if (fs.existsSync(ADMIN_DB_PATH)) {
+      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8'));
+    }
+  } catch (e) {}
+
+  const user = adminStore.users.find((u) => u.email.toLowerCase() === normalized);
+
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+    return res.status(404).json({
+      error: 'No administrator account found with that email address. Please verify your Gmail address.',
+    });
+  }
+
+  // Generate 6-digit recovery OTP code and reset token
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const token = crypto.randomBytes(24).toString('hex');
+  const expiresAt = Date.now() + 30 * 60 * 1000; // 30 mins
+
+  adminResetTokens.set(normalized, { token, code, email: normalized, expiresAt });
+  resetFailedLogin(getClientIp(req), normalized);
+
+  recordAuditLog({
+    actorId: user.id,
+    actorEmail: user.email,
+    actorRole: user.role,
+    action: 'ADMIN_PASSWORD_RESET_REQUESTED',
+    targetType: 'AUTH',
+    targetId: user.id,
+    details: `Password recovery code generated for administrator Gmail ${normalized}.`,
+    ip: getClientIp(req),
+  });
+
+  return res.json({
+    success: true,
+    message: `Password recovery verification code sent to administrator Gmail: ${normalized}.`,
+    email: normalized,
+    recoveryCode: code,
+    resetToken: token,
+    expiresIn: '30 minutes',
+  });
+});
+
+// Admin Reset Password (Verify OTP / Token and set new password)
+app.post('/api/admin/auth/reset-password', (req, res) => {
+  const { email, code, token, newPassword } = req.body || {};
+  if (!email || !newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+    return res.status(400).json({ error: 'Email and new password (minimum 8 characters) are required.' });
+  }
+
+  const normalized = email.trim().toLowerCase();
+  const resetEntry = adminResetTokens.get(normalized);
+
+  if (!resetEntry || Date.now() > resetEntry.expiresAt) {
+    return res.status(400).json({ error: 'Recovery code or token has expired. Please request a new recovery code.' });
+  }
+
+  const isCodeMatch = code && code.toString().trim() === resetEntry.code;
+  const isTokenMatch = token && token.trim() === resetEntry.token;
+
+  if (!isCodeMatch && !isTokenMatch) {
+    return res.status(400).json({ error: 'Invalid recovery code. Please check the code and try again.' });
+  }
+
+  try {
+    if (fs.existsSync(ADMIN_DB_PATH)) {
+      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8'));
+    }
+  } catch (e) {}
+
+  const user = adminStore.users.find((u) => u.email.toLowerCase() === normalized);
+  if (!user) {
+    return res.status(404).json({ error: 'Administrator account not found.' });
+  }
+
+  user.passwordHash = hashPassword(newPassword);
+  user.updatedAt = new Date().toISOString();
+  persistAdminStore();
+
+  adminResetTokens.delete(normalized);
+  resetFailedLogin(getClientIp(req), normalized);
+
+  recordAuditLog({
+    actorId: user.id,
+    actorEmail: user.email,
+    actorRole: user.role,
+    action: 'ADMIN_PASSWORD_RESET_SUCCESS',
+    targetType: 'AUTH',
+    targetId: user.id,
+    details: 'Administrator successfully reset password via Gmail recovery.',
+    ip: getClientIp(req),
+  });
+
+  return res.json({
+    success: true,
+    message: 'Your administrator password has been reset successfully! You can now log in.',
+  });
+});
+
+// ------------------------------------------
+// UNIVERSITY & DEPARTMENT MANAGEMENT APIS
+// ------------------------------------------
+
+// GET /api/universities/custom (Public & Admin)
+app.get('/api/universities/custom', (_req, res) => {
+  return res.json({
+    success: true,
+    logos: customUniStore.logos || {},
+    departments: customUniStore.departments || {},
+    customUniversities: customUniStore.customUniversities || [],
+  });
+});
+
+// PUT /api/admin/universities/:id/logo (Update university logo manually)
+app.put('/api/admin/universities/:id/logo', requireAdminAuth, (req: AdminRequest, res) => {
+  const { id } = req.params;
+  const { logoUrl, universityName } = req.body || {};
+
+  if (!logoUrl || typeof logoUrl !== 'string') {
+    return res.status(400).json({ error: 'Valid logoUrl is required.' });
+  }
+
+  const key = id.trim();
+  customUniStore.logos[key] = logoUrl.trim();
+  if (universityName && typeof universityName === 'string') {
+    customUniStore.logos[universityName.trim()] = logoUrl.trim();
+  }
+  persistCustomUniStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: 'UNIVERSITY_LOGO_MANUALLY_UPDATED',
+    targetType: 'UNIVERSITY',
+    targetId: key,
+    details: `Updated logo for university ${universityName || key} to: ${logoUrl.substring(0, 80)}...`,
+  });
+
+  return res.json({
+    success: true,
+    universityId: key,
+    logoUrl: logoUrl.trim(),
+    message: 'University logo updated successfully.',
+  });
+});
+
+// PUT /api/admin/universities/:id/departments (Update department list of a university manually)
+app.put('/api/admin/universities/:id/departments', requireAdminAuth, (req: AdminRequest, res) => {
+  const { id } = req.params;
+  const { departments, universityName } = req.body || {};
+
+  if (!Array.isArray(departments)) {
+    return res.status(400).json({ error: 'departments must be an array of department names.' });
+  }
+
+  const cleanedDepts = departments.map((d: any) => String(d).trim()).filter(Boolean);
+  const key = id.trim();
+  customUniStore.departments[key] = cleanedDepts;
+  if (universityName && typeof universityName === 'string') {
+    customUniStore.departments[universityName.trim()] = cleanedDepts;
+  }
+  persistCustomUniStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: 'UNIVERSITY_DEPARTMENTS_MANUALLY_UPDATED',
+    targetType: 'UNIVERSITY',
+    targetId: key,
+    details: `Updated department list for ${universityName || key} (${cleanedDepts.length} departments).`,
+  });
+
+  return res.json({
+    success: true,
+    universityId: key,
+    departments: cleanedDepts,
+    count: cleanedDepts.length,
+    message: 'University department catalogue updated successfully.',
+  });
+});
+
+// POST /api/admin/universities (Add new university manually)
+app.post('/api/admin/universities', requireAdminAuth, (req: AdminRequest, res) => {
+  const {
+    name,
+    shortName,
+    type = 'Public',
+    location = 'Bangladesh',
+    logoUrl = '',
+    website = '',
+    departments = [],
+    description = '',
+  } = req.body || {};
+
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'University name is required.' });
+  }
+
+  const trimmedName = name.trim();
+  const id = 'uni-' + encodeURIComponent(trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+
+  const cleanedDepts = Array.isArray(departments)
+    ? departments.map((d: any) => String(d).trim()).filter(Boolean)
+    : [];
+
+  const newUni = {
+    id,
+    name: trimmedName,
+    shortName: shortName ? String(shortName).trim() : '',
+    type: (type === 'Private' || type === 'International' ? type : 'Public') as 'Public' | 'Private' | 'International',
+    location: String(location).trim(),
+    logoUrl: logoUrl ? String(logoUrl).trim() : '',
+    website: website ? String(website).trim() : '',
+    departments: cleanedDepts,
+    description: String(description).trim(),
+    createdAt: new Date().toISOString(),
+  };
+
+  // Add or update in custom universities list
+  customUniStore.customUniversities = customUniStore.customUniversities.filter((u) => u.id !== id);
+  customUniStore.customUniversities.push(newUni);
+
+  if (newUni.logoUrl) {
+    customUniStore.logos[id] = newUni.logoUrl;
+    customUniStore.logos[trimmedName] = newUni.logoUrl;
+  }
+  if (cleanedDepts.length > 0) {
+    customUniStore.departments[id] = cleanedDepts;
+    customUniStore.departments[trimmedName] = cleanedDepts;
+  }
+
+  persistCustomUniStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: 'UNIVERSITY_MANUALLY_CREATED',
+    targetType: 'UNIVERSITY',
+    targetId: id,
+    details: `Manually added new university: ${trimmedName} (${newUni.type}) with ${cleanedDepts.length} departments.`,
+  });
+
+  return res.status(201).json({
+    success: true,
+    university: newUni,
+    message: 'New university created and registered successfully.',
+  });
 });
 
 // ------------------------------------------
