@@ -73,9 +73,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email: auth.currentUser.email,
-            uid: auth.currentUser.uid,
-            name: auth.currentUser.displayName || 'Nahian Al Mubin',
+            idToken: await auth.currentUser.getIdToken(),
           }),
         });
         if (exchangeRes.ok) {
@@ -153,9 +151,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                email: fbUser.email,
-                uid: fbUser.uid,
-                name: fbUser.displayName || 'Nahian Al Mubin',
+                idToken: await fbUser.getIdToken(),
               }),
             });
             if (exchangeRes.ok) {
@@ -216,9 +212,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email: trimmedEmail,
-            uid: fbUserCred.user.uid,
-            name: fbUserCred.user.displayName || 'Nahian Al Mubin',
+            idToken: await fbUserCred.user.getIdToken(),
           }),
         });
 
@@ -235,23 +229,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         }
 
-        if (isSuper) {
-          const fallbackUser: AdminSessionUser = {
-            id: fbUserCred.user.uid,
-            email: trimmedEmail,
-            name: fbUserCred.user.displayName || 'Nahian Al Mubin',
-            role: 'SUPER_ADMIN',
-            status: 'APPROVED',
-          };
-          const fallbackToken = 'fb-admin-' + fbUserCred.user.uid + '-' + Date.now();
-          sessionStorage.setItem(TOKEN_STORAGE_KEY, fallbackToken);
-          setAdminToken(fallbackToken);
-          setAdminUser(fallbackUser);
-          setAuthError(null);
-          setAuthChecked(true);
-          setLoading(false);
-          return fallbackUser;
-        }
+        throw new Error('Firebase authentication succeeded, but the secure admin session could not be established. Please try again.');
       }
     } catch (fbErr: any) {
       console.warn('Firebase auth attempt error:', fbErr?.code || fbErr?.message);
