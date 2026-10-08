@@ -124,13 +124,13 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
   }, [universities, search, typeFilter, sortBy]);
 
   return (
-    <div className="max-w-7xl mx-auto px-5 py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-5 py-7 sm:py-10">
       <div className="text-xs font-bold text-blue-600 uppercase tracking-widest">
         UGC Official Directory
       </div>
       <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mt-2">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-black navy">Explore Universities</h1>
+          <h1 className="text-2xl sm:text-4xl font-black navy">Explore Universities</h1>
           <p className="text-slate-500 mt-2 max-w-3xl">
             Browse verified UGC-recognized universities across Bangladesh. Connect with campus
             communities, follow your preferred institution, and explore distinctive alumni and
@@ -225,8 +225,8 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
       )}
 
       {/* Filter Card */}
-      <div className="card p-5 mt-6">
-        <div className="grid md:grid-cols-4 gap-3">
+      <div className="card p-4 sm:p-5 mt-5 sm:mt-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -267,7 +267,7 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
       </div>
 
       {/* Universities Grid */}
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5 mt-6">
+      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 mt-5 sm:mt-6">
         {list.map((u) => {
           const initials = universityInitials(u.name);
           const logo = u.logoUrl || getUniversityLogo(u.name);
