@@ -319,7 +319,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
           }
         });
-        setNews(list.length > 0 ? list : INITIAL_NEWS);
+        setNews(list);
       },
       (error) => {
         console.warn('News listener warning:', error.message);
