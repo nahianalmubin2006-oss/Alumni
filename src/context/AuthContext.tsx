@@ -62,11 +62,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Super admin email constants
-export const SUPER_ADMIN_EMAILS = [
-  'nahianalmubin2006@gmail.com',
-  'nahianalmubin212528@gmail.com',
-  'nahianalmubin1@gmail.com',
-];
+export const SUPER_ADMIN_EMAILS = ['nahianalmubin2006@gmail.com'];
 
 export const isSuperAdminEmail = (email?: string | null): boolean => {
   if (!email) return false;
@@ -170,28 +166,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         setLoading(false);
       } else {
-        // Check if there is a local session fallback
-        const savedSession = localStorage.getItem('alumniSphereSyntheticSession');
-        if (savedSession) {
-          try {
-            const parsed = JSON.parse(savedSession);
-            const syntheticUser: any = {
-              uid: parsed.uid,
-              email: parsed.email,
-              displayName: parsed.name,
-              emailVerified: true,
-            };
-            setCurrentUser(syntheticUser);
-            const profile = await fetchOrCreateUserProfile(syntheticUser);
-            setUserProfile(profile);
-          } catch (e) {
-            setCurrentUser(null);
-            setUserProfile(null);
-          }
-        } else {
-          setCurrentUser(null);
-          setUserProfile(null);
-        }
+        setCurrentUser(null);
+        setUserProfile(null);
         setLoading(false);
       }
     });
@@ -207,50 +183,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithEmail = async (email: string, password: string) => {
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      const profile = await fetchOrCreateUserProfile(cred.user);
-      setUserProfile(profile);
-    } catch (err: any) {
-      // Handle operation-not-allowed or local account fallback
-      if (err?.code === 'auth/operation-not-allowed' || err?.code === 'auth/invalid-credential') {
-        const allLocalUsers = JSON.parse(localStorage.getItem('alumniSphereLocalUsers') || '[]');
-        const match = allLocalUsers.find(
-          (u: any) => u.email.toLowerCase() === email.toLowerCase() && u.passwordHash === btoa(password)
-        );
-        if (match) {
-          const syntheticUser: any = {
-            uid: match.uid,
-            email: match.email,
-            displayName: match.name,
-            emailVerified: true,
-          };
-          setCurrentUser(syntheticUser);
-          localStorage.setItem('alumniSphereSyntheticSession', JSON.stringify(match));
-          const profile = await fetchOrCreateUserProfile(syntheticUser);
-          setUserProfile(profile);
-          return;
-        }
-
-        if (isSuperAdminEmail(email)) {
-          const syntheticUser: any = {
-            uid: 'admin_nahianalmubin',
-            email: email,
-            displayName: 'Nahian Al Mubin',
-            emailVerified: true,
-          };
-          setCurrentUser(syntheticUser);
-          localStorage.setItem(
-            'alumniSphereSyntheticSession',
-            JSON.stringify({ uid: 'admin_nahianalmubin', email: email, name: 'Nahian Al Mubin' })
-          );
-          const profile = await fetchOrCreateUserProfile(syntheticUser);
-          setUserProfile(profile);
-          return;
-        }
-      }
-      throw err;
-    }
+    const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+    const profile = await fetchOrCreateUserProfile(cred.user);
+    setCurrentUser(cred.user);
+    setUserProfile(profile);
   };
 
   const registerUser = async (data: RegisterUserData) => {
@@ -264,34 +200,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await updateProfile(user, { displayName: data.name });
           }
         } catch (authErr: any) {
-          if (authErr?.code === 'auth/operation-not-allowed') {
-            // Email/Password provider is not enabled in Firebase Console.
-            // Provide seamless client session so registration succeeds without blocking the user!
-            const uid = 'usr_' + encodeURIComponent(data.email.toLowerCase().replace(/[^a-zA-Z0-9]/g, '_'));
-            const syntheticUser: any = {
-              uid,
-              email: data.email,
-              displayName: data.name,
-              emailVerified: true,
-            };
-            user = syntheticUser;
-            setCurrentUser(syntheticUser);
-
-            const sessionData = {
-              uid,
-              email: data.email,
-              name: data.name,
-              passwordHash: btoa(data.password || ''),
-            };
-            localStorage.setItem('alumniSphereSyntheticSession', JSON.stringify(sessionData));
-
-            const allLocalUsers = JSON.parse(localStorage.getItem('alumniSphereLocalUsers') || '[]');
-            allLocalUsers.push(sessionData);
-            localStorage.setItem('alumniSphereLocalUsers', JSON.stringify(allLocalUsers));
-          } else {
-            throw authErr;
-          }
-        }
+          throw authErr;
+        }}
       }
 
       if (!user) {
@@ -399,46 +309,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithGoogle = async () => {
-    try {
-      const res = await signInWithPopup(auth, googleProvider);
-      const profile = await fetchOrCreateUserProfile(res.user);
-      setUserProfile(profile);
-    } catch (err: any) {
-      if (
-        err?.code === 'auth/popup-closed-by-user' ||
-        err?.code === 'auth/cancelled-popup-request' ||
-        err?.code === 'auth/popup-blocked'
-      ) {
-        console.info('Google sign-in popup was cancelled or blocked by browser.');
-        return;
-      }
-      if (err?.code === 'auth/unauthorized-domain') {
-        console.warn(
-          'Google Sign-In: Firebase project does not have this preview domain authorized. Connecting preview student user session.'
-        );
-        const syntheticGoogleUser: any = {
-          uid: 'google_user_' + Math.random().toString(36).substring(2, 9),
-          email: 'preview.student@alumnisphere.edu',
-          displayName: 'Tanvir Ahmed (Google Account)',
-          emailVerified: true,
-          photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-        };
-        setCurrentUser(syntheticGoogleUser);
-        localStorage.setItem(
-          'alumniSphereSyntheticSession',
-          JSON.stringify({
-            uid: syntheticGoogleUser.uid,
-            email: syntheticGoogleUser.email,
-            name: syntheticGoogleUser.displayName,
-          })
-        );
-        const profile = await fetchOrCreateUserProfile(syntheticGoogleUser);
-        setUserProfile(profile);
-        return;
-      }
-      console.warn('Google Sign-In notice:', err?.message || err);
-      throw err;
-    }
+    const res = await signInWithPopup(auth, googleProvider);
+    const profile = await fetchOrCreateUserProfile(res.user);
+    setCurrentUser(res.user);
+    setUserProfile(profile);
   };
 
   const logout = async () => {
