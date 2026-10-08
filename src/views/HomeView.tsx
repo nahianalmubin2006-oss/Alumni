@@ -11,7 +11,7 @@ interface HomeViewProps {
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
-  const { universities, news, botStatus, triggerAINewsBotScan } = useData();
+  const { universities, alumni, news, botStatus, triggerAINewsBotScan } = useData();
   const [searchInput, setSearchInput] = useState('');
   const [isScanning, setIsScanning] = useState(false);
 
@@ -36,8 +36,9 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
   ];
   const showcaseList = showcaseNames.map((item) => {
     const live = universities.find((u) => u.name.toLowerCase() === item.name.toLowerCase());
-    return { ...item, alumni: String(live?.alumniCount || 0), employment: live?.employmentRate ? `${live.employmentRate}%` : '—' };
-  });
+    const liveAlumni = alumni.filter((a) => a.status === 'APPROVED' && a.university.toLowerCase() === item.name.toLowerCase()).length;
+    return { ...item, alumni: String(liveAlumni), employment: live?.employmentRate ? `${live.employmentRate}%` : '—' };
+  }, [universities, alumni]);
 
   const publishedNews = useMemo(() => {
     const map = new Map<string, NewsArticle>();
