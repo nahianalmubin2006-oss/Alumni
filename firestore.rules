@@ -20,9 +20,7 @@ service cloud.firestore {
     function isSuperAdmin() {
       return (
         (isSignedIn() && (
-          request.auth.token.email == 'nahianalmubin2006@gmail.com' ||
-          request.auth.token.email == 'nahianalmubin212528@gmail.com' ||
-          request.auth.token.email == 'nahianalmubin1@gmail.com'
+          request.auth.token.email == 'nahianalmubin2006@gmail.com'
         )) ||
         (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPER_ADMIN')
@@ -60,7 +58,7 @@ service cloud.firestore {
     // Users Collection
     match /users/{userId} {
       allow read: if true;
-      allow create: if isOwner(userId) || (request.resource.data.status == 'PENDING');
+      allow create: if isOwner(userId) && request.resource.data.uid == request.auth.uid;
       allow update: if isSuperAdmin() || (
         isOwner(userId) &&
         request.resource.data.role == resource.data.role &&
@@ -95,7 +93,7 @@ service cloud.firestore {
     // Alumni Collection (Public Directory)
     match /alumni/{alumniId} {
       allow read: if true;
-      allow create: if isSuperAdmin() || isSignedIn() || (request.resource.data.status == 'PENDING');
+      allow create: if isSuperAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
       allow update: if isSuperAdmin() || (isSignedIn() && (
         resource.data.userId == request.auth.uid ||
         getUserData().role == 'UNIVERSITY_ADMIN' ||
@@ -119,7 +117,7 @@ service cloud.firestore {
     // Live News Collection (Public Directory)
     match /news/{newsId} {
       allow read: if true;
-      allow create: if true;
+      allow create: if isSuperAdmin() || (isSignedIn() && request.resource.data.authorId == request.auth.uid);
       allow update: if isSuperAdmin() || (isSignedIn() && (
         resource.data.authorId == request.auth.uid ||
         getUserData().role == 'UNIVERSITY_ADMIN' ||
@@ -134,31 +132,31 @@ service cloud.firestore {
     // Change Requests Collection
     match /changeRequests/{requestId} {
       allow read: if true;
-      allow create: if true;
+      allow create: if isSignedIn() && request.resource.data.requesterId == request.auth.uid;
       allow update: if isSuperAdmin() || (isSignedIn() && resource.data.requesterId == request.auth.uid);
       allow delete: if isSuperAdmin();
     }
 
     // Verification Requests Collection
     match /verificationRequests/{verificationId} {
-      allow read: if true;
-      allow create: if true;
+      allow read: if isSuperAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isSuperAdmin();
       allow delete: if isSuperAdmin();
     }
 
     // Notifications Collection
     match /notifications/{notificationId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if true;
+      allow read: if isSuperAdmin() || (isSignedIn() && resource.data.recipientId == request.auth.uid);
+      allow create: if isSuperAdmin() || (isSignedIn() && request.resource.data.recipientId == request.auth.uid);
+      allow update: if isSuperAdmin() || (isSignedIn() && resource.data.recipientId == request.auth.uid);
       allow delete: if isSuperAdmin() || (isSignedIn() && resource.data.recipientId == request.auth.uid);
     }
 
     // Audit Logs Collection
     match /auditLogs/{logId} {
-      allow read: if true;
-      allow create: if true;
+      allow read: if isSuperAdmin();
+      allow create: if isSignedIn();
       allow update, delete: if false; // Immutable audit log
     }
 
