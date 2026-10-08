@@ -267,7 +267,7 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
       </div>
 
       {/* Universities Grid */}
-      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 mt-5 sm:mt-6">
+      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-5 mt-5 sm:mt-6">
         {list.map((u) => {
           const initials = universityInitials(u.name);
           const logo = u.logoUrl || getUniversityLogo(u.name);
