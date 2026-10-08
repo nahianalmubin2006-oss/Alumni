@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import {
   ALL_DIRECTORY_UNIVERSITIES,
   universityInitials,
-  demoSeed,
   getUniversityLogo,
 } from '../data/initialData';
 import { Flame, Award, ArrowRight, Bot, Sparkles, Users, GraduationCap, School, Heart, CheckCircle2 } from 'lucide-react';
@@ -44,35 +43,12 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
 
     const combined = ALL_DIRECTORY_UNIVERSITIES.map((u) => {
       const match = dbMap.get(u.name.toLowerCase());
-      const seed = demoSeed('uni-' + u.name);
-      const isDU =
-        u.name.toLowerCase().includes('dhaka') &&
-        !u.name.toLowerCase().includes('engineering') &&
-        !u.name.toLowerCase().includes('international') &&
-        !u.name.toLowerCase().includes('central');
-
-      if (match) {
-        return {
-          ...match,
-          logoUrl: match.logoUrl || getUniversityLogo(match.name),
-          studentCount: match.studentCount || (isDU ? 37500 : 3500 + (seed % 15000)),
-          followersCount: match.followersCount || (isDU ? 14200 : 1200 + (seed % 6000)),
-          alumniCount: match.alumniCount || (isDU ? 8920 : 700 + (seed % 3500)),
-        };
-      }
-
+      if (match) return { ...match, logoUrl: match.logoUrl || getUniversityLogo(match.name) };
       return {
         id: 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
-        name: u.name,
-        type: u.type,
-        location: isDU ? 'Nilkhet Rd, Dhaka 1000, Bangladesh' : 'Bangladesh',
-        logoUrl: getUniversityLogo(u.name),
-        verified: true,
-        alumniCount: isDU ? 8920 : 700 + (seed % 3500),
-        studentCount: isDU ? 37500 : 3500 + (seed % 15000),
-        followersCount: isDU ? 14200 : 1200 + (seed % 6000),
-        departmentCount: isDU ? 84 : 30 + (seed % 20),
-        employmentRate: isDU ? 89 : 75 + (seed % 19),
+        name: u.name, type: u.type, location: '', logoUrl: getUniversityLogo(u.name),
+        verified: false, alumniCount: 0, studentCount: 0, followersCount: 0,
+        departmentCount: 0, employmentRate: 0, higherStudiesRate: 0, countriesCount: 0, companiesCount: 0,
       };
     });
 
@@ -355,7 +331,7 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
                       Followers
                     </span>
                     <b className="text-blue-600 text-sm block mt-0.5">
-                      {u.followersCount?.toLocaleString() || '1,420'}
+                      {u.followersCount?.toLocaleString() || '0'}
                     </b>
                   </div>
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
@@ -363,7 +339,7 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
                       Alumni
                     </span>
                     <b className="navy text-sm block mt-0.5">
-                      {u.alumniCount?.toLocaleString() || '1,200'}
+                      {u.alumniCount?.toLocaleString() || '0'}
                     </b>
                   </div>
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
@@ -371,7 +347,7 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
                       Students
                     </span>
                     <b className="text-indigo-600 text-sm block mt-0.5">
-                      {u.studentCount?.toLocaleString() || '8,500'}
+                      {u.studentCount?.toLocaleString() || '0'}
                     </b>
                   </div>
                 </div>
@@ -392,7 +368,7 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
                     {u.type}
                   </span>
                   <span className="text-[11px] text-emerald-600 font-bold">
-                    {u.employmentRate || 85}% Employed
+                    {u.employmentRate ? `${u.employmentRate}% Employed` : 'Employment data unavailable'}
                   </span>
                 </div>
 
