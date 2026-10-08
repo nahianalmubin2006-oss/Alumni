@@ -27,38 +27,17 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
     onSearch(term);
   };
 
-  // Top showcase universities across Bangladesh
-  const showcaseList = [
-    {
-      name: 'University of Dhaka',
-      abbr: 'DU',
-      alumni: '8,920',
-      employment: '87%',
-      bg: 'bg-emerald-50 text-emerald-700',
-      logo: '/du-logo.png',
-    },
-    {
-      name: 'Bangladesh University of Engineering & Technology',
-      abbr: 'BUET',
-      alumni: '6,240',
-      employment: '91%',
-      bg: 'bg-blue-50 text-blue-700',
-    },
-    {
-      name: 'North South University',
-      abbr: 'NSU',
-      alumni: '5,800',
-      employment: '86%',
-      bg: 'bg-purple-50 text-purple-700',
-    },
-    {
-      name: 'Jahangirnagar University',
-      abbr: 'JU',
-      alumni: '5,110',
-      employment: '83%',
-      bg: 'bg-indigo-50 text-indigo-700',
-    },
+  // Showcase universities are sourced from the live Firestore-backed directory.
+  const showcaseNames = [
+    { name: 'University of Dhaka', abbr: 'DU', bg: 'bg-emerald-50 text-emerald-700', logo: '/du-logo.png' },
+    { name: 'Bangladesh University of Engineering & Technology', abbr: 'BUET', bg: 'bg-blue-50 text-blue-700' },
+    { name: 'North South University', abbr: 'NSU', bg: 'bg-purple-50 text-purple-700' },
+    { name: 'Jahangirnagar University', abbr: 'JU', bg: 'bg-indigo-50 text-indigo-700' },
   ];
+  const showcaseList = showcaseNames.map((item) => {
+    const live = universities.find((u) => u.name.toLowerCase() === item.name.toLowerCase());
+    return { ...item, alumni: String(live?.alumniCount || 0), employment: live?.employmentRate ? `${live.employmentRate}%` : '—' };
+  });
 
   const publishedNews = useMemo(() => {
     const map = new Map<string, NewsArticle>();
