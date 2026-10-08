@@ -508,6 +508,18 @@ function persistAdminStore() {
 // ------------------------------------------
 const CUSTOM_UNI_PATH = path.resolve(__dirname, 'university-custom-data.json');
 
+interface CustomDepartmentItem {
+  id: string;
+  name: string;
+  university: string;
+  group: string;
+  faculty?: string;
+  status?: string;
+  logoUrl?: string;
+  description?: string;
+  updatedAt?: string;
+}
+
 interface CustomUniversityStore {
   logos: Record<string, string>;
   departments: Record<string, string[]>;
@@ -523,6 +535,7 @@ interface CustomUniversityStore {
     description?: string;
     createdAt: string;
   }>;
+  customDepartments?: CustomDepartmentItem[];
 }
 
 let customUniStore: CustomUniversityStore = (() => {
@@ -531,7 +544,7 @@ let customUniStore: CustomUniversityStore = (() => {
       return JSON.parse(fs.readFileSync(CUSTOM_UNI_PATH, 'utf-8'));
     }
   } catch (e) {}
-  return { logos: {}, departments: {}, customUniversities: [] };
+  return { logos: {}, departments: {}, customUniversities: [], customDepartments: [] };
 })();
 
 function persistCustomUniStore() {
@@ -839,14 +852,6 @@ app.post('/api/admin/auth/firebase-login', async (req, res) => {
   }
 
   const normalizedEmail = verifiedEmail;
-  const { email, uid, name } = req.body || {};
-  const clientIp = getClientIp(req);
-
-  if (!email || typeof email !== 'string') {
-    return res.status(400).json({ error: 'Valid email is required.' });
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
   const superAdminEmails = [
     'nahianalmubin2006@gmail.com',
     'nahianalmubin212528@gmail.com',
@@ -1121,6 +1126,7 @@ app.get('/api/universities/custom', (_req, res) => {
     logos: customUniStore.logos || {},
     departments: customUniStore.departments || {},
     customUniversities: customUniStore.customUniversities || [],
+    customDepartments: customUniStore.customDepartments || [],
   });
 });
 
@@ -1366,6 +1372,57 @@ app.delete('/api/admin/universities/:id', requireAdminAuth, (req: AdminRequest, 
     success: true,
     universityId: key,
     message: `University ${uniName} removed successfully.`,
+  });
+});
+
+// PUT /api/admin/departments/:id (Update department info & emblem manually)
+app.put('/api/admin/departments/:id', requireAdminAuth, (req: AdminRequest, res) => {
+  const { id } = req.params;
+  const { name, university, group, faculty, status, logoUrl, description } = req.body || {};
+  const key = id.trim();
+
+  if (!customUniStore.customDepartments) customUniStore.customDepartments = [];
+  let existing = customUniStore.customDepartments.find((d) => d.id === key);
+  if (existing) {
+    if (name) existing.name = String(name).trim();
+    if (university) existing.university = String(university).trim();
+    if (group) existing.group = String(group).trim();
+    if (faculty !== undefined) existing.faculty = String(faculty).trim();
+    if (status !== undefined) existing.status = String(status).trim();
+    if (logoUrl !== undefined) existing.logoUrl = String(logoUrl).trim();
+    if (description !== undefined) existing.description = String(description).trim();
+    existing.updatedAt = new Date().toISOString();
+  } else {
+    existing = {
+      id: key,
+      name: String(name || '').trim(),
+      university: String(university || '').trim(),
+      group: String(group || 'Engineering').trim(),
+      faculty: faculty ? String(faculty).trim() : '',
+      status: status || 'Active',
+      logoUrl: logoUrl ? String(logoUrl).trim() : '',
+      description: description ? String(description).trim() : '',
+      updatedAt: new Date().toISOString(),
+    };
+    customUniStore.customDepartments.push(existing);
+  }
+
+  persistCustomUniStore();
+
+  recordAuditLog({
+    actorId: req.adminUser!.id,
+    actorEmail: req.adminUser!.email,
+    actorRole: req.adminUser!.role,
+    action: 'DEPARTMENT_MANUALLY_UPDATED',
+    targetType: 'DEPARTMENT',
+    targetId: key,
+    details: `Updated details for department: ${existing.name} (${existing.university}).`,
+  });
+
+  return res.json({
+    success: true,
+    department: existing,
+    message: 'Department details updated successfully.',
   });
 });
 

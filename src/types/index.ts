@@ -108,6 +108,8 @@ export interface Department {
   faculty?: string;
   group: 'Engineering' | 'Science' | 'Business' | 'Arts' | 'Law' | 'Health' | 'Agriculture' | 'Other';
   status?: 'Active' | 'Inactive';
+  logoUrl?: string;
+  description?: string;
   alumniCount: number;
   studentCount?: number;
   employmentRate: number;

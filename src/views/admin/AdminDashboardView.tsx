@@ -25,11 +25,63 @@ import {
   SlidersHorizontal,
   FileCheck,
   ShieldAlert,
+  ArrowLeft,
 } from 'lucide-react';
+
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  fallbackTitle?: string;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class SectionErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Admin SectionErrorBoundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="bg-slate-900 border border-rose-500/30 rounded-3xl p-8 text-center my-6 max-w-2xl mx-auto shadow-2xl">
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto mb-3">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h3 className="text-lg font-black text-white">
+            {this.props.fallbackTitle || 'Unable to load section'}
+          </h3>
+          <p className="text-xs text-slate-400 mt-2">
+            {this.state.error?.message || 'An unexpected rendering error occurred in this section.'}
+          </p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="mt-5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+          >
+            Retry Loading Section
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 interface AdminDashboardViewProps {
   onNavigatePublic: () => void;
   onLogoutSuccess: () => void;
+  onBack?: () => void;
 }
 
 interface ServerUser {
@@ -53,6 +105,7 @@ interface ServerUser {
 export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   onNavigatePublic,
   onLogoutSuccess,
+  onBack,
 }) => {
   const {
     adminUser,
@@ -470,7 +523,30 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
       {/* Top Header */}
       <header className="min-h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur px-3 sm:px-6 py-2 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Contextual Back Navigation */}
+          {activeTab !== 'overview' ? (
+            <button
+              onClick={() => setActiveTab('overview')}
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition shadow-xs cursor-pointer group shrink-0"
+              title="Return to Dashboard Overview"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-blue-400 group-hover:-translate-x-0.5 transition-transform" />
+              <span className="hidden sm:inline">Back to Overview</span>
+              <span className="sm:hidden">Back</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => (onBack ? onBack() : onNavigatePublic())}
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition shadow-xs cursor-pointer group shrink-0"
+              title="Return to Public Website"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-blue-400 group-hover:-translate-x-0.5 transition-transform" />
+              <span className="hidden sm:inline">Back to Website</span>
+              <span className="sm:hidden">Back</span>
+            </button>
+          )}
+
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-black text-white text-base shadow-sm">
             A
           </div>
@@ -731,6 +807,18 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           {/* TAB 2: USER MANAGEMENT */}
           {activeTab === 'users' && (
             <div className="space-y-5">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('overview')}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white hover:border-slate-700 transition cursor-pointer"
+                  title="Return to Dashboard Overview"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 text-blue-400" />
+                  <span>← Back to Dashboard Overview</span>
+                </button>
+              </div>
+
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h1 className="text-2xl font-black tracking-tight text-white">
@@ -926,12 +1014,26 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
           {/* TAB: UNIVERSITIES & DEPARTMENT MANAGEMENT */}
           {activeTab === 'universities' && (
-            <AdminUniversityManagement />
+            <SectionErrorBoundary fallbackTitle="Universities & Logos Editor">
+              <AdminUniversityManagement onBackToOverview={() => setActiveTab('overview')} />
+            </SectionErrorBoundary>
           )}
 
           {/* TAB 3: APPROVALS & VERIFICATIONS */}
           {activeTab === 'approvals' && (
             <div className="space-y-5">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('overview')}
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white hover:border-slate-700 transition cursor-pointer"
+                  title="Return to Dashboard Overview"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 text-blue-400" />
+                  <span>← Back to Dashboard Overview</span>
+                </button>
+              </div>
+
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-2xl font-black tracking-tight text-white">
@@ -1083,6 +1185,18 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           {/* TAB 4: NEWS & AI BOT */}
           {activeTab === 'news' && (
             <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('overview')}
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white hover:border-slate-700 transition cursor-pointer"
+                  title="Return to Dashboard Overview"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 text-blue-400" />
+                  <span>← Back to Dashboard Overview</span>
+                </button>
+              </div>
+
               <div>
                 <h1 className="text-2xl font-black tracking-tight text-white">
                   Live News & AI Bot Controller
@@ -1129,6 +1243,18 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           {/* TAB 5: AUDIT LOGS */}
           {activeTab === 'audit' && (
             <div className="space-y-5">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('overview')}
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white hover:border-slate-700 transition cursor-pointer"
+                  title="Return to Dashboard Overview"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 text-blue-400" />
+                  <span>← Back to Dashboard Overview</span>
+                </button>
+              </div>
+
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-2xl font-black tracking-tight text-white">

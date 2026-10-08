@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Chart from 'chart.js/auto';
+import { ArrowLeft } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { RAW_DEPARTMENT_CATALOG, ALL_DIRECTORY_UNIVERSITIES } from '../data/initialData';
 
 interface AlumniViewProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
+  onBack?: () => void;
 }
 
-export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate }) => {
+export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) => {
   const { universities, alumni, stats } = useData();
 
   const uChartCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -159,6 +161,18 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-5 py-7 sm:py-10">
+      {/* Top Back Navigation */}
+      <div className="flex items-center gap-3 mb-5">
+        <button
+          onClick={() => (onBack ? onBack() : onNavigate('home'))}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-xs hover:border-blue-400 hover:text-blue-600 transition group cursor-pointer"
+          title="Back to previous / upper page"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 transition group-hover:-translate-x-0.5 text-slate-500 group-hover:text-blue-600" />
+          <span>← Back to Home</span>
+        </button>
+      </div>
+
       <div className="text-xs font-bold text-blue-600 uppercase tracking-widest">
         Alumni Intelligence
       </div>

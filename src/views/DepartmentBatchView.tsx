@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Sparkles,
   ExternalLink,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface DepartmentBatchViewProps {
@@ -18,6 +19,7 @@ interface DepartmentBatchViewProps {
   universityName: string;
   batchYear: string;
   onNavigate: (page: string, params?: Record<string, string>) => void;
+  onBack?: () => void;
 }
 
 export const DepartmentBatchView: React.FC<DepartmentBatchViewProps> = ({
@@ -25,6 +27,7 @@ export const DepartmentBatchView: React.FC<DepartmentBatchViewProps> = ({
   universityName,
   batchYear,
   onNavigate,
+  onBack,
 }) => {
   const {
     alumni,
@@ -151,17 +154,23 @@ export const DepartmentBatchView: React.FC<DepartmentBatchViewProps> = ({
 
   return (
     <div className="max-w-7xl mx-auto px-5 py-10">
-      <button
-        onClick={() =>
-          onNavigate('departmentProfile', {
-            dept: departmentName,
-            uni: universityName,
-          })
-        }
-        className="text-sm text-slate-500 hover:text-slate-800 transition mb-6 flex items-center gap-1"
-      >
-        <span>← Back to {departmentName}</span>
-      </button>
+      <div className="flex items-center gap-3 mb-6">
+        <button
+          onClick={() =>
+            onBack
+              ? onBack()
+              : onNavigate('departmentProfile', {
+                  dept: departmentName,
+                  uni: universityName,
+                })
+          }
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-xs hover:border-blue-400 hover:text-blue-600 transition group cursor-pointer"
+          title="Back to previous / upper page"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 transition group-hover:-translate-x-0.5 text-slate-500 group-hover:text-blue-600" />
+          <span>← Back to {departmentName}</span>
+        </button>
+      </div>
 
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>

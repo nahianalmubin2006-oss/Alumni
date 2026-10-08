@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   RefreshCw,
   Newspaper,
+  ArrowLeft,
 } from 'lucide-react';
 import { Role } from '../types';
 
@@ -23,12 +24,14 @@ interface DepartmentProfileViewProps {
   departmentName: string;
   universityName: string;
   onNavigate: (page: string, params?: Record<string, string>) => void;
+  onBack?: () => void;
 }
 
 export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
   departmentName,
   universityName,
   onNavigate,
+  onBack,
 }) => {
   const { currentUser, userProfile, isSuperAdmin } = useAuth();
   const {
@@ -242,14 +245,18 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
       <div className="flex items-center justify-between mb-5">
         <button
           onClick={() =>
-            onNavigate('departmentUniversities', {
-              dept: departmentName,
-              group: 'Academic',
-            })
+            onBack
+              ? onBack()
+              : onNavigate('departmentUniversities', {
+                  dept: departmentName,
+                  group: 'Academic',
+                })
           }
-          className="text-sm text-slate-500 hover:text-slate-800 transition flex items-center gap-1"
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-xs hover:border-blue-400 hover:text-blue-600 transition group cursor-pointer"
+          title="Back to previous / upper page"
         >
-          <span>← Back to offering universities</span>
+          <ArrowLeft className="w-3.5 h-3.5 transition group-hover:-translate-x-0.5 text-slate-500 group-hover:text-blue-600" />
+          <span>← Back to Offering Universities</span>
         </button>
 
         {isThisDeptAdmin && (

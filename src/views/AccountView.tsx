@@ -24,13 +24,15 @@ import {
   X,
   Upload,
   Link2,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface AccountViewProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
+  onBack?: () => void;
 }
 
-export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
+export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) => {
   const {
     currentUser,
     userProfile,
@@ -322,8 +324,13 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate }) => {
             Manage your personal profile, institutional affiliations, and verification credentials.
           </p>
         </div>
-        <button onClick={() => onNavigate('home')} className="pill">
-          ← Home
+        <button
+          onClick={() => (onBack ? onBack() : onNavigate('home'))}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-xs hover:border-blue-400 hover:text-blue-600 transition group cursor-pointer"
+          title="Back to previous / upper page"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 transition group-hover:-translate-x-0.5 text-slate-500 group-hover:text-blue-600" />
+          <span>← Back to Home</span>
         </button>
       </div>
 

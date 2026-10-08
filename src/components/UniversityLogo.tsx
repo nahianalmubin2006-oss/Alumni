@@ -20,6 +20,10 @@ export const UniversityLogo: React.FC<UniversityLogoProps> = ({
   const [, setCustomVersion] = useState(0);
 
   useEffect(() => {
+    setHasError(false);
+  }, [name, logoUrl]);
+
+  useEffect(() => {
     const handler = () => {
       setHasError(false);
       setCustomVersion((v) => v + 1);

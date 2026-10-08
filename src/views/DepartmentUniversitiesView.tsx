@@ -2,18 +2,20 @@ import React, { useState, useMemo } from 'react';
 import { universityInitials } from '../data/initialData';
 import { VERIFIED_DEPARTMENT_SEEDS } from '../data/verifiedDepartments';
 import { useData } from '../context/DataContext';
-import { Bot, Flame, Award, Shield, Clock, RefreshCw, ExternalLink } from 'lucide-react';
+import { Bot, Flame, Award, Shield, Clock, RefreshCw, ExternalLink, ArrowLeft } from 'lucide-react';
 
 interface DepartmentUniversitiesViewProps {
   departmentName: string;
   departmentGroup: string;
   onNavigate: (page: string, params?: Record<string, string>) => void;
+  onBack?: () => void;
 }
 
 export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProps> = ({
   departmentName,
   departmentGroup,
   onNavigate,
+  onBack,
 }) => {
   const { news, departments, universities, alumni, triggerAINewsBotScan } = useData();
   const [search, setSearch] = useState('');
@@ -76,12 +78,16 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
 
   return (
     <div className="max-w-7xl mx-auto px-5 py-10">
-      <button
-        onClick={() => onNavigate('department')}
-        className="text-sm text-slate-500 hover:text-slate-800 transition mb-5 flex items-center gap-1"
-      >
-        <span>← All departments</span>
-      </button>
+      <div className="flex items-center gap-3 mb-5">
+        <button
+          onClick={() => (onBack ? onBack() : onNavigate('department'))}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-xs hover:border-blue-400 hover:text-blue-600 transition group cursor-pointer"
+          title="Back to previous / upper page"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 transition group-hover:-translate-x-0.5 text-slate-500 group-hover:text-blue-600" />
+          <span>← Back to Departments</span>
+        </button>
+      </div>
 
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>

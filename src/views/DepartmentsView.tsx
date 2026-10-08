@@ -2,10 +2,12 @@ import React, { useState, useMemo } from 'react';
 
 import { useData } from '../context/DataContext';
 import { VERIFIED_DEPARTMENT_SEEDS } from '../data/verifiedDepartments';
-import { Flame, Award, Bot, ArrowRight } from 'lucide-react';
+import type { Department } from '../types';
+import { Flame, Award, Bot, ArrowRight, ArrowLeft } from 'lucide-react';
 
 interface DepartmentsViewProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
+  onBack?: () => void;
 }
 
 const DEPARTMENT_GROUP_META: Record<string, { icon: string }> = {
@@ -16,9 +18,10 @@ const DEPARTMENT_GROUP_META: Record<string, { icon: string }> = {
   Law: { icon: '§' },
   Health: { icon: '✚' },
   Agriculture: { icon: '♧' },
+  Other: { icon: '★' },
 };
 
-export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) => {
+export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate, onBack }) => {
   const { news, departments } = useData();
   const [search, setSearch] = useState('');
   const [group, setGroup] = useState('All');
@@ -37,7 +40,7 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
   const directoryDepartments = useMemo(() => {
     const merged = new Map<string, {
       name: string;
-      group: 'Engineering' | 'Science' | 'Business' | 'Arts' | 'Law' | 'Health' | 'Agriculture';
+      group: Department['group'];
       universities: Set<string>;
       verified: boolean;
     }>();
@@ -89,6 +92,18 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate }) 
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-5 py-7 sm:py-10">
+      {/* Top Back Navigation */}
+      <div className="flex items-center gap-3 mb-5">
+        <button
+          onClick={() => (onBack ? onBack() : onNavigate('home'))}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-xs hover:border-blue-400 hover:text-blue-600 transition group cursor-pointer"
+          title="Back to previous / upper page"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 transition group-hover:-translate-x-0.5 text-slate-500 group-hover:text-blue-600" />
+          <span>← Back to Home</span>
+        </button>
+      </div>
+
       <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
         <div>
           <div className="text-xs font-bold text-blue-600 uppercase tracking-widest">

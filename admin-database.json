@@ -3,7 +3,7 @@
     {
       "id": "usr-superadmin-nahian",
       "email": "nahianalmubin2006@gmail.com",
-      "passwordHash": "5c449793852fce31f7eddfd0b58ba8ce:54dcb7ea6e24458c56123b219e63bd40f600a13f50e6b0e98d3ff40b95a06344b2e2e453e7a0e300da97b14befff0d228d8a21c39190fe47d0b7e9b92674b843",
+      "passwordHash": "a41e17a78a47da9e5f66952ea929ac15:03ade7cdd5071313f099b9fb08e1a7451cf851bdb2023e27bddd53bed0e2d13e7c760f8cf8394ab39c28f2522fcf04af5a1c2724f3a5ad5a3225b36529b08485",
       "name": "Nahian Al Mubin",
       "role": "SUPER_ADMIN",
       "status": "APPROVED",
@@ -13,13 +13,13 @@
       "jobRole": "Platform Founder & Lead Architect",
       "company": "AlumniSphere Core Engineering",
       "createdAt": "2026-10-08T10:18:49.427Z",
-      "updatedAt": "2026-10-08T13:49:00.000Z",
-      "lastLoginAt": "2026-10-08T11:04:57.045Z"
+      "updatedAt": "2026-10-08T16:29:00.000Z",
+      "lastLoginAt": "2026-10-08T17:04:18.682Z"
     },
     {
       "id": "usr-superadmin-nahian-212528",
       "email": "nahianalmubin212528@gmail.com",
-      "passwordHash": "5c449793852fce31f7eddfd0b58ba8ce:54dcb7ea6e24458c56123b219e63bd40f600a13f50e6b0e98d3ff40b95a06344b2e2e453e7a0e300da97b14befff0d228d8a21c39190fe47d0b7e9b92674b843",
+      "passwordHash": "a41e17a78a47da9e5f66952ea929ac15:03ade7cdd5071313f099b9fb08e1a7451cf851bdb2023e27bddd53bed0e2d13e7c760f8cf8394ab39c28f2522fcf04af5a1c2724f3a5ad5a3225b36529b08485",
       "name": "Nahian Al Mubin",
       "role": "SUPER_ADMIN",
       "status": "APPROVED",
@@ -29,13 +29,13 @@
       "jobRole": "Platform Founder & Lead Architect",
       "company": "AlumniSphere Core Engineering",
       "createdAt": "2026-10-08T13:49:00.000Z",
-      "updatedAt": "2026-10-08T13:49:00.000Z",
+      "updatedAt": "2026-10-08T16:29:00.000Z",
       "lastLoginAt": null
     },
     {
       "id": "usr-superadmin-nahian-2",
       "email": "nahianalmubin2@gmail.com",
-      "passwordHash": "5c449793852fce31f7eddfd0b58ba8ce:54dcb7ea6e24458c56123b219e63bd40f600a13f50e6b0e98d3ff40b95a06344b2e2e453e7a0e300da97b14befff0d228d8a21c39190fe47d0b7e9b92674b843",
+      "passwordHash": "a41e17a78a47da9e5f66952ea929ac15:03ade7cdd5071313f099b9fb08e1a7451cf851bdb2023e27bddd53bed0e2d13e7c760f8cf8394ab39c28f2522fcf04af5a1c2724f3a5ad5a3225b36529b08485",
       "name": "Nahian Al Mubin",
       "role": "SUPER_ADMIN",
       "status": "APPROVED",
@@ -45,11 +45,131 @@
       "jobRole": "Platform Founder & Lead Architect",
       "company": "AlumniSphere Core Engineering",
       "createdAt": "2026-10-08T15:30:00.000Z",
-      "updatedAt": "2026-10-08T15:30:00.000Z",
+      "updatedAt": "2026-10-08T16:29:00.000Z",
       "lastLoginAt": null
     }
   ],
-  "auditLogs": [],
+  "auditLogs": [
+    {
+      "id": "audit-1791479065685-45uq0",
+      "timestamp": "2026-10-08T17:04:25.685Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "UNIVERSITY_LOGO_MANUALLY_UPDATED",
+      "targetType": "UNIVERSITY",
+      "targetId": "uni-university-of-dhaka",
+      "details": "Updated logo for university University of Dhaka to: /du-logo.png..."
+    },
+    {
+      "id": "audit-1791479058683-tbule",
+      "timestamp": "2026-10-08T17:04:18.683Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "ADMIN_LOGIN_SUCCESS",
+      "targetType": "SESSION",
+      "targetId": "044fc2d1",
+      "details": "Administrator logged into SUPER_ADMIN workspace.",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "audit-1791478172912-weous",
+      "timestamp": "2026-10-08T16:49:32.912Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "ADMIN_LOGIN_SUCCESS",
+      "targetType": "SESSION",
+      "targetId": "d3219c30",
+      "details": "Administrator logged into SUPER_ADMIN workspace.",
+      "ip": "103.73.36.112"
+    },
+    {
+      "id": "audit-1791478135532-ofo2f",
+      "timestamp": "2026-10-08T16:48:55.532Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "ADMIN_LOGIN_SUCCESS",
+      "targetType": "SESSION",
+      "targetId": "40061c0d",
+      "details": "Administrator logged into SUPER_ADMIN workspace.",
+      "ip": "103.73.36.112"
+    },
+    {
+      "id": "audit-1791477091676-55gby",
+      "timestamp": "2026-10-08T16:31:31.676Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "ADMIN_LOGIN_SUCCESS",
+      "targetType": "SESSION",
+      "targetId": "afd6e9c7",
+      "details": "Administrator logged into SUPER_ADMIN workspace.",
+      "ip": "103.73.36.112"
+    },
+    {
+      "id": "audit-1791477039710-g63ok",
+      "timestamp": "2026-10-08T16:30:39.710Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "ADMIN_LOGIN_SUCCESS",
+      "targetType": "SESSION",
+      "targetId": "a9a1c17e",
+      "details": "Administrator logged into SUPER_ADMIN workspace.",
+      "ip": "103.73.36.112"
+    },
+    {
+      "id": "audit-1791476983368-6gfiu",
+      "timestamp": "2026-10-08T16:29:43.368Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "ADMIN_LOGIN_SUCCESS",
+      "targetType": "SESSION",
+      "targetId": "133167a9",
+      "details": "Administrator logged into SUPER_ADMIN workspace.",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "audit-1791476840548-0dkia",
+      "timestamp": "2026-10-08T16:27:20.548Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "ADMIN_LOGIN_FAILED",
+      "targetType": "AUTH",
+      "targetId": "usr-superadmin-nahian",
+      "details": "Failed admin login attempt: Incorrect password.",
+      "ip": "103.73.36.112"
+    },
+    {
+      "id": "audit-1791476789762-98o5k",
+      "timestamp": "2026-10-08T16:26:29.762Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "ADMIN_LOGIN_FAILED",
+      "targetType": "AUTH",
+      "targetId": "usr-superadmin-nahian",
+      "details": "Failed admin login attempt: Incorrect password.",
+      "ip": "103.73.36.112"
+    },
+    {
+      "id": "audit-1791476783078-1as7z",
+      "timestamp": "2026-10-08T16:26:23.078Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "ADMIN_LOGIN_FAILED",
+      "targetType": "AUTH",
+      "targetId": "usr-superadmin-nahian",
+      "details": "Failed admin login attempt: Incorrect password.",
+      "ip": "103.73.36.112"
+    }
+  ],
   "verifications": [],
   "changeRequests": [],
   "settings": {

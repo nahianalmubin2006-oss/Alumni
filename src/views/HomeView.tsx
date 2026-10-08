@@ -1,9 +1,28 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { GlobalGraph } from '../components/GlobalGraph';
-import { universityInitials, getUniversityLogo } from '../data/initialData';
-import { Flame, Award, Bot, Clock, Shield, RefreshCw } from 'lucide-react';
-import { NewsArticle } from '../types';
+import { UniversityLogo } from '../components/UniversityLogo';
+import { getUniversityLogo, ALL_DIRECTORY_UNIVERSITIES } from '../data/initialData';
+import { VERIFIED_DEPARTMENT_SEEDS } from '../data/verifiedDepartments';
+import {
+  Flame,
+  Award,
+  Bot,
+  Clock,
+  Shield,
+  RefreshCw,
+  Building2,
+  BookOpen,
+  GraduationCap,
+  MapPin,
+  Search,
+  ChevronRight,
+  Layers,
+  ArrowRight,
+  Sparkles,
+  CheckCircle2,
+} from 'lucide-react';
+import { NewsArticle, University } from '../types';
 
 interface HomeViewProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -11,9 +30,15 @@ interface HomeViewProps {
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
-  const { universities, news, botStatus, triggerAINewsBotScan } = useData();
+  const { universities, departments, alumni, students, news, botStatus, triggerAINewsBotScan } = useData();
   const [searchInput, setSearchInput] = useState('');
   const [isScanning, setIsScanning] = useState(false);
+
+  // Real-time Universities & Logos section controls
+  const [uniSearch, setUniSearch] = useState('');
+  const [uniTypeFilter, setUniTypeFilter] = useState<'All' | 'Public' | 'Private' | 'International'>('All');
+  const [selectedDeptGroup, setSelectedDeptGroup] = useState<string>('All');
+  const [showAllUnis, setShowAllUnis] = useState(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,50 +52,90 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
     onSearch(term);
   };
 
-  // Top showcase universities across Bangladesh
-  const showcaseList = [
-    {
-      name: 'University of Dhaka',
-      abbr: 'DU',
-      alumni: '8,920',
-      employment: '87%',
-      bg: 'bg-emerald-50 text-emerald-700',
-    },
-    {
-      name: 'Bangladesh University of Engineering & Technology',
-      abbr: 'BUET',
-      alumni: '6,240',
-      employment: '91%',
-      bg: 'bg-blue-50 text-blue-700',
-    },
-    {
-      name: 'North South University',
-      abbr: 'NSU',
-      alumni: '5,800',
-      employment: '86%',
-      bg: 'bg-purple-50 text-purple-700',
-    },
-    {
-      name: 'BRAC University',
-      abbr: 'BRACU',
-      alumni: '5,350',
-      employment: '88%',
-      bg: 'bg-sky-50 text-sky-700',
-    },
-    {
-      name: 'Bangladesh University of Professionals',
-      abbr: 'BUP',
-      alumni: '4,980',
-      employment: '89%',
-      bg: 'bg-emerald-50 text-emerald-800',
-    },
-    {
-      name: 'Jahangirnagar University',
-      abbr: 'JU',
-      alumni: '5,110',
-      employment: '83%',
-      bg: 'bg-indigo-50 text-indigo-700',
-    },
+  // Merge directory baseline with live Firestore & server custom universities
+  const masterUniversities = useMemo(() => {
+    const uniMap = new Map<string, University>();
+
+    // 1. Directory baseline
+    ALL_DIRECTORY_UNIVERSITIES.forEach((u) => {
+      const id = 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+      uniMap.set(u.name.toLowerCase(), {
+        id,
+        name: u.name,
+        type: u.type,
+        location: 'Bangladesh',
+        logoUrl: getUniversityLogo(u.name),
+        status: 'Active',
+        verified: false,
+        followersCount: 0,
+        departmentCount: 0,
+        employmentRate: 0,
+        higherStudiesRate: 0,
+        countriesCount: 0,
+        companiesCount: 0,
+        alumniCount: 0,
+        studentCount: 0,
+      });
+    });
+
+    // 2. Override with live database universities
+    universities.forEach((u) => {
+      const existing = uniMap.get(u.name.toLowerCase());
+      uniMap.set(u.name.toLowerCase(), {
+        ...existing,
+        ...u,
+        logoUrl: u.logoUrl || existing?.logoUrl || getUniversityLogo(u.name),
+      });
+    });
+
+    return Array.from(uniMap.values()).filter((u) => u.status !== 'Inactive');
+  }, [universities]);
+
+  // Filtered universities for the live showcase
+  const filteredShowcase = useMemo(() => {
+    let list = masterUniversities;
+
+    if (uniTypeFilter !== 'All') {
+      list = list.filter((u) => u.type === uniTypeFilter);
+    }
+
+    if (selectedDeptGroup !== 'All') {
+      list = list.filter((u) => {
+        const uDepts = departments.filter((d) => d.university.toLowerCase() === u.name.toLowerCase());
+        const hasInGroup = uDepts.some((d) => d.group === selectedDeptGroup);
+        if (hasInGroup) return true;
+        return VERIFIED_DEPARTMENT_SEEDS.some(
+          (s) => s.university.toLowerCase() === u.name.toLowerCase() && s.group === selectedDeptGroup
+        );
+      });
+    }
+
+    if (uniSearch.trim()) {
+      const q = uniSearch.toLowerCase().trim();
+      list = list.filter((u) => {
+        const nameMatch = u.name.toLowerCase().includes(q) || (u.shortName && u.shortName.toLowerCase().includes(q));
+        const locMatch = u.location && u.location.toLowerCase().includes(q);
+        const deptMatch = departments.some(
+          (d) => d.university.toLowerCase() === u.name.toLowerCase() && d.name.toLowerCase().includes(q)
+        );
+        return nameMatch || locMatch || deptMatch;
+      });
+    }
+
+    return list;
+  }, [masterUniversities, uniTypeFilter, selectedDeptGroup, uniSearch, departments]);
+
+  // Discipline list for category filters
+  const DISCIPLINE_PILLS = [
+    { label: 'All Fields', value: 'All', icon: '✦' },
+    { label: 'Engineering & Tech', value: 'Engineering', icon: '⚙' },
+    { label: 'Sciences', value: 'Science', icon: '◈' },
+    { label: 'Business & Management', value: 'Business', icon: '৳' },
+    { label: 'Arts & Humanities', value: 'Arts', icon: '✦' },
+    { label: 'Law & Justice', value: 'Law', icon: '§' },
+    { label: 'Health & Medical', value: 'Health', icon: '✚' },
+    { label: 'Agriculture & Life Sciences', value: 'Agriculture', icon: '♧' },
+    { label: 'Other Specializations', value: 'Other', icon: '★' },
   ];
 
   const publishedNews = useMemo(() => {
@@ -181,62 +246,266 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
         </div>
       </div>
 
-      {/* Showcase Universities Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-5 py-10 sm:py-16">
-        <div className="flex items-end justify-between mb-8">
+      {/* Universities, Official Logos & Academic Departments Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-5 py-12 sm:py-20 border-b border-soft">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8">
           <div>
-            <div className="text-xs font-bold text-blue-600 uppercase tracking-widest">Explore</div>
-            <h2 className="text-2xl sm:text-3xl font-black navy mt-2">Universities on the network</h2>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <span className="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-1.5">
+                <Building2 className="w-4 h-4" />
+                <span>Institutional Directory & Insignia</span>
+              </span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <span>Live Admin Synchronized</span>
+              </span>
+            </div>
+            <h2 className="text-2xl sm:text-4xl font-black navy tracking-tight">
+              Universities, Official Logos & Academic Departments
+            </h2>
+            <p className="text-sm text-slate-500 mt-2 max-w-2xl leading-relaxed">
+              Explore official university emblems, active academic faculties, verified curriculum offerings, and alumni community outcomes. Any updates made in the admin console reflect here live.
+            </p>
           </div>
-          <button
-            onClick={() => onNavigate('universities')}
-            className="text-sm font-bold text-blue-600 hover:underline"
-          >
-            View all 178 institutions →
-          </button>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => onNavigate('universities')}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2.5 rounded-xl transition shadow-xs cursor-pointer"
+            >
+              <span>Explore All {masterUniversities.length} Institutions</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => onNavigate('department')}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 px-4 py-2.5 rounded-xl transition cursor-pointer"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+              <span>Browse All Departments</span>
+            </button>
+          </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {showcaseList.map((item) => {
-            const logo = getUniversityLogo(item.name);
-            return (
+        {/* Real-time Search & Filter Controls */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm mb-8 space-y-4">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                value={uniSearch}
+                onChange={(e) => setUniSearch(e.target.value)}
+                placeholder="Search by university name, short code (DU, BUET), city, or department..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition"
+              />
+              {uniSearch && (
+                <button
+                  onClick={() => setUniSearch('')}
+                  className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-600"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Institution Type Tabs */}
+            <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl">
+              {(['All', 'Public', 'Private', 'International'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setUniTypeFilter(t)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    uniTypeFilter === t
+                      ? 'bg-white text-blue-600 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {t === 'All' ? 'All Types' : t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Academic Discipline / Field Pills */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t border-slate-100">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+              Discipline:
+            </span>
+            {DISCIPLINE_PILLS.map((pill) => (
               <button
-                key={item.name}
-                onClick={() => onNavigate('universityDetail', { name: item.name })}
-                className="card p-5 text-left hover:-translate-y-1 transition group flex flex-col justify-between cursor-pointer"
+                key={pill.value}
+                onClick={() => setSelectedDeptGroup(pill.value)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition cursor-pointer ${
+                  selectedDeptGroup === pill.value
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <span>{pill.icon}</span>
+                <span>{pill.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Live Universities & Logos Grid */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {(showAllUnis ? filteredShowcase : filteredShowcase.slice(0, 9)).map((uni) => {
+            const uniDepts = departments.filter(
+              (d) => d.university.toLowerCase().trim() === uni.name.toLowerCase().trim()
+            );
+            const liveAlumni = alumni.filter(
+              (a) => a.status === 'APPROVED' && a.university.toLowerCase() === uni.name.toLowerCase()
+            ).length;
+            const liveStudents = students.filter(
+              (s) => s.status === 'APPROVED' && s.university.toLowerCase() === uni.name.toLowerCase()
+            ).length;
+
+            return (
+              <div
+                key={uni.id}
+                className="bg-white border border-slate-200 hover:border-blue-400 rounded-2xl p-5 shadow-xs hover:shadow-md transition flex flex-col justify-between group"
               >
                 <div>
-                  <div
-                    className="w-14 h-14 rounded-2xl bg-white shadow-xs flex items-center justify-center font-black mb-4 overflow-hidden p-1.5 border border-slate-200"
+                  {/* Top Header: Logo + Info */}
+                  <div className="flex items-start gap-3.5">
+                    <UniversityLogo name={uni.name} logoUrl={uni.logoUrl} size="md" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                          {uni.type}
+                        </span>
+                        {uni.shortName && (
+                          <span className="text-[10px] font-mono text-slate-500 font-semibold">
+                            {uni.shortName}
+                          </span>
+                        )}
+                      </div>
+                      <h3
+                        onClick={() => onNavigate('universityDetail', { name: uni.name })}
+                        className="font-bold text-slate-900 group-hover:text-blue-600 transition leading-snug mt-1 cursor-pointer truncate"
+                        title={uni.name}
+                      >
+                        {uni.name}
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span className="truncate">{uni.location || 'Bangladesh'}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Department Badges Preview */}
+                  <div className="mt-4 pt-3 border-t border-slate-100">
+                    <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between">
+                      <span>Departments ({uniDepts.length})</span>
+                      <button
+                        onClick={() => onNavigate('universityDetail', { name: uni.name })}
+                        className="text-[10px] font-bold text-blue-600 hover:underline cursor-pointer"
+                      >
+                        View all
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {uniDepts.slice(0, 3).map((dept) => (
+                        <button
+                          key={dept.id}
+                          onClick={() =>
+                            onNavigate('departmentProfile', {
+                              dept: dept.name,
+                              uni: uni.name,
+                            })
+                          }
+                          className="text-[11px] font-medium bg-slate-50 hover:bg-blue-50 hover:text-blue-700 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200 transition truncate max-w-[200px] cursor-pointer"
+                          title={dept.name}
+                        >
+                          {dept.name}
+                        </button>
+                      ))}
+
+                      {uniDepts.length > 3 && (
+                        <button
+                          onClick={() => onNavigate('universityDetail', { name: uni.name })}
+                          className="text-[11px] font-semibold text-blue-600 bg-blue-50/60 px-2 py-1 rounded-lg hover:underline cursor-pointer"
+                        >
+                          +{uniDepts.length - 3} more
+                        </button>
+                      )}
+
+                      {uniDepts.length === 0 && (
+                        <span className="text-[11px] text-slate-400 italic">
+                          Standard curriculum catalogue active
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Metrics & Explore CTA */}
+                <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-4 text-xs text-slate-500">
+                    <div>
+                      <span className="text-slate-400 text-[10px] block">Alumni</span>
+                      <b className="navy">{liveAlumni || uni.alumniCount || 0}</b>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[10px] block">Students</span>
+                      <b className="text-blue-600">{liveStudents || uni.studentCount || 0}</b>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onNavigate('universityDetail', { name: uni.name })}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 transition cursor-pointer"
                   >
-                    {logo ? (
-                      <img src={logo} alt={item.name} className="w-full h-full object-contain" />
-                    ) : (
-                      <span className={`w-full h-full rounded-xl ${item.bg} flex items-center justify-center font-bold text-sm`}>
-                        {item.abbr}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="font-bold text-slate-900 group-hover:text-blue-600 transition leading-snug">
-                    {item.name}
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1">Bangladesh</p>
+                    <span>Profile</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <div>
-                  <div className="line my-4"></div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-400">Alumni</span>
-                    <b className="navy">{item.alumni}</b>
-                  </div>
-                  <div className="flex justify-between text-xs mt-2">
-                    <span className="text-slate-400">Employment</span>
-                    <b className="text-emerald-600">{item.employment}</b>
-                  </div>
-                </div>
-              </button>
+              </div>
             );
           })}
         </div>
+
+        {/* Empty state if search finds nothing */}
+        {filteredShowcase.length === 0 && (
+          <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center">
+            <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+            <h4 className="font-bold text-slate-800 text-sm">No institutions found</h4>
+            <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+              No universities matched your current search "{uniSearch}". Try clearing your filters or search keywords.
+            </p>
+            <button
+              onClick={() => {
+                setUniSearch('');
+                setUniTypeFilter('All');
+                setSelectedDeptGroup('All');
+              }}
+              className="mt-4 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 transition cursor-pointer"
+            >
+              Reset Filters
+            </button>
+          </div>
+        )}
+
+        {/* Show More / Show All Button */}
+        {filteredShowcase.length > 9 && (
+          <div className="mt-8 text-center">
+            <button
+              onClick={() => setShowAllUnis((prev) => !prev)}
+              className="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs px-6 py-3 rounded-2xl border border-slate-300 shadow-xs transition cursor-pointer"
+            >
+              <Layers className="w-4 h-4 text-blue-600" />
+              <span>
+                {showAllUnis
+                  ? 'Show Fewer Universities'
+                  : `Show All ${filteredShowcase.length} Matching Universities`}
+              </span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Live News Highlights Section */}

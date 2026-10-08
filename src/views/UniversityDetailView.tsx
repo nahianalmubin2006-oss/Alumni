@@ -32,11 +32,13 @@ import {
 interface UniversityDetailViewProps {
   universityName: string;
   onNavigate: (page: string, params?: Record<string, string>) => void;
+  onBack?: () => void;
 }
 
 export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
   universityName,
   onNavigate,
+  onBack,
 }) => {
   const {
     universities,
@@ -169,11 +171,12 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => onNavigate('universities')}
+            onClick={() => (onBack ? onBack() : onNavigate('universities'))}
             className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-xs hover:border-blue-400 hover:text-blue-600 transition group cursor-pointer"
+            title="Back to previous / upper page"
           >
             <ArrowLeft className="w-3.5 h-3.5 transition group-hover:-translate-x-0.5 text-slate-500 group-hover:text-blue-600" />
-            <span>Back to Universities</span>
+            <span>← Back to Universities</span>
           </button>
           <span className="text-slate-300 text-xs hidden sm:inline">/</span>
           <span className="text-xs font-medium text-slate-500 truncate max-w-[200px] sm:max-w-md hidden sm:inline">

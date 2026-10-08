@@ -19,9 +19,10 @@ import {
 interface NewsDetailViewProps {
   articleId: string;
   onNavigate: (page: string, params?: Record<string, string>) => void;
+  onBack?: () => void;
 }
 
-export const NewsDetailView: React.FC<NewsDetailViewProps> = ({ articleId, onNavigate }) => {
+export const NewsDetailView: React.FC<NewsDetailViewProps> = ({ articleId, onNavigate, onBack }) => {
   const { news, makeNewsPermanent, removeNewsPermanent, deleteNewsArticle, canUserManageArticle } = useData();
   const { currentUser, userProfile, isSuperAdmin } = useAuth();
 
@@ -35,7 +36,7 @@ export const NewsDetailView: React.FC<NewsDetailViewProps> = ({ articleId, onNav
       <div className="max-w-4xl mx-auto px-5 py-12 text-center">
         <h2 className="text-2xl font-bold navy">Article not found</h2>
         <button
-          onClick={() => onNavigate('news')}
+          onClick={() => (onBack ? onBack() : onNavigate('news'))}
           className="mt-4 pill text-blue-600 bg-blue-50 border-blue-200 cursor-pointer"
         >
           ← Return to Live News
@@ -57,18 +58,23 @@ export const NewsDetailView: React.FC<NewsDetailViewProps> = ({ articleId, onNav
   const handleDelete = async () => {
     await deleteNewsArticle(article.id, deleteReason || 'Manual deletion by Admin');
     setConfirmDelete(false);
-    onNavigate('news');
+    if (onBack) {
+      onBack();
+    } else {
+      onNavigate('news');
+    }
   };
 
   return (
     <div className="max-w-4xl mx-auto px-5 py-10">
       <div className="flex items-center justify-between mb-6">
         <button
-          onClick={() => onNavigate('news')}
-          className="text-sm font-semibold text-slate-500 hover:text-slate-800 transition flex items-center gap-1.5 cursor-pointer"
+          onClick={() => (onBack ? onBack() : onNavigate('news'))}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-xs hover:border-blue-400 hover:text-blue-600 transition group cursor-pointer"
+          title="Back to previous / upper page"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Live News Wire</span>
+          <ArrowLeft className="w-3.5 h-3.5 transition group-hover:-translate-x-0.5 text-slate-500 group-hover:text-blue-600" />
+          <span>← Back to Live News Wire</span>
         </button>
 
         {/* Admin Controls */}

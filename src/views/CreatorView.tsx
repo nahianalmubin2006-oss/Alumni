@@ -1,18 +1,24 @@
 import React from 'react';
+import { ArrowLeft } from 'lucide-react';
 
 interface CreatorViewProps {
   onNavigate: (page: string) => void;
+  onBack?: () => void;
 }
 
-export const CreatorView: React.FC<CreatorViewProps> = ({ onNavigate }) => {
+export const CreatorView: React.FC<CreatorViewProps> = ({ onNavigate, onBack }) => {
   return (
     <div className="max-w-4xl mx-auto px-5 py-10">
-      <button
-        onClick={() => onNavigate('home')}
-        className="text-sm text-slate-500 hover:text-slate-800 transition mb-6 flex items-center gap-1"
-      >
-        <span>← Home</span>
-      </button>
+      <div className="flex items-center gap-3 mb-6">
+        <button
+          onClick={() => (onBack ? onBack() : onNavigate('home'))}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-xs hover:border-blue-400 hover:text-blue-600 transition group cursor-pointer"
+          title="Back to previous / upper page"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 transition group-hover:-translate-x-0.5 text-slate-500 group-hover:text-blue-600" />
+          <span>← Back to Home</span>
+        </button>
+      </div>
 
       <div className="card p-8 md:p-10 shadow-xl">
         <div className="flex flex-col md:flex-row gap-6 items-start">

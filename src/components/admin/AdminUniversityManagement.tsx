@@ -30,14 +30,17 @@ import {
   Shield,
   X,
   Power,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface AdminUniversityManagementProps {
   initialSubTab?: 'universities' | 'departments' | 'add-university' | 'logo';
+  onBackToOverview?: () => void;
 }
 
 export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps> = ({
   initialSubTab = 'universities',
+  onBackToOverview,
 }) => {
   const {
     universities,
@@ -72,6 +75,12 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
     return universities[0]?.id || 'uni-university-of-dhaka';
   });
 
+  useEffect(() => {
+    if (universities.length > 0 && (!selectedUniId || !universities.some((u) => u.id === selectedUniId))) {
+      setSelectedUniId(universities[0].id);
+    }
+  }, [universities, selectedUniId]);
+
   // State for Logo update form
   const [customLogoInput, setCustomLogoInput] = useState('');
   const [logoPreviewUrl, setLogoPreviewUrl] = useState('');
@@ -88,6 +97,9 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
   const [editUniWebsite, setEditUniWebsite] = useState('');
   const [editUniOverview, setEditUniOverview] = useState('');
   const [editUniStatus, setEditUniStatus] = useState<'Active' | 'Inactive'>('Active');
+  const [editUniLogoUrl, setEditUniLogoUrl] = useState('');
+  const [editUniLogoFile, setEditUniLogoFile] = useState<File | null>(null);
+  const [editUniLogoPreview, setEditUniLogoPreview] = useState('');
   const [isSavingUniEdit, setIsSavingUniEdit] = useState(false);
 
   // State for Delete University Modal
@@ -102,6 +114,10 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
   const [newDeptGroup, setNewDeptGroup] = useState<
     'Engineering' | 'Science' | 'Business' | 'Arts' | 'Law' | 'Health' | 'Agriculture' | 'Social Science' | 'Humanities' | 'Other'
   >('Engineering');
+  const [newDeptDescription, setNewDeptDescription] = useState('');
+  const [newDeptLogoUrl, setNewDeptLogoUrl] = useState('');
+  const [newDeptLogoFile, setNewDeptLogoFile] = useState<File | null>(null);
+  const [newDeptLogoPreview, setNewDeptLogoPreview] = useState('');
   const [deptFeedback, setDeptFeedback] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isSavingDepts, setIsSavingDepts] = useState(false);
 
@@ -111,6 +127,10 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
   const [editDeptFaculty, setEditDeptFaculty] = useState('');
   const [editDeptGroup, setEditDeptGroup] = useState<string>('Engineering');
   const [editDeptStatus, setEditDeptStatus] = useState<'Active' | 'Inactive'>('Active');
+  const [editDeptDescription, setEditDeptDescription] = useState('');
+  const [editDeptLogoUrl, setEditDeptLogoUrl] = useState('');
+  const [editDeptLogoFile, setEditDeptLogoFile] = useState<File | null>(null);
+  const [editDeptLogoPreview, setEditDeptLogoPreview] = useState('');
   const [isSavingDeptEdit, setIsSavingDeptEdit] = useState(false);
 
   // State for Delete Department Modal
@@ -156,16 +176,27 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
 
   // Departments belonging to the active university
   const activeUniDepartments = useMemo(() => {
-    if (!activeUni) return [];
+    if (!activeUni || !activeUni.name) return [];
     let list = departments.filter(
-      (d) => d.university.toLowerCase().trim() === activeUni.name.toLowerCase().trim()
+      (d) => d.university && d.university.toLowerCase().trim() === activeUni.name.toLowerCase().trim()
     );
     if (searchDept.trim()) {
       const q = searchDept.toLowerCase().trim();
-      list = list.filter((d) => d.name.toLowerCase().includes(q) || d.group.toLowerCase().includes(q));
+      list = list.filter((d) => 
+        (d.name && d.name.toLowerCase().includes(q)) || 
+        (d.group && d.group.toLowerCase().includes(q))
+      );
     }
     return list;
   }, [departments, activeUni, searchDept]);
+
+  useEffect(() => {
+    if (activeUni) {
+      const currentLogo = activeUni.logoUrl || getUniversityLogo(activeUni.name) || '';
+      setCustomLogoInput(currentLogo);
+      setLogoPreviewUrl(currentLogo);
+    }
+  }, [activeUni?.id]);
 
   // When university changes, reset form previews
   const handleSelectUniversity = (uniId: string) => {
@@ -300,6 +331,10 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
     setEditUniWebsite(uni.website || '');
     setEditUniOverview(uni.overview || '');
     setEditUniStatus(uni.status || 'Active');
+    const currLogo = uni.logoUrl || getUniversityLogo(uni.name) || '';
+    setEditUniLogoUrl(currLogo);
+    setEditUniLogoPreview(currLogo);
+    setEditUniLogoFile(null);
   };
 
   // Save Edit University
@@ -309,6 +344,21 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
 
     setIsSavingUniEdit(true);
     try {
+      let finalLogo = editUniLogoUrl.trim();
+
+      if (editUniLogoFile) {
+        try {
+          finalLogo = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(editUniLogoFile);
+          });
+        } catch (e) {
+          finalLogo = editUniLogoPreview;
+        }
+      }
+
       const updated: Partial<University> = {
         id: editingUni.id,
         name: editUniName.trim(),
@@ -319,18 +369,14 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
         website: editUniWebsite.trim(),
         overview: editUniOverview.trim(),
         status: editUniStatus,
+        logoUrl: finalLogo || editingUni.logoUrl,
       };
 
       await saveUniversity(updated);
 
-      // Also notify backend server
-      try {
-        await fetch(`/api/admin/universities/${encodeURIComponent(editingUni.id)}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updated),
-        });
-      } catch (e) {}
+      if (finalLogo && finalLogo !== editingUni.logoUrl) {
+        await updateUniversityLogo(editingUni.id, finalLogo);
+      }
 
       setEditingUni(null);
     } catch (err: any) {
@@ -399,6 +445,20 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
     setDeptFeedback(null);
 
     try {
+      let finalDeptLogo = newDeptLogoUrl.trim();
+      if (newDeptLogoFile) {
+        try {
+          finalDeptLogo = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(newDeptLogoFile);
+          });
+        } catch (e) {
+          finalDeptLogo = newDeptLogoPreview;
+        }
+      }
+
       const deptId = 'dept-' + encodeURIComponent((activeUni.name + '-' + trimmed).toLowerCase().replace(/[^a-z0-9]/g, '-'));
       await saveDepartment({
         id: deptId,
@@ -407,6 +467,8 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
         faculty: newDeptFaculty.trim() || newDeptGroup,
         group: newDeptGroup as any,
         status: newDeptStatus,
+        description: newDeptDescription.trim(),
+        logoUrl: finalDeptLogo,
         verified: false,
         alumniCount: 0,
         studentCount: 0,
@@ -432,6 +494,10 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
       setNewDeptName('');
       setNewDeptFaculty('');
       setNewDeptStatus('Active');
+      setNewDeptDescription('');
+      setNewDeptLogoUrl('');
+      setNewDeptLogoFile(null);
+      setNewDeptLogoPreview('');
       setDeptFeedback({
         text: `Department "${trimmed}" added successfully to ${activeUni.name}! It is live across the public directory.`,
         type: 'success',
@@ -450,6 +516,10 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
     setEditDeptFaculty(dept.faculty || dept.group || 'General');
     setEditDeptGroup(dept.group || 'Engineering');
     setEditDeptStatus(dept.status || 'Active');
+    setEditDeptDescription(dept.description || '');
+    setEditDeptLogoUrl(dept.logoUrl || '');
+    setEditDeptLogoPreview(dept.logoUrl || '');
+    setEditDeptLogoFile(null);
   };
 
   // Save Edit Department
@@ -475,12 +545,28 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
 
     setIsSavingDeptEdit(true);
     try {
+      let finalDeptLogo = editDeptLogoUrl.trim();
+      if (editDeptLogoFile) {
+        try {
+          finalDeptLogo = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(editDeptLogoFile);
+          });
+        } catch (e) {
+          finalDeptLogo = editDeptLogoPreview;
+        }
+      }
+
       await saveDepartment({
         id: editingDept.id,
         name: trimmed,
         faculty: editDeptFaculty.trim() || editDeptGroup,
         group: editDeptGroup as any,
         status: editDeptStatus,
+        description: editDeptDescription.trim(),
+        logoUrl: finalDeptLogo,
         university: activeUni.name,
         updatedAt: new Date().toISOString(),
       });
@@ -643,6 +729,20 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
 
   return (
     <div className="space-y-6">
+      {onBackToOverview && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onBackToOverview}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white hover:border-slate-700 transition cursor-pointer"
+            title="Return to Dashboard Overview"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-blue-400" />
+            <span>← Back to Dashboard Overview</span>
+          </button>
+        </div>
+      )}
+
       {/* Top Banner & Overview */}
       <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 border border-blue-900/40 rounded-3xl p-6 sm:p-8 shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -934,6 +1034,16 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
                       <p className="text-xs text-slate-400">{activeUni.location || 'Bangladesh'}</p>
                     </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditUni(activeUni)}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                    title="Edit University Name, Location, Website, Overview"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Edit University Info</span>
+                  </button>
                 </div>
 
                 {logoFeedback && (
@@ -1141,6 +1251,27 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
                         Managing {activeUniDepartments.length} registered departments
                       </p>
                     </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditUni(activeUni)}
+                      className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                      title="Edit University Details"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-blue-400" />
+                      <span className="hidden sm:inline">Edit University</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveSubTab('logo')}
+                      className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                      title="Edit Emblem"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="hidden sm:inline">Emblem</span>
+                    </button>
                   </div>
                 </div>
 
@@ -1513,6 +1644,48 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
             </div>
 
             <form onSubmit={handleSaveUniEdit} className="space-y-4 mt-4">
+              <div className="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/80 space-y-3">
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  Official University Emblem (Image Upload or URL)
+                </label>
+                <div className="flex flex-col sm:flex-row gap-4 items-center">
+                  <div className="flex-1 w-full space-y-2">
+                    <label className="flex items-center justify-center gap-2 w-full bg-slate-800 hover:bg-slate-750 border border-dashed border-slate-600 rounded-xl p-2.5 text-xs text-slate-300 cursor-pointer transition hover:border-blue-400">
+                      <Upload className="w-4 h-4 text-blue-400" />
+                      <span>{editUniLogoFile ? editUniLogoFile.name : 'Upload Logo File (PNG, SVG, JPG, WEBP - Max 2MB)'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setEditUniLogoFile(file);
+                            setEditUniLogoPreview(URL.createObjectURL(file));
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    <input
+                      type="url"
+                      value={editUniLogoUrl}
+                      onChange={(e) => {
+                        setEditUniLogoUrl(e.target.value);
+                        setEditUniLogoPreview(e.target.value);
+                        setEditUniLogoFile(null);
+                      }}
+                      placeholder="Or enter logo URL: https://example.com/logo.png"
+                      className="w-full bg-slate-850 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
+                    />
+                  </div>
+                  {editUniLogoPreview && (
+                    <div className="w-16 h-16 rounded-xl bg-white p-1.5 border border-slate-600 flex items-center justify-center shrink-0 overflow-hidden shadow-xs">
+                      <img src={editUniLogoPreview} alt="Emblem preview" className="w-full h-full object-contain" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase mb-1">University Name</label>
                 <input
@@ -1669,6 +1842,72 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
                   <option value="Humanities">Humanities</option>
                   <option value="Other">Other</option>
                 </select>
+              </div>
+
+              {/* Department Emblem / Icon Uploader */}
+              <div className="bg-slate-850 p-3.5 rounded-2xl border border-slate-700 space-y-2">
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  Department Emblem / Icon (Optional Image)
+                </label>
+                <div className="flex gap-3 items-center">
+                  <div className="flex-1 space-y-1.5">
+                    <label className="flex items-center justify-center gap-2 w-full bg-slate-800 hover:bg-slate-750 border border-dashed border-slate-600 rounded-xl p-2 text-xs text-slate-300 cursor-pointer transition hover:border-blue-400">
+                      <Upload className="w-3.5 h-3.5 text-blue-400" />
+                      <span className="truncate">{editDeptLogoFile ? editDeptLogoFile.name : 'Upload Badge / Image'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setEditDeptLogoFile(file);
+                            setEditDeptLogoPreview(URL.createObjectURL(file));
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    <input
+                      type="url"
+                      value={editDeptLogoUrl}
+                      onChange={(e) => {
+                        setEditDeptLogoUrl(e.target.value);
+                        setEditDeptLogoPreview(e.target.value);
+                        setEditDeptLogoFile(null);
+                      }}
+                      placeholder="Or enter image URL..."
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none font-mono"
+                    />
+                  </div>
+                  {editDeptLogoPreview && (
+                    <div className="w-12 h-12 rounded-xl bg-white p-1 border border-slate-600 flex items-center justify-center shrink-0 overflow-hidden shadow-xs">
+                      <img src={editDeptLogoPreview} alt="Preview" className="w-full h-full object-contain" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Status</label>
+                <select
+                  value={editDeptStatus}
+                  onChange={(e) => setEditDeptStatus(e.target.value as any)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Description / Overview</label>
+                <textarea
+                  rows={2}
+                  value={editDeptDescription}
+                  onChange={(e) => setEditDeptDescription(e.target.value)}
+                  placeholder="Department curriculum, research focus, and graduate profiles..."
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">

@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth, SUPER_ADMIN_EMAIL } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { Role } from '../types';
+import { ArrowLeft } from 'lucide-react';
 
 interface NavbarProps {
   currentPage: string;
   onNavigate: (page: string, params?: Record<string, string>) => void;
+  onBack?: () => void;
   darkMode: boolean;
   onToggleDarkMode: () => void;
 }
@@ -22,6 +24,7 @@ interface HelpItem {
 export const Navbar: React.FC<NavbarProps> = ({
   currentPage,
   onNavigate,
+  onBack,
   darkMode,
   onToggleDarkMode,
 }) => {
@@ -109,23 +112,38 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-50 glass border-b border-soft">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
-        {/* Brand */}
-        <button
-          onClick={() => onNavigate('home')}
-          className="flex items-center gap-2.5 text-left focus:outline-none"
-        >
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-navy text-white flex items-center justify-center font-black text-lg shadow-sm">
-            A
-          </div>
-          <div>
-            <div className="font-extrabold navy tracking-tight text-sm sm:text-base leading-tight">
-              AlumniSphere
+        {/* Brand & Contextual Back Navigation */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            onClick={() => onNavigate('home')}
+            className="flex items-center gap-2.5 text-left focus:outline-none cursor-pointer"
+          >
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-navy text-white flex items-center justify-center font-black text-lg shadow-sm">
+              A
             </div>
-            <div className="hidden sm:block text-[9px] uppercase tracking-[.18em] text-slate-400">
-              University intelligence
+            <div>
+              <div className="font-extrabold navy tracking-tight text-sm sm:text-base leading-tight">
+                AlumniSphere
+              </div>
+              <div className="hidden sm:block text-[9px] uppercase tracking-[.18em] text-slate-400">
+                University intelligence
+              </div>
             </div>
-          </div>
-        </button>
+          </button>
+
+          {/* Quick Upper / Previous Page Back Button */}
+          {currentPage !== 'home' && (
+            <button
+              type="button"
+              onClick={onBack ? onBack : () => onNavigate('home')}
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-blue-600 text-xs font-bold transition shadow-xs cursor-pointer group"
+              title="Return to previous / upper page"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-blue-600 group-hover:-translate-x-0.5 transition-transform" />
+              <span>Back</span>
+            </button>
+          )}
+        </div>
 
         {/* Clean Main Navigation Tabs (original 5 tabs, no duplicate admin button) */}
         <nav className="hidden md:flex items-center gap-1">

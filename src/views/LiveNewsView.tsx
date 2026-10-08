@@ -21,10 +21,12 @@ import {
   Newspaper,
   CheckCircle2,
   X,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface LiveNewsViewProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
+  onBack?: () => void;
 }
 
 const CATEGORIES: NewsCategory[] = [
@@ -39,7 +41,7 @@ const CATEGORIES: NewsCategory[] = [
   'General education news',
 ];
 
-export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
+export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate, onBack }) => {
   const {
     news,
     createNewsArticle,
@@ -315,6 +317,18 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-5 py-8">
+      {/* Top Back Navigation */}
+      <div className="flex items-center gap-3 mb-5">
+        <button
+          onClick={() => (onBack ? onBack() : onNavigate('home'))}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-xs hover:border-blue-400 hover:text-blue-600 transition group cursor-pointer"
+          title="Back to previous / upper page"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 transition group-hover:-translate-x-0.5 text-slate-500 group-hover:text-blue-600" />
+          <span>← Back to Home</span>
+        </button>
+      </div>
+
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>

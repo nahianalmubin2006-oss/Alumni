@@ -290,6 +290,34 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return Array.from(map.values());
           });
         }
+        if (Array.isArray(data.customDepartments) && data.customDepartments.length > 0) {
+          setDepartments((prev) => {
+            const map = new Map<string, Department>();
+            for (const d of prev) map.set(d.id, d);
+            for (const cd of data.customDepartments) {
+              map.set(cd.id, {
+                id: cd.id,
+                name: cd.name,
+                university: cd.university,
+                group: (cd.group || 'Engineering') as any,
+                faculty: cd.faculty || cd.group || 'General',
+                status: (cd.status || 'Active') as any,
+                logoUrl: cd.logoUrl || '',
+                description: cd.description || '',
+                verified: true,
+                alumniCount: 0,
+                studentCount: 0,
+                employmentRate: 0,
+                higherStudiesRate: 0,
+                countriesCount: 0,
+                companiesCount: 0,
+                createdAt: cd.createdAt || new Date().toISOString(),
+                updatedAt: cd.updatedAt || new Date().toISOString(),
+              });
+            }
+            return Array.from(map.values());
+          });
+        }
       })
       .catch(() => {});
 
@@ -1492,10 +1520,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCustomLogo(trimmedName, fullUni.logoUrl);
     }
 
+    const token = typeof window !== 'undefined' ? sessionStorage.getItem('alumniSphereAdminToken') : null;
+    const adminHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) adminHeaders['Authorization'] = `Bearer ${token}`;
+
     try {
       await fetch('/api/admin/universities', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: adminHeaders,
         body: JSON.stringify(fullUni),
       });
     } catch (e) {}
@@ -1507,6 +1539,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return [fullUni, ...prev];
     });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('alumni-custom-logos-changed', { detail: { nameOrId: id, logoUrl: fullUni.logoUrl } }));
+    }
 
     await logAudit('UNIVERSITY_SAVED', 'UNIVERSITY', id, `Saved university ${trimmedName}`);
   };
@@ -1524,6 +1560,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       group: (dept.group || 'Engineering') as any,
       status: dept.status || 'Active',
       verified: dept.verified ?? existingDept?.verified ?? false,
+      logoUrl: dept.logoUrl !== undefined ? String(dept.logoUrl).trim() : (existingDept?.logoUrl || ''),
+      description: dept.description !== undefined ? String(dept.description).trim() : (existingDept?.description || ''),
       alumniCount: dept.alumniCount ?? 0,
       studentCount: dept.studentCount ?? 0,
       employmentRate: dept.employmentRate ?? 0,
@@ -1539,6 +1577,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.warn('Firestore department save note:', e);
     }
+
+    const token = typeof window !== 'undefined' ? sessionStorage.getItem('alumniSphereAdminToken') : null;
+    const adminHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) adminHeaders['Authorization'] = `Bearer ${token}`;
+
+    try {
+      await fetch(`/api/admin/departments/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: adminHeaders,
+        body: JSON.stringify(fullDept),
+      });
+    } catch (e) {}
 
     setDepartments((prev) => {
       const exists = prev.some((d) => d.id === id);
@@ -1576,10 +1626,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('Firestore university logo update warning:', e);
     }
 
+    const token = typeof window !== 'undefined' ? sessionStorage.getItem('alumniSphereAdminToken') : null;
+    const adminHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) adminHeaders['Authorization'] = `Bearer ${token}`;
+
     try {
       await fetch(`/api/admin/universities/${encodeURIComponent(id)}/logo`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: adminHeaders,
         body: JSON.stringify({ logoUrl: trimmedUrl, universityName: name }),
       });
     } catch (e) {}
@@ -1587,6 +1641,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUniversities((prev) =>
       prev.map((u) => (u.id === id || u.name.toLowerCase() === name.toLowerCase() ? { ...u, logoUrl: trimmedUrl } : u))
     );
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('alumni-custom-logos-changed', { detail: { nameOrId: id, logoUrl: trimmedUrl } }));
+    }
 
     await logAudit('UNIVERSITY_LOGO_UPDATED', 'UNIVERSITY', id, `Updated logo for ${name}`);
   };

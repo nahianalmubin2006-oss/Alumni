@@ -51,6 +51,7 @@ export default function App() {
   const initial = getInitialPageFromPath();
   const [currentPage, setCurrentPage] = useState<string>(initial.page);
   const [pageParams, setPageParams] = useState<Record<string, string>>(initial.params);
+  const [navHistory, setNavHistory] = useState<Array<{ page: string; params: Record<string, string> }>>([]);
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     return localStorage.getItem('alumniSphereDarkMode') === '1';
   });
@@ -68,7 +69,49 @@ export default function App() {
     setDarkMode((prev) => !prev);
   };
 
+  const getUpperPage = (
+    page: string,
+    params: Record<string, string>
+  ): { page: string; params: Record<string, string> } => {
+    switch (page) {
+      case 'universityDetail':
+        return { page: 'universities', params: {} };
+      case 'departmentUniversities':
+        return { page: 'department', params: {} };
+      case 'departmentProfile':
+        if (params.dept) {
+          return { page: 'departmentUniversities', params: { dept: params.dept, group: params.group || 'Academic' } };
+        }
+        return { page: 'department', params: {} };
+      case 'departmentBatch':
+        if (params.dept && params.uni) {
+          return { page: 'departmentProfile', params: { dept: params.dept, uni: params.uni } };
+        }
+        return { page: 'department', params: {} };
+      case 'alumniProfile':
+        return { page: 'alumni', params: {} };
+      case 'newsDetail':
+        return { page: 'news', params: {} };
+      case 'universities':
+      case 'department':
+      case 'alumni':
+      case 'news':
+      case 'search':
+      case 'account':
+      case 'terms':
+      case 'creator':
+      case 'admin-login':
+      case 'admin-dashboard':
+        return { page: 'home', params: {} };
+      default:
+        return { page: 'home', params: {} };
+    }
+  };
+
   const handleNavigate = (page: string, params: Record<string, string> = {}) => {
+    if (page !== currentPage || JSON.stringify(params) !== JSON.stringify(pageParams)) {
+      setNavHistory((prev) => [...prev, { page: currentPage, params: pageParams }]);
+    }
     setCurrentPage(page);
     setPageParams(params);
 
@@ -89,6 +132,54 @@ export default function App() {
       window.history.pushState({}, '', newPath);
     }
 
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBack = () => {
+    // If navigation history stack has a previous page, return to it
+    if (navHistory.length > 0) {
+      const prev = navHistory[navHistory.length - 1];
+      setNavHistory((old) => old.slice(0, old.length - 1));
+      setCurrentPage(prev.page);
+      setPageParams(prev.params);
+
+      let newPath = '/';
+      if (prev.page === 'admin-login' || prev.page === 'admin') newPath = '/admin/login';
+      else if (prev.page === 'admin-dashboard') newPath = '/admin/dashboard';
+      else if (prev.page === 'universities') newPath = '/universities';
+      else if (prev.page === 'department') newPath = '/department';
+      else if (prev.page === 'alumni') newPath = '/alumni';
+      else if (prev.page === 'news') newPath = '/news';
+      else if (prev.page === 'account') newPath = '/account';
+      else if (prev.page === 'terms') newPath = '/terms';
+      else if (prev.page === 'creator') newPath = '/creator';
+      else if (prev.page === 'search') newPath = '/search';
+
+      if (window.location.pathname !== newPath) {
+        window.history.pushState({}, '', newPath);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // Otherwise, move to the hierarchical upper page
+    const upper = getUpperPage(currentPage, pageParams);
+    setCurrentPage(upper.page);
+    setPageParams(upper.params);
+
+    let newPath = '/';
+    if (upper.page === 'universities') newPath = '/universities';
+    else if (upper.page === 'department') newPath = '/department';
+    else if (upper.page === 'alumni') newPath = '/alumni';
+    else if (upper.page === 'news') newPath = '/news';
+    else if (upper.page === 'account') newPath = '/account';
+    else if (upper.page === 'terms') newPath = '/terms';
+    else if (upper.page === 'creator') newPath = '/creator';
+    else if (upper.page === 'search') newPath = '/search';
+
+    if (window.location.pathname !== newPath) {
+      window.history.pushState({}, '', newPath);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -120,12 +211,17 @@ export default function App() {
   // Admin Login route: /admin/login or /admin
   if (currentPage === 'admin-login' || currentPage === 'admin') {
     return (
-      <AdminProvider>
-        <AdminLoginView
-          onNavigatePublic={() => handleNavigate('home')}
-          onLoginSuccess={() => handleNavigate('admin-dashboard')}
-        />
-      </AdminProvider>
+      <AuthProvider>
+        <DataProvider>
+          <AdminProvider>
+            <AdminLoginView
+              onNavigatePublic={() => handleNavigate('home')}
+              onLoginSuccess={() => handleNavigate('admin-dashboard')}
+              onBack={handleBack}
+            />
+          </AdminProvider>
+        </DataProvider>
+      </AuthProvider>
     );
   }
 
@@ -133,12 +229,17 @@ export default function App() {
   // Access is strictly verified by server-side Admin Auth Check
   if (currentPage === 'admin-dashboard') {
     return (
-      <AdminProvider>
-        <AdminDashboardView
-          onNavigatePublic={() => handleNavigate('home')}
-          onLogoutSuccess={() => handleNavigate('admin-login')}
-        />
-      </AdminProvider>
+      <AuthProvider>
+        <DataProvider>
+          <AdminProvider>
+            <AdminDashboardView
+              onNavigatePublic={() => handleNavigate('home')}
+              onLogoutSuccess={() => handleNavigate('admin-login')}
+              onBack={handleBack}
+            />
+          </AdminProvider>
+        </DataProvider>
+      </AuthProvider>
     );
   }
 
@@ -153,6 +254,7 @@ export default function App() {
             <Navbar
               currentPage={currentPage}
               onNavigate={handleNavigate}
+              onBack={handleBack}
               darkMode={darkMode}
               onToggleDarkMode={handleToggleDarkMode}
             />
@@ -163,18 +265,19 @@ export default function App() {
               )}
 
               {currentPage === 'universities' && (
-                <UniversitiesView onNavigate={handleNavigate} />
+                <UniversitiesView onNavigate={handleNavigate} onBack={handleBack} />
               )}
 
               {currentPage === 'universityDetail' && (
                 <UniversityDetailView
                   universityName={pageParams.name || 'University of Dhaka'}
                   onNavigate={handleNavigate}
+                  onBack={handleBack}
                 />
               )}
 
               {currentPage === 'department' && (
-                <DepartmentsView onNavigate={handleNavigate} />
+                <DepartmentsView onNavigate={handleNavigate} onBack={handleBack} />
               )}
 
               {currentPage === 'departmentUniversities' && (
@@ -182,6 +285,7 @@ export default function App() {
                   departmentName={pageParams.dept || 'Computer Science & Engineering'}
                   departmentGroup={pageParams.group || 'Engineering'}
                   onNavigate={handleNavigate}
+                  onBack={handleBack}
                 />
               )}
 
@@ -190,6 +294,7 @@ export default function App() {
                   departmentName={pageParams.dept || 'Computer Science & Engineering'}
                   universityName={pageParams.uni || 'University of Dhaka'}
                   onNavigate={handleNavigate}
+                  onBack={handleBack}
                 />
               )}
 
@@ -199,37 +304,44 @@ export default function App() {
                   universityName={pageParams.uni || 'University of Dhaka'}
                   batchYear={pageParams.batch || '2023'}
                   onNavigate={handleNavigate}
+                  onBack={handleBack}
                 />
               )}
 
-              {currentPage === 'alumni' && <AlumniView onNavigate={handleNavigate} />}
+              {currentPage === 'alumni' && <AlumniView onNavigate={handleNavigate} onBack={handleBack} />}
 
               {currentPage === 'alumniProfile' && (
                 <AlumniProfileView
                   alumniId={pageParams.id}
                   alumniName={pageParams.name}
                   onNavigate={handleNavigate}
+                  onBack={handleBack}
                 />
               )}
 
-              {currentPage === 'news' && <LiveNewsView onNavigate={handleNavigate} />}
+              {currentPage === 'news' && <LiveNewsView onNavigate={handleNavigate} onBack={handleBack} />}
 
               {currentPage === 'newsDetail' && (
                 <NewsDetailView
                   articleId={pageParams.id || 'news-1'}
                   onNavigate={handleNavigate}
+                  onBack={handleBack}
                 />
               )}
 
               {currentPage === 'search' && (
-                <SearchPageView initialQuery={pageParams.query || ''} onNavigate={handleNavigate} />
+                <SearchPageView
+                  initialQuery={pageParams.query || ''}
+                  onNavigate={handleNavigate}
+                  onBack={handleBack}
+                />
               )}
 
-              {currentPage === 'account' && <AccountView onNavigate={handleNavigate} />}
+              {currentPage === 'account' && <AccountView onNavigate={handleNavigate} onBack={handleBack} />}
 
-              {currentPage === 'terms' && <TermsView onNavigate={handleNavigate} />}
+              {currentPage === 'terms' && <TermsView onNavigate={handleNavigate} onBack={handleBack} />}
 
-              {currentPage === 'creator' && <CreatorView onNavigate={handleNavigate} />}
+              {currentPage === 'creator' && <CreatorView onNavigate={handleNavigate} onBack={handleBack} />}
             </main>
           </div>
 

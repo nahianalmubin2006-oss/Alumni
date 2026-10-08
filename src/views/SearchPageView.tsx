@@ -1,15 +1,18 @@
 import React, { useState, useMemo } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { ALL_DIRECTORY_UNIVERSITIES, RAW_DEPARTMENT_CATALOG, universityInitials } from '../data/initialData';
 
 interface SearchPageViewProps {
   initialQuery?: string;
   onNavigate: (page: string, params?: Record<string, string>) => void;
+  onBack?: () => void;
 }
 
 export const SearchPageView: React.FC<SearchPageViewProps> = ({
   initialQuery = '',
   onNavigate,
+  onBack,
 }) => {
   const { universities, alumni, news } = useData();
 
@@ -81,6 +84,18 @@ export const SearchPageView: React.FC<SearchPageViewProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto px-5 py-12">
+      {/* Top Back Navigation */}
+      <div className="flex items-center gap-3 mb-6">
+        <button
+          onClick={() => (onBack ? onBack() : onNavigate('home'))}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-xs hover:border-blue-400 hover:text-blue-600 transition group cursor-pointer"
+          title="Back to previous / upper page"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 transition group-hover:-translate-x-0.5 text-slate-500 group-hover:text-blue-600" />
+          <span>← Back to Home</span>
+        </button>
+      </div>
+
       <div className="text-xs font-bold text-blue-600 uppercase tracking-widest">
         Omni-Search Engine
       </div>
