@@ -14,7 +14,7 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
   departmentGroup,
   onNavigate,
 }) => {
-  const { news, departments, universities, triggerAINewsBotScan } = useData();
+  const { news, departments, universities, alumni, triggerAINewsBotScan } = useData();
   const [search, setSearch] = useState('');
   const [isScanningDept, setIsScanningDept] = useState(false);
 
@@ -61,7 +61,7 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
       const matchesSearch = !q || u.name.toLowerCase().includes(q);
       return matchesSearch;
     });
-  }, [departments, universities, search]);
+  }, [departments, universities, alumni, search]);
 
   return (
     <div className="max-w-7xl mx-auto px-5 py-10">
@@ -207,7 +207,7 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
         {list.slice(0, 36).map((u) => {
           const initials = universityInitials(u.name);
-          const alumniCount = 0;
+          const alumniCount = alumni.filter((a) => a.status === 'APPROVED' && a.university.toLowerCase() === u.name.toLowerCase() && a.department.toLowerCase() === departmentName.toLowerCase()).length;
           const employmentRate = 0;
           const countriesCount = 0;
 
