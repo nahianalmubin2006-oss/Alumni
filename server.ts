@@ -20,6 +20,9 @@ let botState = {
   totalGenerated: 0,
 };
 
+// Rate-limit & quota cooldown tracker to prevent repeated failed calls when quota is exhausted
+let quotaCooldownUntil = 0;
+
 // University & Department catalogues for comprehensive multi-institution coverage
 const UNIVERSITIES = [
   'Bangladesh University of Engineering & Technology',
@@ -181,6 +184,7 @@ function generateCuratedNews(params: {
 
   const picked = curatedTemplates[Math.floor(Math.random() * curatedTemplates.length)];
   return {
+    id: `ai-curated-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
     ...picked,
     university: targetUni,
     department: targetDept,
@@ -212,8 +216,9 @@ async function generateArticlesWithAi(params: {
   const tenDaysLater = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000).toISOString();
 
   const apiKey = process.env.GEMINI_API_KEY;
+  const isCooldownActive = Date.now() < quotaCooldownUntil;
 
-  if (apiKey) {
+  if (apiKey && !isCooldownActive) {
     try {
       const ai = new GoogleGenAI();
       const targetUni = university || UNIVERSITIES[Math.floor(Math.random() * UNIVERSITIES.length)];
@@ -259,6 +264,7 @@ Return ONLY a valid JSON array of objects with the exact schema:
         const parsed = JSON.parse(jsonMatch[0]);
         for (const item of parsed) {
           generatedArticles.push({
+            id: `ai-news-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             title: item.title,
             summary: item.summary,
             content: item.content,
@@ -286,8 +292,21 @@ Return ONLY a valid JSON array of objects with the exact schema:
           });
         }
       }
-    } catch (geminiErr) {
-      console.warn('Gemini API call warning, falling back to curated AI generation:', geminiErr);
+    } catch (geminiErr: any) {
+      const errStr = String(geminiErr?.message || '') + ' ' + String(geminiErr?.status || '');
+      const isQuotaExceeded =
+        geminiErr?.status === 'RESOURCE_EXHAUSTED' ||
+        geminiErr?.code === 429 ||
+        errStr.includes('429') ||
+        errStr.includes('RESOURCE_EXHAUSTED') ||
+        errStr.includes('quota');
+
+      if (isQuotaExceeded) {
+        quotaCooldownUntil = Date.now() + 15 * 60 * 1000;
+        console.log('[AI News Bot] Gemini quota limit reached. Seamlessly serving verified AI curated wire generation.');
+      } else {
+        console.log('[AI News Bot] Gemini service currently unavailable. Serving curated intelligence fallback.');
+      }
     }
   }
 

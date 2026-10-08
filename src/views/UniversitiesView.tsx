@@ -95,9 +95,9 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
           </div>
 
           <div className="grid md:grid-cols-3 gap-3">
-            {universityHighlights.map((art) => (
+            {universityHighlights.map((art, idx) => (
               <div
-                key={art.id}
+                key={art.id || `uni-highlight-${idx}-${art.title}`}
                 onClick={() => onNavigate('newsDetail', { id: art.id })}
                 className="bg-white/10 hover:bg-white/15 transition p-3 rounded-xl cursor-pointer border border-white/10"
               >

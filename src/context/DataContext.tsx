@@ -436,7 +436,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       collection(db, 'news'),
       (snap) => {
         const list: NewsArticle[] = [];
-        snap.forEach((d) => list.push(d.data() as NewsArticle));
+        const seenIds = new Set<string>();
+        snap.forEach((d) => {
+          const item = d.data() as NewsArticle;
+          const articleId = d.id || item.id || `news-${Math.random().toString(36).substring(2, 9)}`;
+          if (!seenIds.has(articleId)) {
+            seenIds.add(articleId);
+            list.push({
+              ...item,
+              id: articleId,
+            });
+          }
+        });
         setNews(list.length > 0 ? list : INITIAL_NEWS);
       },
       (error) => {
@@ -1045,8 +1056,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Live News Actions
   const createNewsArticle = async (article: Omit<NewsArticle, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const docId = `news-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const newArt = {
       ...article,
+      id: docId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       publishedAt: article.status === 'PUBLISHED' ? new Date().toISOString() : undefined,
@@ -1243,8 +1256,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const savedArticles: NewsArticle[] = [];
 
       for (const item of articles) {
-        const docRef = await addDoc(collection(db, 'news'), item);
-        savedArticles.push({ ...item, id: docRef.id });
+        const initialId = item.id || `ai-news-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const payload = { ...item, id: initialId };
+        const docRef = await addDoc(collection(db, 'news'), payload);
+        savedArticles.push({ ...payload, id: docRef.id || initialId });
 
         if (item.isHotTopic) {
           await logAudit(

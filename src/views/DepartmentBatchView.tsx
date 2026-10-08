@@ -335,7 +335,7 @@ export const DepartmentBatchView: React.FC<DepartmentBatchViewProps> = ({
           </div>
         ) : (
           <div className="grid md:grid-cols-2 gap-4 mt-5">
-            {deptBatchNews.slice(0, 4).map((item) => {
+            {deptBatchNews.slice(0, 4).map((item, idx) => {
               const daysLeft = item.expiresAt
                 ? Math.max(
                     0,
@@ -347,7 +347,7 @@ export const DepartmentBatchView: React.FC<DepartmentBatchViewProps> = ({
 
               return (
                 <div
-                  key={item.id}
+                  key={item.id || `dept-batch-news-${idx}-${item.title}`}
                   className={`p-4 rounded-xl border transition hover:shadow-md flex flex-col justify-between ${
                     item.isHotTopic
                       ? 'border-rose-300 bg-rose-50/30'

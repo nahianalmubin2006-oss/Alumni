@@ -431,9 +431,9 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {hotTopicsList.slice(0, 3).map((article) => (
+            {hotTopicsList.slice(0, 3).map((article, idx) => (
               <div
-                key={article.id}
+                key={article.id || `hot-topic-${idx}-${article.title}`}
                 className="p-5 rounded-2xl bg-gradient-to-br from-rose-50 via-white to-amber-50/40 border border-rose-300 shadow-sm hover:shadow-md transition flex flex-col justify-between"
               >
                 <div>
@@ -633,7 +633,7 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
 
       {/* Main News Cards Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-        {publishedList.map((article) => {
+        {publishedList.map((article, idx) => {
           const daysLeft = article.expiresAt
             ? Math.max(
                 0,
@@ -645,7 +645,7 @@ export const LiveNewsView: React.FC<LiveNewsViewProps> = ({ onNavigate }) => {
 
           return (
             <div
-              key={article.id}
+              key={article.id || `live-news-${idx}-${article.title}`}
               className={`card overflow-hidden hover:-translate-y-1 transition duration-300 flex flex-col justify-between group bg-white shadow-sm hover:shadow-md ${
                 article.isHotTopic
                   ? 'border-rose-300 ring-1 ring-rose-200'

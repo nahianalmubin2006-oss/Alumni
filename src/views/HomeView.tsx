@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { GlobalGraph } from '../components/GlobalGraph';
 import { universityInitials } from '../data/initialData';
 import { Flame, Award, Bot, Clock, Shield, RefreshCw } from 'lucide-react';
+import { NewsArticle } from '../types';
 
 interface HomeViewProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -58,17 +59,26 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
     },
   ];
 
-  const publishedNews = news
-    .filter((n) => n.status === 'PUBLISHED')
-    .sort((a, b) => {
-      if (a.isHotTopic && !b.isHotTopic) return -1;
-      if (!a.isHotTopic && b.isHotTopic) return 1;
-      return (
-        new Date(b.publishedAt || b.createdAt).getTime() -
-        new Date(a.publishedAt || a.createdAt).getTime()
-      );
-    })
-    .slice(0, 6);
+  const publishedNews = useMemo(() => {
+    const map = new Map<string, NewsArticle>();
+    news
+      .filter((n) => n.status === 'PUBLISHED')
+      .sort((a, b) => {
+        if (a.isHotTopic && !b.isHotTopic) return -1;
+        if (!a.isHotTopic && b.isHotTopic) return 1;
+        return (
+          new Date(b.publishedAt || b.createdAt).getTime() -
+          new Date(a.publishedAt || a.createdAt).getTime()
+        );
+      })
+      .forEach((item, index) => {
+        const id = item.id || `news-home-${index}-${item.title || 'post'}`;
+        if (!map.has(id)) {
+          map.set(id, { ...item, id });
+        }
+      });
+    return Array.from(map.values()).slice(0, 6);
+  }, [news]);
 
   const handleScanWire = async () => {
     try {
@@ -173,9 +183,9 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {showcaseList.map((item, idx) => (
+          {showcaseList.map((item) => (
             <button
-              key={idx}
+              key={item.name}
               onClick={() => onNavigate('universityDetail', { name: item.name })}
               className="card p-5 text-left hover:-translate-y-1 transition group flex flex-col justify-between"
             >
@@ -246,7 +256,8 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {publishedNews.map((article) => {
+            {publishedNews.map((article, idx) => {
+              const articleKey = article.id || `home-news-item-${idx}-${article.title || 'post'}`;
               const daysLeft = article.expiresAt
                 ? Math.max(
                     0,
@@ -258,7 +269,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
 
               return (
                 <div
-                  key={article.id}
+                  key={articleKey}
                   onClick={() => onNavigate('newsDetail', { id: article.id })}
                   className={`card overflow-hidden hover:-translate-y-1 transition cursor-pointer flex flex-col ${
                     article.isHotTopic ? 'border-rose-300 ring-2 ring-rose-200/60' : ''
