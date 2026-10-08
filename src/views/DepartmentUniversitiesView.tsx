@@ -54,7 +54,7 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
 
   // Filter universities offering this department
   const list = useMemo(() => {
-    const offered = new Set(departments.filter((d) => d.name.toLowerCase() === departmentName.toLowerCase() && d.verified !== false).map((d) => d.university.toLowerCase()));
+    const offered = new Set(departments.filter((d) => d.name.toLowerCase() === departmentName.toLowerCase() && d.verified === true).map((d) => d.university.toLowerCase()));
     return universities.filter((u) => offered.has(u.name.toLowerCase())).filter((u) => {
       // General availability rule
       const q = search.trim().toLowerCase();
