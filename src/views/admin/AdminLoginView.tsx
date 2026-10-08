@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAdmin } from '../../context/AdminContext';
-import { Shield, Lock, Mail, ArrowLeft, AlertCircle, KeyRound, CheckCircle2 } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowLeft, AlertCircle, KeyRound } from 'lucide-react';
 
 interface AdminLoginViewProps {
   onNavigatePublic: () => void;
@@ -142,6 +142,7 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
               )}
             </button>
           </form>
+        </div>
 
         {/* Security watermark */}
         <div className="text-center mt-6 text-[11px] text-slate-500">
