@@ -971,6 +971,9 @@ app.post('/api/admin/users', requireAdminAuth, (req: AdminRequest, res) => {
   if (!name || !email) {
     return res.status(400).json({ error: 'Name and email are required.' });
   }
+  if (typeof password !== 'string' || password.length < 8) {
+    return res.status(400).json({ error: 'A password of at least 8 characters is required.' });
+  }
 
   // Only Super Admin can create ADMIN or SUPER_ADMIN
   if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && req.adminUser?.role !== 'SUPER_ADMIN') {
