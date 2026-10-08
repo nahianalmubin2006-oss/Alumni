@@ -542,29 +542,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           list.push({ ...u, uid: d.id, id: u.id || d.id });
         });
 
-        // Merge any locally registered session accounts if not already in Firestore
-        try {
-          const localUsers = JSON.parse(localStorage.getItem('alumniSphereLocalUsers') || '[]');
-          const existingUids = new Set(list.map((x) => x.uid));
-          localUsers.forEach((loc: any) => {
-            if (loc.uid && !existingUids.has(loc.uid)) {
-              list.push({
-                id: loc.uid,
-                uid: loc.uid,
-                name: loc.name || 'Member',
-                email: loc.email,
-                role: 'STUDENT',
-                status: 'PENDING',
-                profileType: 'Student',
-                university: loc.university || '',
-                department: loc.department || '',
-                createdAt: loc.createdAt || new Date().toISOString(),
-                updatedAt: loc.updatedAt || new Date().toISOString(),
-              });
-            }
-          });
-        } catch (e) {}
-
         // Sort so newly added members appear first!
         list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         setAllUsers(list);
