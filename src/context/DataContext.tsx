@@ -9,6 +9,7 @@ import {
   addDoc,
   getDocs,
   query,
+  where,
   orderBy,
   limit,
 } from 'firebase/firestore';
@@ -474,7 +475,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const unsubChangeRequests = onSnapshot(
-      collection(db, 'changeRequests'),
+      query(collection(db, 'changeRequests'), where('requesterId', '==', currentUser.uid)),
       (snap) => {
         const list: ChangeRequest[] = [];
         snap.forEach((d) => list.push(d.data() as ChangeRequest));
@@ -486,7 +487,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     const unsubVerificationRequests = onSnapshot(
-      collection(db, 'verificationRequests'),
+      query(collection(db, 'verificationRequests'), where('userId', '==', currentUser.uid)),
       (snap) => {
         const list: VerificationRequest[] = [];
         snap.forEach((d) => list.push(d.data() as VerificationRequest));
@@ -498,7 +499,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     const unsubNotifications = onSnapshot(
-      collection(db, 'notifications'),
+      query(collection(db, 'notifications'), where('recipientId', '==', currentUser.uid)),
       (snap) => {
         const list: AppNotification[] = [];
         snap.forEach((d) => list.push({ ...d.data(), id: d.id } as AppNotification));
@@ -522,7 +523,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     const unsubAdminAssignments = onSnapshot(
-      collection(db, 'adminAssignments'),
+      query(collection(db, 'adminAssignments'), where('userId', '==', currentUser.uid)),
       (snap) => {
         const list: AdminAssignment[] = [];
         snap.forEach((d) => list.push({ ...d.data(), id: d.id } as AdminAssignment));
@@ -534,7 +535,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     const unsubUsers = onSnapshot(
-      collection(db, 'users'),
+      query(collection(db, 'users'), where('uid', '==', currentUser.uid)),
       (snap) => {
         const list: UserProfile[] = [];
         snap.forEach((d) => {
