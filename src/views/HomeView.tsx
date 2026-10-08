@@ -35,6 +35,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
       alumni: '8,920',
       employment: '87%',
       bg: 'bg-emerald-50 text-emerald-700',
+      logo: '/du-logo.png',
     },
     {
       name: 'Bangladesh University of Engineering & Technology',
@@ -191,9 +192,13 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
             >
               <div>
                 <div
-                  className={`w-12 h-12 rounded-xl ${item.bg} flex items-center justify-center font-black mb-5`}
+                  className={`w-12 h-12 rounded-xl ${item.bg} flex items-center justify-center font-black mb-5 overflow-hidden p-1 border border-slate-200/50`}
                 >
-                  {item.abbr}
+                  {item.logo ? (
+                    <img src={item.logo} alt={item.name} className="w-full h-full object-contain" />
+                  ) : (
+                    item.abbr
+                  )}
                 </div>
                 <h3 className="font-bold text-slate-900 group-hover:text-blue-600 transition leading-snug">
                   {item.name}

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Chart from 'chart.js/auto';
-import { universityInitials, demoSeed } from '../data/initialData';
+import { universityInitials, demoSeed, getUniversityLogo } from '../data/initialData';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import {
@@ -262,21 +262,47 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
       </div>
 
       {/* Hero Header */}
-      <div className="card p-7 md:p-8 bg-navy text-white relative overflow-hidden shadow-2xl">
-        <div className="absolute -right-20 -top-24 w-72 h-72 rounded-full border border-white/10 pointer-events-none"></div>
+      <div className="hero-navy-card p-6 sm:p-8 md:p-10 relative overflow-hidden">
+        <div className="absolute -right-20 -top-24 w-80 h-80 rounded-full border border-blue-400/10 pointer-events-none bg-blue-500/5 blur-2xl"></div>
         <div className="relative flex flex-col md:flex-row gap-6 items-start z-10">
-          <div className="w-20 h-20 rounded-2xl bg-white text-navy flex items-center justify-center text-2xl font-black shadow-lg">
-            {universityInitials(universityName)}
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-0.5 shadow-xl ring-4 ring-white/15 shrink-0 flex items-center justify-center">
+            <div className="w-full h-full rounded-[14px] bg-white flex flex-col items-center justify-center text-center p-1.5 overflow-hidden">
+              {getUniversityLogo(universityName) ? (
+                <img
+                  src={getUniversityLogo(universityName)}
+                  alt={`${universityName} official emblem`}
+                  className="w-full h-full object-contain p-1"
+                />
+              ) : (
+                <>
+                  <span className="text-2xl font-black text-[#0b1f3a] leading-none">
+                    {universityInitials(universityName)}
+                  </span>
+                  <span className="text-[8px] uppercase tracking-wider font-extrabold text-blue-600 mt-0.5">
+                    DEPT
+                  </span>
+                </>
+              )}
+            </div>
           </div>
           <div className="flex-1">
-            <div className="text-xs uppercase tracking-widest text-blue-200 font-bold">
+            <div className="text-xs uppercase tracking-widest text-blue-300 font-extrabold">
               DEPARTMENT PROFILE
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black mt-1 text-white">{departmentName}</h1>
-            <p className="text-slate-300 mt-2 text-sm">{universityName}</p>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black mt-1 text-white tracking-tight drop-shadow-sm">
+              {departmentName}
+            </h1>
+            <p className="text-blue-100/90 mt-1.5 text-sm font-medium">{universityName}</p>
             <div className="flex flex-wrap gap-2 mt-5">
-              <span className="pill bg-white/10 border-white/15 text-white">Verified Curriculum</span>
-              <span className="pill bg-white/10 border-white/15 text-white">Batch Cohort Tracker</span>
+              <span className="hero-pill px-3 py-1.5 rounded-full text-xs font-semibold">
+                ✓ Verified Curriculum
+              </span>
+              <span className="hero-pill px-3 py-1.5 rounded-full text-xs font-semibold">
+                Batch Cohort Tracker
+              </span>
+              <span className="hero-pill px-3 py-1.5 rounded-full text-xs font-semibold">
+                Active Alumni Network
+              </span>
             </div>
           </div>
         </div>

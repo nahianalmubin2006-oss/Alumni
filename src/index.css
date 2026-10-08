@@ -8,12 +8,40 @@
   }
 }
 
-.navy {
+.navy,
+.text-navy {
   color: #0b1f3a;
 }
 
 .bg-navy {
   background-color: #0b1f3a;
+}
+
+.hero-navy-card {
+  background: linear-gradient(135deg, #0b1f3a 0%, #11284d 50%, #081528 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(59, 130, 246, 0.25) !important;
+  border-radius: 24px;
+  box-shadow: 0 20px 40px -15px rgba(11, 31, 58, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .hero-navy-card {
+  background: linear-gradient(135deg, #071324 0%, #0f223f 50%, #050d18 100%) !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+.hero-navy-card .pill,
+.hero-pill {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  backdrop-filter: blur(8px);
+}
+
+.hero-navy-card .pill:hover,
+.hero-pill:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
 }
 
 .border-soft {

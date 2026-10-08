@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import {
@@ -12,6 +12,12 @@ import {
   Plus,
   Trash2,
   ExternalLink,
+  Users,
+  Search,
+  ShieldCheck,
+  Mail,
+  GraduationCap,
+  Building2,
 } from 'lucide-react';
 
 interface UniversityAdminViewProps {
@@ -25,6 +31,7 @@ export const UniversityAdminView: React.FC<UniversityAdminViewProps> = ({ onNavi
     alumni,
     students,
     news,
+    allUsers,
     submitChangeRequest,
     makeNewsPermanent,
     removeNewsPermanent,
@@ -48,6 +55,27 @@ export const UniversityAdminView: React.FC<UniversityAdminViewProps> = ({ onNavi
     overview: 'Flagship higher education institution profile.',
   };
 
+  const uniUsers = useMemo(() => {
+    return allUsers.filter(
+      (u) => u.university?.toLowerCase() === assignedUniName.toLowerCase()
+    );
+  }, [allUsers, assignedUniName]);
+
+  const [memberSearch, setMemberSearch] = useState('');
+
+  const filteredUniUsers = useMemo(() => {
+    if (!memberSearch.trim()) return uniUsers;
+    const q = memberSearch.toLowerCase();
+    return uniUsers.filter(
+      (u) =>
+        u.name?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q) ||
+        u.department?.toLowerCase().includes(q) ||
+        u.studentId?.toLowerCase().includes(q) ||
+        u.role?.toLowerCase().includes(q)
+    );
+  }, [uniUsers, memberSearch]);
+
   const uniAlumni = alumni.filter(
     (a) => a.university.toLowerCase() === assignedUniName.toLowerCase()
   );
@@ -58,7 +86,7 @@ export const UniversityAdminView: React.FC<UniversityAdminViewProps> = ({ onNavi
     (n) => n.university?.toLowerCase() === assignedUniName.toLowerCase()
   );
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'news' | 'alumni' | 'students' | 'change'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'members' | 'news' | 'alumni' | 'students' | 'change'>('members');
   const [proposedOverview, setProposedOverview] = useState(university.overview || '');
   const [proposedLocation, setProposedLocation] = useState(university.location || '');
   const [reason, setReason] = useState('');
@@ -221,6 +249,15 @@ export const UniversityAdminView: React.FC<UniversityAdminViewProps> = ({ onNavi
 
       {/* Tabs */}
       <div className="mt-8 flex flex-wrap gap-2 border-b border-soft pb-2">
+        <button
+          onClick={() => setActiveTab('members')}
+          className={`pill cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'members' ? 'bg-navy text-white shadow-xs' : 'bg-blue-50 text-blue-700'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>Campus Members & Registered Users ({uniUsers.length})</span>
+        </button>
         <button
           onClick={() => setActiveTab('overview')}
           className={`pill cursor-pointer ${activeTab === 'overview' ? 'bg-navy text-white' : ''}`}
@@ -552,6 +589,116 @@ export const UniversityAdminView: React.FC<UniversityAdminViewProps> = ({ onNavi
                 );
               })
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Campus Members & Registered Users */}
+      {activeTab === 'members' && (
+        <div className="mt-6 space-y-4">
+          <div className="card p-5 shadow-xl border-soft space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold navy text-lg flex items-center gap-2">
+                  <Users className="w-5 h-5 text-blue-600" />
+                  <span>Campus Members Directory ({uniUsers.length})</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Institutional access to all registered students, alumni, and departmental staff for {assignedUniName}.
+                </p>
+              </div>
+
+              <div className="relative w-full sm:w-72">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  placeholder="Search by name, gmail, dept, id..."
+                  className="w-full pl-9 pr-3 py-1.5 border border-soft rounded-xl text-xs bg-white outline-none focus:border-blue-400"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-600">
+                <thead className="bg-slate-50 text-[11px] uppercase font-bold text-slate-400 border-b border-soft">
+                  <tr>
+                    <th className="p-3">User & Contact (Gmail)</th>
+                    <th className="p-3">Department & Academic ID</th>
+                    <th className="p-3">Role & Status</th>
+                    <th className="p-3">Career / Year</th>
+                    <th className="p-3 text-right">Security & Password</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-soft">
+                  {filteredUniUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-slate-400 text-xs">
+                        No registered members found matching the search criteria for {assignedUniName}.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUniUsers.map((u) => (
+                      <tr key={u.uid} className="hover:bg-slate-50/70 transition">
+                        <td className="p-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0">
+                              {u.name?.charAt(0) || 'U'}
+                            </div>
+                            <div>
+                              <b className="navy text-xs block">{u.name}</b>
+                              <span className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                <Mail className="w-3 h-3 text-slate-400" />
+                                <span>{u.email}</span>
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="p-3">
+                          <b className="text-slate-800 text-xs block">{u.department || 'General'}</b>
+                          <span className="text-[10px] text-slate-400 block font-mono mt-0.5">
+                            {u.studentId ? `ID: ${u.studentId}` : 'ID: Not specified'}
+                          </span>
+                        </td>
+
+                        <td className="p-3">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 block w-fit">
+                            {u.role}
+                          </span>
+                          <span
+                            className={`text-[10px] font-semibold mt-1 inline-block ${
+                              u.status === 'APPROVED' ? 'text-emerald-600' : 'text-amber-600'
+                            }`}
+                          >
+                            ● {u.status}
+                          </span>
+                        </td>
+
+                        <td className="p-3">
+                          <span className="text-xs text-slate-700 block">
+                            {u.profileType === 'Student'
+                              ? u.studentYear || 'Current Student'
+                              : u.graduationYear ? `Batch of ${u.graduationYear}` : 'Alumni'}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block truncate max-w-xs mt-0.5">
+                            {u.jobRole ? `${u.jobRole} at ${u.company}` : u.city ? `${u.city}, ${u.country}` : 'Bangladesh'}
+                          </span>
+                        </td>
+
+                        <td className="p-3 text-right">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Protected (Encrypted)</span>
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

@@ -1,18 +1,25 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
-import { ALL_DIRECTORY_UNIVERSITIES, universityInitials, demoSeed } from '../data/initialData';
-import { Flame, Award, ArrowRight, Bot, Sparkles } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import {
+  ALL_DIRECTORY_UNIVERSITIES,
+  universityInitials,
+  demoSeed,
+  getUniversityLogo,
+} from '../data/initialData';
+import { Flame, Award, ArrowRight, Bot, Sparkles, Users, GraduationCap, School, Heart, CheckCircle2 } from 'lucide-react';
 
 interface UniversitiesViewProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
 }
 
 export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }) => {
-  const { universities, news } = useData();
+  const { universities, news, toggleFollowUniversity, isFollowingUniversity } = useData();
+  const { currentUser } = useAuth();
 
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'All' | 'Public' | 'Private' | 'International'>('All');
-  const [sortBy, setSortBy] = useState<'name' | 'type' | 'alumni'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'type' | 'alumni' | 'followers' | 'students'>('name');
 
   // Highlights of hot topics or alumni prize winners across universities
   const universityHighlights = useMemo(() => {
@@ -21,56 +28,147 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
       .slice(0, 3);
   }, [news]);
 
+  // Featured shortcut universities
+  const POPULAR_HUBS = [
+    { label: 'University of Dhaka (DU)', query: 'Dhaka' },
+    { label: 'BUET', query: 'Engineering & Technology' },
+    { label: 'North South University', query: 'North South' },
+    { label: 'Jahangirnagar University', query: 'Jahangirnagar' },
+    { label: 'Rajshahi University', query: 'Rajshahi' },
+    { label: 'BRAC University', query: 'BRAC' },
+  ];
+
   // Merge full directory list with dynamic stored database universities
   const list = useMemo(() => {
     const dbMap = new Map(universities.map((u) => [u.name.toLowerCase(), u]));
 
     const combined = ALL_DIRECTORY_UNIVERSITIES.map((u) => {
       const match = dbMap.get(u.name.toLowerCase());
-      if (match) {
-        return match;
-      }
-      // Demo seed for statistics if not explicitly saved
       const seed = demoSeed('uni-' + u.name);
+      const isDU =
+        u.name.toLowerCase().includes('dhaka') &&
+        !u.name.toLowerCase().includes('engineering') &&
+        !u.name.toLowerCase().includes('international') &&
+        !u.name.toLowerCase().includes('central');
+
+      if (match) {
+        return {
+          ...match,
+          logoUrl: match.logoUrl || getUniversityLogo(match.name),
+          studentCount: match.studentCount || (isDU ? 37500 : 3500 + (seed % 15000)),
+          followersCount: match.followersCount || (isDU ? 14200 : 1200 + (seed % 6000)),
+          alumniCount: match.alumniCount || (isDU ? 8920 : 700 + (seed % 3500)),
+        };
+      }
+
       return {
         id: 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
         name: u.name,
         type: u.type,
-        location: 'Bangladesh',
+        location: isDU ? 'Nilkhet Rd, Dhaka 1000, Bangladesh' : 'Bangladesh',
+        logoUrl: getUniversityLogo(u.name),
         verified: true,
-        alumniCount: 700 + (seed % 3500),
-        departmentCount: 30 + (seed % 20),
-        employmentRate: 75 + (seed % 19),
+        alumniCount: isDU ? 8920 : 700 + (seed % 3500),
+        studentCount: isDU ? 37500 : 3500 + (seed % 15000),
+        followersCount: isDU ? 14200 : 1200 + (seed % 6000),
+        departmentCount: isDU ? 84 : 30 + (seed % 20),
+        employmentRate: isDU ? 89 : 75 + (seed % 19),
       };
     });
 
-    return combined.filter((u) => {
-      const matchesType = typeFilter === 'All' || u.type === typeFilter;
-      const matchesSearch = u.name.toLowerCase().includes(search.trim().toLowerCase());
-      return matchesType && matchesSearch;
-    }).sort((a, b) => {
-      if (sortBy === 'type') return (a.type + a.name).localeCompare(b.type + b.name);
-      if (sortBy === 'alumni') return (b.alumniCount || 0) - (a.alumniCount || 0);
-      return a.name.localeCompare(b.name);
-    });
+    const q = search.trim().toLowerCase();
+
+    return combined
+      .filter((u) => {
+        const matchesType = typeFilter === 'All' || u.type === typeFilter;
+        if (!q) return matchesType;
+
+        const isDU =
+          u.name.toLowerCase().includes('dhaka') &&
+          !u.name.toLowerCase().includes('engineering') &&
+          !u.name.toLowerCase().includes('international') &&
+          !u.name.toLowerCase().includes('central');
+
+        const matchesSearch =
+          u.name.toLowerCase().includes(q) ||
+          (isDU &&
+            (q === 'du' ||
+              q.includes('dhaka') ||
+              q.includes('varsity') ||
+              q.includes('dhaka university') ||
+              q.includes('university of dhaka'))) ||
+          (q === 'buet' && u.name.toLowerCase().includes('engineering & technology')) ||
+          (q === 'nsu' && u.name.toLowerCase().includes('north south')) ||
+          (q === 'ru' && u.name.toLowerCase().includes('rajshahi')) ||
+          (q === 'cu' && u.name.toLowerCase().includes('chittagong')) ||
+          (q === 'ju' && u.name.toLowerCase().includes('jahangirnagar')) ||
+          (q === 'brac' && u.name.toLowerCase().includes('brac')) ||
+          q.split(/\s+/).every((word) => u.name.toLowerCase().includes(word));
+
+        return matchesType && matchesSearch;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'type') return (a.type + a.name).localeCompare(b.type + b.name);
+        if (sortBy === 'alumni') return (b.alumniCount || 0) - (a.alumniCount || 0);
+        if (sortBy === 'followers') return (b.followersCount || 0) - (a.followersCount || 0);
+        if (sortBy === 'students') return (b.studentCount || 0) - (a.studentCount || 0);
+
+        // Put University of Dhaka first if default A-Z sort to make it immediately accessible
+        const aIsDU = a.name.toLowerCase().includes('university of dhaka');
+        const bIsDU = b.name.toLowerCase().includes('university of dhaka');
+        if (aIsDU && !bIsDU) return -1;
+        if (!aIsDU && bIsDU) return 1;
+
+        return a.name.localeCompare(b.name);
+      });
   }, [universities, search, typeFilter, sortBy]);
 
   return (
     <div className="max-w-7xl mx-auto px-5 py-10">
       <div className="text-xs font-bold text-blue-600 uppercase tracking-widest">
-        UGC Directory
+        UGC Official Directory
       </div>
       <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mt-2">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-black navy">Explore universities</h1>
+          <h1 className="text-3xl sm:text-4xl font-black navy">Explore Universities</h1>
           <p className="text-slate-500 mt-2 max-w-3xl">
-            All universities in this directory are included as UGC-listed institutions. Live alumni,
-            department networks, and employment outcome analytics are linked directly to each institution.
+            Browse verified UGC-recognized universities across Bangladesh. Connect with campus
+            communities, follow your preferred institution, and explore distinctive alumni and
+            student statistics.
           </p>
         </div>
         <div className="pill text-blue-600 whitespace-nowrap self-start lg:self-end">
           {list.length} institutions shown
         </div>
+      </div>
+
+      {/* Popular Shortcut University Hubs */}
+      <div className="flex flex-wrap items-center gap-2 mt-5 text-xs">
+        <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] mr-1">
+          Quick Hubs:
+        </span>
+        {POPULAR_HUBS.map((hub) => (
+          <button
+            key={hub.label}
+            onClick={() => setSearch(hub.query)}
+            className={`px-3 py-1 rounded-xl font-bold transition cursor-pointer border ${
+              search === hub.query
+                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                : 'bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:text-blue-600'
+            }`}
+          >
+            {hub.label === 'University of Dhaka (DU)' && '⭐ '}
+            {hub.label}
+          </button>
+        ))}
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            className="text-xs text-rose-600 font-bold hover:underline ml-1 cursor-pointer"
+          >
+            Clear filter ✕
+          </button>
+        )}
       </div>
 
       {/* University Alumni Live Wire & Breakthroughs Radar */}
@@ -127,20 +225,20 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
       )}
 
       {/* Filter Card */}
-      <div className="card p-5 mt-7">
+      <div className="card p-5 mt-6">
         <div className="grid md:grid-cols-4 gap-3">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="md:col-span-2 border border-soft rounded-xl px-4 py-3 outline-none focus:border-blue-400 bg-white"
-            placeholder="Search university name — e.g. Dhaka, BUET, Chittagong, NSU, Rajshahi..."
+            placeholder="Search university name — e.g. Dhaka University, DU, BUET, NSU, Rajshahi..."
           />
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as any)}
             className="border border-soft rounded-xl px-4 py-3 bg-white outline-none cursor-pointer"
           >
-            <option value="All">All types</option>
+            <option value="All">All types (178)</option>
             <option value="Public">Public (59)</option>
             <option value="Private">Private (116)</option>
             <option value="International">International (3)</option>
@@ -150,8 +248,10 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
             onChange={(e) => setSortBy(e.target.value as any)}
             className="border border-soft rounded-xl px-4 py-3 bg-white outline-none cursor-pointer"
           >
-            <option value="name">Name A–Z</option>
+            <option value="name">Recommended / Name A–Z</option>
+            <option value="followers">Most Followed</option>
             <option value="alumni">Most Alumni</option>
+            <option value="students">Most Enrolled Students</option>
             <option value="type">By Type</option>
           </select>
         </div>
@@ -163,68 +263,145 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate }
         <span className="pill">116 Private</span>
         <span className="pill">3 International</span>
         <span className="pill text-emerald-600">✓ UGC-listed</span>
+        <span className="pill text-blue-600">👥 Live Follower Network</span>
       </div>
 
       {/* Universities Grid */}
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
+      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5 mt-6">
         {list.map((u) => {
           const initials = universityInitials(u.name);
+          const logo = u.logoUrl || getUniversityLogo(u.name);
+          const isFollowing = isFollowingUniversity(u.name);
+          const isDU =
+            u.name.toLowerCase().includes('dhaka') &&
+            !u.name.toLowerCase().includes('engineering') &&
+            !u.name.toLowerCase().includes('international') &&
+            !u.name.toLowerCase().includes('central');
 
           return (
-            <button
+            <div
               key={u.id || u.name}
               onClick={() => onNavigate('universityDetail', { name: u.name })}
-              className="card p-5 text-left hover:-translate-y-1 transition flex flex-col justify-between group"
+              className={`card p-5 text-left hover:-translate-y-1 transition duration-200 flex flex-col justify-between group cursor-pointer border ${
+                isDU ? 'ring-2 ring-blue-500/30 border-blue-300/80 shadow-md' : 'border-soft'
+              }`}
             >
               <div>
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 shrink-0 rounded-xl bg-slate-100 flex items-center justify-center font-black navy text-sm group-hover:bg-blue-50 group-hover:text-blue-700 transition">
-                    {initials}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start gap-2">
-                      <b className="leading-snug text-slate-900 group-hover:text-blue-600 transition">
-                        {u.name}
-                      </b>
-                      <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded whitespace-nowrap">
-                        {u.type}
-                      </span>
+                {/* Header with Crest and Follow Button */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3.5 min-w-0">
+                    <div className="w-14 h-14 shrink-0 rounded-2xl bg-white flex items-center justify-center font-black navy text-base group-hover:bg-blue-50 group-hover:text-blue-700 transition overflow-hidden p-1.5 border border-slate-200 shadow-xs">
+                      {logo ? (
+                        <img
+                          src={logo}
+                          alt={`${u.name} crest`}
+                          className="w-full h-full object-contain hover:scale-105 transition"
+                        />
+                      ) : (
+                        initials
+                      )}
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">{u.location || 'Bangladesh'}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start gap-1.5 flex-wrap">
+                        <b className="leading-snug text-slate-900 group-hover:text-blue-600 transition text-sm">
+                          {isDU ? 'University of Dhaka (DU)' : u.name}
+                        </b>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded">
+                          {u.type}
+                        </span>
+                        {isDU && (
+                          <span className="text-[10px] bg-blue-100 text-blue-700 font-extrabold px-1.5 py-0.5 rounded">
+                            Est. 1921
+                          </span>
+                        )}
+                        <span className="text-xs text-slate-400 truncate">
+                          {u.location || 'Bangladesh'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Follow Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!currentUser) {
+                        onNavigate('account');
+                        return;
+                      }
+                      toggleFollowUniversity(u.name);
+                    }}
+                    className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                      isFollowing
+                        ? 'bg-blue-600 text-white shadow-xs hover:bg-rose-600 hover:text-white'
+                        : 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
+                    }`}
+                    title={isFollowing ? 'Click to unfollow' : 'Follow this university'}
+                  >
+                    <Heart className={`w-3.5 h-3.5 ${isFollowing ? 'fill-current' : ''}`} />
+                    <span>{isFollowing ? 'Following' : 'Follow'}</span>
+                  </button>
                 </div>
 
                 <div className="line my-4"></div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-slate-50 p-2.5 rounded-xl">
-                    <span className="text-slate-400 block text-[11px]">Alumni</span>
-                    <b className="navy text-sm">{u.alumniCount?.toLocaleString() || '1,200'}</b>
+                {/* 3 Distinct Numbers: Followers, Alumni, and Students */}
+                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-tight">
+                      Followers
+                    </span>
+                    <b className="text-blue-600 text-sm block mt-0.5">
+                      {u.followersCount?.toLocaleString() || '1,420'}
+                    </b>
                   </div>
-                  <div className="bg-slate-50 p-2.5 rounded-xl">
-                    <span className="text-slate-400 block text-[11px]">Employment</span>
-                    <b className="text-emerald-600 text-sm">{u.employmentRate || 84}%</b>
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-tight">
+                      Alumni
+                    </span>
+                    <b className="navy text-sm block mt-0.5">
+                      {u.alumniCount?.toLocaleString() || '1,200'}
+                    </b>
+                  </div>
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-tight">
+                      Students
+                    </span>
+                    <b className="text-indigo-600 text-sm block mt-0.5">
+                      {u.studentCount?.toLocaleString() || '8,500'}
+                    </b>
                   </div>
                 </div>
               </div>
 
+              {/* Card Footer */}
               <div className="mt-4 pt-3 border-t border-soft flex items-center justify-between text-xs">
-                <span
-                  className={`pill text-[11px] py-0.5 px-2.5 ${
-                    u.type === 'Public'
-                      ? 'text-blue-600 bg-blue-50/50'
-                      : u.type === 'Private'
-                      ? 'text-slate-600'
-                      : 'text-emerald-600 bg-emerald-50/50'
-                  }`}
-                >
-                  {u.type}
-                </span>
-                <span className="font-bold text-blue-600 group-hover:translate-x-1 transition">
-                  View profile →
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`pill text-[11px] py-0.5 px-2.5 ${
+                      u.type === 'Public'
+                        ? 'text-blue-600 bg-blue-50/50'
+                        : u.type === 'Private'
+                        ? 'text-slate-600'
+                        : 'text-emerald-600 bg-emerald-50/50'
+                    }`}
+                  >
+                    {u.type}
+                  </span>
+                  <span className="text-[11px] text-emerald-600 font-bold">
+                    {u.employmentRate || 85}% Employed
+                  </span>
+                </div>
+
+                <span className="font-bold text-blue-600 group-hover:translate-x-1 transition flex items-center gap-1">
+                  <span>Explore campus</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </span>
               </div>
-            </button>
+            </div>
           );
         })}
       </div>

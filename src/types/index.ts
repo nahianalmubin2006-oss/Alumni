@@ -34,6 +34,7 @@ export interface UserProfile {
   isVerifiedAlumni?: boolean;
   assignedUniversity?: string;
   assignedDepartment?: string;
+  followedUniversities?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -43,9 +44,11 @@ export interface University {
   name: string;
   type: 'Public' | 'Private' | 'International';
   location: string;
+  logoUrl?: string;
   verified?: boolean;
   alumniCount: number;
   studentCount?: number;
+  followersCount?: number;
   departmentCount: number;
   employmentRate: number;
   higherStudiesRate?: number;
@@ -55,6 +58,29 @@ export interface University {
   website?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export type PostReactionType = 'like' | 'love' | 'scholar' | 'insightful' | 'celebrate';
+
+export interface UserPost {
+  id: string;
+  userId: string;
+  authorName: string;
+  authorEmail: string;
+  authorRole: Role;
+  authorUniversity?: string;
+  authorDepartment?: string;
+  authorPhotoUrl?: string;
+  content: string;
+  imageUrl?: string;
+  createdAt: string;
+  reactions: {
+    like?: string[];
+    love?: string[];
+    scholar?: string[];
+    insightful?: string[];
+    celebrate?: string[];
+  };
 }
 
 export interface Department {

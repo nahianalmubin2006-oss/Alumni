@@ -425,6 +425,49 @@ export const INITIAL_PLATFORM_SETTINGS: PlatformSetting = {
   updatedAt: new Date().toISOString()
 };
 
+export const INITIAL_POSTS = [
+  {
+    id: 'post-du-centennial',
+    userId: 'usr-tanvir-hasan',
+    authorName: 'Tanvir Hasan',
+    authorEmail: 'tanvir.hasan@alumni.ac.bd',
+    authorRole: 'ALUMNI' as const,
+    authorUniversity: 'University of Dhaka',
+    authorDepartment: 'Computer Science & Engineering',
+    authorPhotoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+    content: 'Proud to announce that our research paper on Distributed Systems & AI has been accepted at IEEE Cloud 2026! Gratitude to my professors and mentors at University of Dhaka CSE department.',
+    imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80',
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    reactions: {
+      like: ['usr-1', 'usr-2'],
+      love: ['usr-3'],
+      scholar: ['usr-tanvir-hasan', 'usr-4'],
+      insightful: ['usr-5'],
+      celebrate: ['usr-6', 'usr-7']
+    }
+  },
+  {
+    id: 'post-curzon-campus',
+    userId: 'usr-nusrat-jahan',
+    authorName: 'Nusrat Jahan',
+    authorEmail: 'nusrat.jahan@du.ac.bd',
+    authorRole: 'STUDENT' as const,
+    authorUniversity: 'University of Dhaka',
+    authorDepartment: 'Biochemistry & Molecular Biology',
+    authorPhotoUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&auto=format&fit=crop&q=80',
+    content: 'Beautiful morning at Curzon Hall, University of Dhaka! Final year thesis presentation completed successfully today with my batchmates. 🎓✨',
+    imageUrl: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=800&auto=format&fit=crop&q=80',
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    reactions: {
+      like: ['usr-1', 'usr-8'],
+      love: ['usr-9', 'usr-10'],
+      scholar: ['usr-11'],
+      insightful: [],
+      celebrate: ['usr-12']
+    }
+  }
+];
+
 // Seed calculation helper
 export function demoSeed(str: string): number {
   let h = 0;
@@ -433,5 +476,32 @@ export function demoSeed(str: string): number {
 }
 
 export function universityInitials(name: string): string {
+  if (name.toLowerCase().includes('dhaka university') || name.toLowerCase() === 'university of dhaka') {
+    return 'DU';
+  }
   return name.split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
+
+export function getUniversityLogo(name: string): string | undefined {
+  if (!name) return undefined;
+  const lower = name.toLowerCase().trim();
+  if (
+    lower === 'university of dhaka' ||
+    lower === 'dhaka university' ||
+    lower === 'du' ||
+    lower.includes('dhaka university') ||
+    lower.includes('university of dhaka') ||
+    (lower.includes('dhaka') &&
+      !lower.includes('engineering') &&
+      !lower.includes('technology') &&
+      !lower.includes('international') &&
+      !lower.includes('central') &&
+      !lower.includes('open') &&
+      !lower.includes('medical') &&
+      !lower.includes('science'))
+  ) {
+    return '/du-logo.png';
+  }
+  return undefined;
+}
+

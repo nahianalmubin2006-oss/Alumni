@@ -1,7 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import { universityInitials, RAW_DEPARTMENT_CATALOG, demoSeed } from '../data/initialData';
+import { University } from '../types';
+import {
+  universityInitials,
+  RAW_DEPARTMENT_CATALOG,
+  ALL_DIRECTORY_UNIVERSITIES,
+  demoSeed,
+  getUniversityLogo,
+} from '../data/initialData';
 import {
   Flame,
   Award,
@@ -14,6 +21,15 @@ import {
   Sparkles,
   Newspaper,
   CheckCircle2,
+  ArrowLeft,
+  Building2,
+  MapPin,
+  GraduationCap,
+  Users,
+  Globe,
+  TrendingUp,
+  Briefcase,
+  Heart,
 } from 'lucide-react';
 
 interface UniversityDetailViewProps {
@@ -35,6 +51,8 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     removeNewsPermanent,
     triggerAINewsBotScan,
     canUserManageArticle,
+    toggleFollowUniversity,
+    isFollowingUniversity,
   } = useData();
   const { currentUser, userProfile, isSuperAdmin } = useAuth();
 
@@ -56,25 +74,45 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     userProfile?.role === 'DEPARTMENT_ADMIN';
 
   // Find university record or generate representation
-  const university = useMemo(() => {
+  const university: University = useMemo(() => {
     const found = universities.find((u) => u.name.toLowerCase() === universityName.toLowerCase());
     if (found) return found;
 
+    const inCatalog = ALL_DIRECTORY_UNIVERSITIES.find(
+      (u) => u.name.toLowerCase() === universityName.toLowerCase()
+    );
+    const uniType = inCatalog
+      ? inCatalog.type
+      : universityName.includes('Engineering') || universityName.includes('Dhaka')
+      ? 'Public'
+      : 'Private';
+
     const seed = demoSeed('uni-' + universityName);
+    const isDU =
+      universityName.toLowerCase().includes('dhaka') &&
+      !universityName.toLowerCase().includes('engineering') &&
+      !universityName.toLowerCase().includes('international') &&
+      !universityName.toLowerCase().includes('central');
+
     return {
       id: 'uni-' + encodeURIComponent(universityName.toLowerCase().replace(/[^a-z0-9]/g, '-')),
       name: universityName,
-      type: (universityName.includes('Engineering') || universityName.includes('Dhaka') ? 'Public' : 'Public') as any,
-      location: 'Dhaka, Bangladesh',
+      type: uniType as any,
+      location: isDU ? 'Nilkhet Rd, Dhaka 1000, Bangladesh' : 'Dhaka, Bangladesh',
+      logoUrl: getUniversityLogo(universityName),
       verified: true,
-      alumniCount: 2840,
-      departmentCount: 48,
-      employmentRate: 84,
-      higherStudiesRate: 11,
-      countriesCount: 28,
-      companiesCount: 510,
-      overview: `${universityName} is a prestigious center of higher learning dedicated to academic excellence, innovative student research, and high-impact industry collaboration.`,
-      website: 'https://ugc.gov.bd',
+      alumniCount: isDU ? 8920 : 2840 + (seed % 3500),
+      studentCount: isDU ? 37500 : 3500 + (seed % 15000),
+      followersCount: isDU ? 14200 : 1200 + (seed % 6000),
+      departmentCount: isDU ? 84 : 36 + (seed % 28),
+      employmentRate: isDU ? 89 : 78 + (seed % 18),
+      higherStudiesRate: isDU ? 18 : 10 + (seed % 14),
+      countriesCount: isDU ? 52 : 22 + (seed % 20),
+      companiesCount: isDU ? 850 : 420 + (seed % 400),
+      overview: isDU
+        ? 'University of Dhaka (DU), founded in 1921, is Bangladesh’s flagship public research university. Celebrated historically as the Oxford of the East, it is the intellectual cornerstone of the nation.'
+        : `${universityName} is a prestigious center of higher learning dedicated to academic excellence, innovative student research, and high-impact industry collaboration.`,
+      website: isDU ? 'https://du.ac.bd' : 'https://ugc.gov.bd',
     };
   }, [universities, universityName]);
 
@@ -171,87 +209,222 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-5 py-10">
-      {/* Back button */}
-      <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => onNavigate('universities')}
-          className="text-sm text-slate-500 hover:text-slate-800 transition flex items-center gap-1"
-        >
-          <span>← Back to Universities</span>
-        </button>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+      {/* Top Breadcrumb and Actions Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onNavigate('universities')}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-xs hover:border-blue-400 hover:text-blue-600 transition group cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 transition group-hover:-translate-x-0.5 text-slate-500 group-hover:text-blue-600" />
+            <span>Back to Universities</span>
+          </button>
+          <span className="text-slate-300 text-xs hidden sm:inline">/</span>
+          <span className="text-xs font-medium text-slate-500 truncate max-w-[200px] sm:max-w-md hidden sm:inline">
+            {university.name}
+          </span>
+        </div>
 
-        {isThisUniAdmin && (
+        <div className="flex items-center gap-2">
+          {/* Follow / Unfollow University Button */}
           <button
             onClick={() => {
-              setEditOverview(university.overview || '');
-              setEditLocation(university.location || '');
-              setShowEditModal(true);
+              if (!currentUser) {
+                onNavigate('account');
+                return;
+              }
+              toggleFollowUniversity(university.name);
             }}
-            className="pill text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100 transition"
+            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer ${
+              isFollowingUniversity(university.name)
+                ? 'bg-blue-600 text-white hover:bg-rose-600'
+                : 'bg-white text-blue-700 border border-blue-200 hover:bg-blue-50'
+            }`}
           >
-            ✏ Submit Information Change
+            <Heart className={`w-3.5 h-3.5 ${isFollowingUniversity(university.name) ? 'fill-current' : ''}`} />
+            <span>{isFollowingUniversity(university.name) ? 'Following Campus' : '+ Follow Campus'}</span>
           </button>
-        )}
+
+          {isThisUniAdmin && (
+            <button
+              onClick={() => {
+                setEditOverview(university.overview || '');
+                setEditLocation(university.location || '');
+                setShowEditModal(true);
+              }}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition shadow-xs cursor-pointer flex items-center gap-1.5"
+            >
+              <span>✏ Edit Institutional Profile</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Hero Banner */}
-      <div className="card p-7 md:p-9 bg-navy text-white relative overflow-hidden shadow-2xl">
-        <div className="absolute -right-20 -top-24 w-72 h-72 rounded-full border border-white/10 pointer-events-none"></div>
-        <div className="absolute -right-8 -bottom-40 w-96 h-96 rounded-full border border-white/10 pointer-events-none"></div>
+      {/* Modern Premium Hero Banner */}
+      <div className="hero-navy-card p-6 sm:p-8 md:p-10 relative overflow-hidden">
+        {/* Subtle Decorative Ambient Rings & Mesh */}
+        <div className="absolute -right-20 -top-24 w-80 h-80 rounded-full border border-blue-400/10 pointer-events-none bg-blue-500/5 blur-2xl"></div>
+        <div className="absolute -right-10 -bottom-36 w-96 h-96 rounded-full border border-indigo-400/10 pointer-events-none bg-indigo-500/5 blur-3xl"></div>
+        <div className="absolute left-1/2 top-0 w-96 h-24 bg-gradient-to-b from-blue-400/10 to-transparent pointer-events-none"></div>
 
-        <div className="flex flex-col md:flex-row gap-6 items-start relative z-10">
-          <div className="w-20 h-20 rounded-2xl bg-white text-navy flex items-center justify-center text-2xl font-black shadow-lg">
-            {universityInitials(university.name)}
+        <div className="flex flex-col md:flex-row gap-6 lg:gap-8 items-start relative z-10">
+          {/* Institution Crest / Insignia Avatar */}
+          <div className="relative shrink-0">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 p-0.5 shadow-2xl ring-4 ring-white/15 flex items-center justify-center">
+              <div className="w-full h-full rounded-[14px] bg-white flex flex-col items-center justify-center text-center p-1.5 shadow-inner overflow-hidden">
+                {university.logoUrl || getUniversityLogo(university.name) ? (
+                  <img
+                    src={university.logoUrl || getUniversityLogo(university.name)}
+                    alt={`${university.name} official crest emblem`}
+                    className="w-full h-full object-contain p-1 rounded-md hover:scale-105 transition duration-200"
+                  />
+                ) : (
+                  <>
+                    <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mb-0.5" />
+                    <span className="text-2xl sm:text-3xl font-black text-[#0b1f3a] tracking-tight leading-none">
+                      {universityInitials(university.name)}
+                    </span>
+                    <span className="text-[9px] uppercase tracking-wider font-extrabold text-blue-600 mt-1">
+                      CAMPUS
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl sm:text-3xl font-black text-white">{university.name}</h1>
-              <span className="bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                ✓ UGC Verified
+
+          {/* Main Institution Information */}
+          <div className="flex-1 min-w-0">
+            {/* Badges Row */}
+            <div className="flex flex-wrap items-center gap-2 mb-2.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/25 text-emerald-300 border border-emerald-400/40 backdrop-blur-md shadow-xs">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+                <span>UGC Verified Institution</span>
+              </span>
+
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-blue-100 border border-white/20 backdrop-blur-md">
+                <Building2 className="w-3 h-3 text-blue-300" />
+                <span>{university.type} University</span>
+              </span>
+
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-blue-100 border border-white/20 backdrop-blur-md">
+                <Globe className="w-3 h-3 text-cyan-300" />
+                <span>Global Intelligence Node</span>
               </span>
             </div>
-            <p className="text-slate-300 mt-2 text-sm leading-relaxed max-w-2xl">
-              {university.location || 'Bangladesh'} · {university.overview || 'Official Higher Education Profile'}
+
+            {/* University Title */}
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight drop-shadow-sm">
+              {university.name}
+            </h1>
+
+            {/* Location & Registry Subtitle */}
+            <div className="flex items-center gap-2 mt-2 text-blue-200 text-xs sm:text-sm font-medium">
+              <div className="flex items-center gap-1 text-rose-300">
+                <MapPin className="w-4 h-4 shrink-0" />
+                <span>{university.location || 'Dhaka, Bangladesh'}</span>
+              </div>
+              <span className="text-white/30">•</span>
+              <span className="text-slate-300">Official Higher Education Entity</span>
+            </div>
+
+            {/* Overview Statement */}
+            <p className="text-slate-200 mt-3 text-xs sm:text-sm leading-relaxed max-w-3xl font-normal">
+              {university.overview || `${university.name} is a premier institution recognized for academic excellence, innovative student research, and impactful alumni outcomes globally.`}
             </p>
-            <div className="flex flex-wrap gap-2 mt-5">
-              <span className="pill bg-white/10 border-white/15 text-white">
-                {university.type} University
-              </span>
-              <span className="pill bg-white/10 border-white/15 text-white">
-                {university.departmentCount || 48} departments
-              </span>
-              <span className="pill bg-white/10 border-white/15 text-white">
-                Global Network Node
-              </span>
+
+            {/* Interactive Highlights & Pills */}
+            <div className="flex flex-wrap items-center gap-2.5 mt-5 pt-4 border-t border-white/10">
+              <div className="hero-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-blue-300" />
+                <span>{university.alumniCount?.toLocaleString() || '2,840'} Registered Alumni</span>
+              </div>
+
+              <div className="hero-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-indigo-300" />
+                <span>{university.departmentCount || 48} Academic Departments</span>
+              </div>
+
+              <div className="hero-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-emerald-300" />
+                <span>{university.countriesCount || 28} Destination Countries</span>
+              </div>
+
+              {university.website && (
+                <a
+                  href={university.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-md hover:shadow-lg cursor-pointer ml-auto"
+                >
+                  <span>Portal Website</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-6">
-        <div className="metric">
-          <b className="text-2xl navy">{university.alumniCount?.toLocaleString() || '2,840'}</b>
-          <p className="text-xs text-slate-400 mt-0.5">Alumni</p>
+      {/* Modern High-Impact Metrics Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mt-6">
+        <div className="metric flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-400 mb-1">
+            <span className="text-xs font-semibold">Campus Followers</span>
+            <Heart className="w-4 h-4 text-rose-500" />
+          </div>
+          <b className="text-2xl sm:text-3xl font-black text-rose-600">
+            {university.followersCount?.toLocaleString() || '14,200'}
+          </b>
+          <p className="text-[11px] text-slate-400 mt-1">Community members</p>
         </div>
-        <div className="metric">
-          <b className="text-2xl text-emerald-600">{university.employmentRate || 84}%</b>
-          <p className="text-xs text-slate-400 mt-0.5">Employment</p>
+
+        <div className="metric flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-400 mb-1">
+            <span className="text-xs font-semibold">Alumni Cohort</span>
+            <Users className="w-4 h-4 text-blue-500" />
+          </div>
+          <b className="text-2xl sm:text-3xl font-black text-[#0b1f3a]">
+            {university.alumniCount?.toLocaleString() || '8,920'}
+          </b>
+          <p className="text-[11px] text-slate-400 mt-1">Graduated alumni</p>
         </div>
-        <div className="metric">
-          <b className="text-2xl navy">{university.higherStudiesRate || 11}%</b>
-          <p className="text-xs text-slate-400 mt-0.5">Higher studies</p>
+
+        <div className="metric flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-400 mb-1">
+            <span className="text-xs font-semibold">Enrolled Students</span>
+            <GraduationCap className="w-4 h-4 text-indigo-500" />
+          </div>
+          <b className="text-2xl sm:text-3xl font-black text-indigo-600">
+            {university.studentCount?.toLocaleString() || '37,500'}
+          </b>
+          <p className="text-[11px] text-slate-400 mt-1">Current study body</p>
         </div>
-        <div className="metric">
-          <b className="text-2xl navy">{university.countriesCount || 28}</b>
-          <p className="text-xs text-slate-400 mt-0.5">Countries</p>
+
+        <div className="metric flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-400 mb-1">
+            <span className="text-xs font-semibold">Employment Rate</span>
+            <Briefcase className="w-4 h-4 text-emerald-500" />
+          </div>
+          <b className="text-2xl sm:text-3xl font-black text-emerald-600">
+            {university.employmentRate || 84}%
+          </b>
+          <p className="text-[11px] text-emerald-700 font-medium mt-1">Industry placement</p>
         </div>
-        <div className="metric">
-          <b className="text-2xl navy">{university.companiesCount || '510+'}</b>
-          <p className="text-xs text-slate-400 mt-0.5">Companies</p>
+
+        <div className="metric flex flex-col justify-between col-span-2 sm:col-span-1">
+          <div className="flex items-center justify-between text-slate-400 mb-1">
+            <span className="text-xs font-semibold">Global Footprint</span>
+            <Globe className="w-4 h-4 text-cyan-500" />
+          </div>
+          <b className="text-2xl sm:text-3xl font-black text-[#0b1f3a]">
+            {university.countriesCount || 28}
+          </b>
+          <p className="text-[11px] text-slate-400 mt-1">Host nations worldwide</p>
         </div>
       </div>
+
 
       {/* Tabs */}
       <div className="mt-10 flex gap-2 overflow-x-auto pb-2 border-b border-soft">

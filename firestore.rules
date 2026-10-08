@@ -52,6 +52,11 @@ service cloud.firestore {
       );
     }
 
+    // Test Connection Check
+    match /test/{testId} {
+      allow read: if true;
+    }
+
     // Users Collection
     match /users/{userId} {
       allow read: if true;
@@ -167,6 +172,14 @@ service cloud.firestore {
     match /platformSettings/{settingId} {
       allow read: if true;
       allow write: if isSuperAdmin();
+    }
+
+    // User Posts & Community Reactions
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSuperAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
   }
 }

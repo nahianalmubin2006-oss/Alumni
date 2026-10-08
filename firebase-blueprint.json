@@ -358,6 +358,10 @@
     "/platformSettings/{settingId}": {
       "schema": "PlatformSetting",
       "description": "Global platform configurations"
+    },
+    "/test/{testId}": {
+      "schema": "PlatformSetting",
+      "description": "Healthcheck test connection"
     }
   }
 }

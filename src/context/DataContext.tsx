@@ -29,6 +29,8 @@ import {
   PlatformSetting,
   Role,
   UserProfile,
+  UserPost,
+  PostReactionType,
 } from '../types';
 import {
   ALL_DIRECTORY_UNIVERSITIES,
@@ -36,6 +38,7 @@ import {
   INITIAL_ALUMNI,
   INITIAL_NEWS,
   INITIAL_PLATFORM_SETTINGS,
+  INITIAL_POSTS,
   demoSeed,
 } from '../data/initialData';
 
@@ -46,6 +49,7 @@ interface DataContextType {
   alumni: AlumniRecord[];
   students: StudentRecord[];
   news: NewsArticle[];
+  posts: UserPost[];
   changeRequests: ChangeRequest[];
   verificationRequests: VerificationRequest[];
   notifications: AppNotification[];
@@ -69,6 +73,12 @@ interface DataContextType {
   };
 
   // Actions
+  createPost: (post: Omit<UserPost, 'id' | 'createdAt' | 'reactions'>) => Promise<void>;
+  reactToPost: (postId: string, reactionType: PostReactionType) => Promise<void>;
+  deletePost: (postId: string) => Promise<void>;
+  toggleFollowUniversity: (uniName: string) => Promise<void>;
+  isFollowingUniversity: (uniName: string) => boolean;
+
   approveUser: (userId: string, targetRole?: Role) => Promise<void>;
   rejectUser: (userId: string, reason?: string) => Promise<void>;
   unapproveUser: (userId: string, reason?: string) => Promise<void>;
@@ -133,14 +143,58 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, userProfile, isSuperAdmin } = useAuth();
+  const { currentUser, userProfile, isSuperAdmin, updateProfileData } = useAuth();
 
-  const [universities, setUniversities] = useState<University[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
+  // Initialize with rich static directory data for instant offline-first rendering
+  const [universities, setUniversities] = useState<University[]>(() =>
+    ALL_DIRECTORY_UNIVERSITIES.map((u) => {
+      const seed = demoSeed('uni-' + u.name);
+      const isDU =
+        u.name.toLowerCase().includes('dhaka') &&
+        !u.name.toLowerCase().includes('engineering') &&
+        !u.name.toLowerCase().includes('international') &&
+        !u.name.toLowerCase().includes('central');
+
+      return {
+        id: 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
+        name: u.name,
+        type: u.type,
+        location: isDU ? 'Nilkhet Rd, Dhaka 1000, Bangladesh' : 'Dhaka, Bangladesh',
+        logoUrl: isDU ? '/du-logo.png' : undefined,
+        verified: true,
+        alumniCount: isDU ? 8920 : 700 + (seed % 3500),
+        studentCount: isDU ? 37500 : 3500 + (seed % 15000),
+        followersCount: isDU ? 14200 : 1200 + (seed % 6000),
+        departmentCount: isDU ? 84 : 30 + (seed % 20),
+        employmentRate: isDU ? 89 : 75 + (seed % 19),
+        higherStudiesRate: isDU ? 18 : 10 + (seed % 12),
+        countriesCount: isDU ? 52 : 18 + (seed % 15),
+        companiesCount: isDU ? 850 : 300 + (seed % 300),
+        overview: isDU
+          ? 'University of Dhaka (DU), established in 1921, is the premier public research university of Bangladesh with an illustrious history of academic distinction and nation-building.'
+          : `${u.name} is a distinguished institution dedicated to academic excellence, student empowerment, and global graduate trajectories.`,
+        website: isDU ? 'https://du.ac.bd' : 'https://ugc.gov.bd',
+      };
+    })
+  );
+  const [departments, setDepartments] = useState<Department[]>(() =>
+    RAW_DEPARTMENT_CATALOG.map((d) => ({
+      id: 'dept-' + encodeURIComponent(d.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
+      name: d.name,
+      university: 'University of Dhaka',
+      group: d.group,
+      alumniCount: 840,
+      employmentRate: 85,
+      higherStudiesRate: 11,
+      countriesCount: 22,
+      companiesCount: 210,
+    }))
+  );
   const [batches, setBatches] = useState<Batch[]>([]);
-  const [alumni, setAlumni] = useState<AlumniRecord[]>([]);
+  const [alumni, setAlumni] = useState<AlumniRecord[]>(INITIAL_ALUMNI);
   const [students, setStudents] = useState<StudentRecord[]>([]);
-  const [news, setNews] = useState<NewsArticle[]>([]);
+  const [news, setNews] = useState<NewsArticle[]>(INITIAL_NEWS);
+  const [posts, setPosts] = useState<UserPost[]>(INITIAL_POSTS);
   const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
   const [verificationRequests, setVerificationRequests] = useState<VerificationRequest[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -148,7 +202,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [adminAssignments, setAdminAssignments] = useState<AdminAssignment[]>([]);
   const [platformSettings, setPlatformSettings] = useState<PlatformSetting>(INITIAL_PLATFORM_SETTINGS);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
-  const [loadingData, setLoadingData] = useState<boolean>(true);
+  const [loadingData, setLoadingData] = useState<boolean>(false);
 
   // Helper to log audit events
   const logAudit = async (
@@ -192,15 +246,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Initial database check & seeding to ensure live Firestore persistence
+  // Safe initial database check: only Super Admin writes to prevent unauthenticated network queue flooding
   useEffect(() => {
     const initializeDatabase = async () => {
+      // Only proceed if authenticated as Super Admin to respect firestore security rules
+      if (!isSuperAdmin) return;
       try {
-        // Check universities collection
         const uniSnap = await getDocs(collection(db, 'universities'));
         if (uniSnap.empty) {
-          console.log('Seeding initial universities & departments into Firestore...');
-          // Seed top showcase universities first for speed
+          console.log('Admin seeding initial showcase universities into Firestore...');
           const showcaseNames = [
             'University of Dhaka',
             'Bangladesh University of Engineering & Technology',
@@ -210,7 +264,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             'Bangladesh University of Professionals',
           ];
 
-          for (const u of ALL_DIRECTORY_UNIVERSITIES) {
+          for (const u of ALL_DIRECTORY_UNIVERSITIES.slice(0, 10)) {
             const isShowcase = showcaseNames.includes(u.name);
             const seed = demoSeed('uni-' + u.name);
             const baseAlumni = isShowcase
@@ -218,122 +272,36 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 ? 8920
                 : u.name === 'Bangladesh University of Engineering & Technology'
                 ? 6240
-                : u.name === 'North South University'
-                ? 5800
-                : u.name === 'Jahangirnagar University'
-                ? 5110
-                : u.name === 'BRAC University'
-                ? 4600
-                : 2840
-              : 800 + (seed % 3500);
+                : 5800
+              : 700 + (seed % 3500);
 
             const uniRecord: University = {
               id: 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
               name: u.name,
               type: u.type,
-              location: u.name.includes('Savar')
-                ? 'Savar, Bangladesh'
-                : u.name.includes('Chittagong')
-                ? 'Chittagong, Bangladesh'
-                : 'Dhaka, Bangladesh',
+              location: 'Dhaka, Bangladesh',
               verified: true,
               alumniCount: baseAlumni,
-              studentCount: Math.round(baseAlumni * 1.4),
-              departmentCount: 30 + (seed % 25),
-              employmentRate: 78 + (seed % 17),
-              higherStudiesRate: 8 + (seed % 12),
-              countriesCount: 15 + (seed % 20),
-              companiesCount: 120 + (seed % 400),
-              overview: `${u.name} is a premier higher education institution in Bangladesh dedicated to research, innovation, and global leadership.`,
+              departmentCount: 35 + (seed % 20),
+              employmentRate: 80 + (seed % 15),
+              higherStudiesRate: 10 + (seed % 10),
+              countriesCount: 20 + (seed % 15),
+              companiesCount: 400 + (seed % 300),
+              overview: `${u.name} is a leading institution fostering global excellence and graduate achievements.`,
               website: 'https://ugc.gov.bd',
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             };
             await setDoc(doc(db, 'universities', uniRecord.id), uniRecord);
           }
-
-          // Seed showcase departments distributed neutrally across major universities
-          const majorUnis = [
-            'University of Dhaka',
-            'Bangladesh University of Engineering & Technology',
-            'Jahangirnagar University',
-            'North South University',
-            'BRAC University',
-            'University of Rajshahi',
-            'University of Chittagong',
-            'Bangladesh Agricultural University',
-            'Shahjalal University of Science & Technology',
-            'Khulna University',
-          ];
-
-          for (let i = 0; i < RAW_DEPARTMENT_CATALOG.slice(0, 20).length; i++) {
-            const d = RAW_DEPARTMENT_CATALOG[i];
-            const assignedUni = majorUnis[i % majorUnis.length];
-            const seed = demoSeed('dept-' + d.name + '-' + assignedUni);
-            const deptRecord: Department = {
-              id: 'dept-' + encodeURIComponent(d.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
-              name: d.name,
-              university: assignedUni,
-              group: d.group,
-              alumniCount: 842 + (seed % 400),
-              studentCount: 1100 + (seed % 500),
-              employmentRate: 82 + (seed % 14),
-              higherStudiesRate: 11 + (seed % 8),
-              countriesCount: 22 + (seed % 10),
-              companiesCount: 180 + (seed % 200),
-              careerScores: {
-                career: 86,
-                research: 74,
-                industry: 88,
-              },
-              achievements: 'Ranked top in competitive academic standing and graduate satisfaction.',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            };
-            await setDoc(doc(db, 'departments', deptRecord.id), deptRecord);
-          }
-
-          // Seed initial alumni (only user info: Nahian Al Mubin)
-          for (const a of INITIAL_ALUMNI) {
-            await setDoc(doc(db, 'alumni', a.id), a);
-          }
-
-          // Seed initial news
-          for (const n of INITIAL_NEWS) {
-            await setDoc(doc(db, 'news', n.id), n);
-          }
-
-          // Seed settings
-          await setDoc(doc(db, 'platformSettings', 'global-settings'), INITIAL_PLATFORM_SETTINGS);
-        }
-
-        // Active cleanup: ensure old testing dummy records are purged from Firestore & local storage
-        try {
-          localStorage.removeItem('alumniSphereLocalUsers');
-        } catch (e) {}
-
-        try {
-          // Clean legacy test alumni documents
-          const testAlumniDocIds = ['alumni-1', 'alumni-2', 'alumni-3', 'alumni-4', 'alumni-5', 'alumni-6'];
-          for (const id of testAlumniDocIds) {
-            try {
-              await deleteDoc(doc(db, 'alumni', id));
-            } catch (err) {}
-          }
-
-          // Check if Nahian Al Mubin is present in alumni collection
-          const userAlumni = INITIAL_ALUMNI[0];
-          await setDoc(doc(db, 'alumni', userAlumni.id), userAlumni);
-        } catch (cleanupErr) {
-          console.warn('Test data purge warning:', cleanupErr);
         }
       } catch (err) {
-        console.warn('Seeding check encountered an issue (rules or existing records):', err);
+        console.warn('Admin seeding check note:', err);
       }
     };
 
     initializeDatabase();
-  }, []);
+  }, [isSuperAdmin]);
 
   // Set up real-time listeners for public Firestore collections
   useEffect(() => {
@@ -467,6 +435,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
+    const unsubPosts = onSnapshot(
+      collection(db, 'posts'),
+      (snap) => {
+        const list: UserPost[] = [];
+        snap.forEach((d) => list.push({ ...(d.data() as UserPost), id: d.id }));
+        if (list.length > 0) {
+          setPosts(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        }
+      },
+      (error) => {
+        console.warn('Posts listener note:', error.message);
+      }
+    );
+
     return () => {
       unsubUniversities();
       unsubDepartments();
@@ -474,6 +456,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubStudents();
       unsubNews();
       unsubSettings();
+      unsubPosts();
     };
   }, []);
 
@@ -1559,6 +1542,130 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Post creation and community interaction
+  const createPost = async (postData: Omit<UserPost, 'id' | 'createdAt' | 'reactions'>) => {
+    const tempId = 'post-' + Date.now();
+    const newPost: UserPost = {
+      ...postData,
+      id: tempId,
+      createdAt: new Date().toISOString(),
+      reactions: {
+        like: [],
+        love: [],
+        scholar: [],
+        insightful: [],
+        celebrate: [],
+      },
+    };
+
+    setPosts((prev) => [newPost, ...prev]);
+
+    try {
+      const docRef = await addDoc(collection(db, 'posts'), {
+        userId: newPost.userId,
+        authorName: newPost.authorName,
+        authorEmail: newPost.authorEmail,
+        authorRole: newPost.authorRole,
+        authorUniversity: newPost.authorUniversity || '',
+        authorDepartment: newPost.authorDepartment || '',
+        authorPhotoUrl: newPost.authorPhotoUrl || '',
+        content: newPost.content,
+        imageUrl: newPost.imageUrl || '',
+        createdAt: newPost.createdAt,
+        reactions: newPost.reactions,
+      });
+      setPosts((prev) => prev.map((p) => (p.id === tempId ? { ...p, id: docRef.id } : p)));
+    } catch (err) {
+      console.warn('Post created locally, remote sync pending:', err);
+    }
+  };
+
+  const reactToPost = async (postId: string, reactionType: PostReactionType) => {
+    const userId = currentUser?.uid || (userProfile?.email ? 'usr-' + userProfile.email : 'guest-user');
+
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== postId) return p;
+        const currentList = p.reactions?.[reactionType] || [];
+        const hasReacted = currentList.includes(userId);
+        const updatedList = hasReacted
+          ? currentList.filter((id) => id !== userId)
+          : [...currentList, userId];
+
+        return {
+          ...p,
+          reactions: {
+            ...p.reactions,
+            [reactionType]: updatedList,
+          },
+        };
+      })
+    );
+
+    try {
+      const targetPost = posts.find((p) => p.id === postId);
+      if (!targetPost) return;
+      const currentList = targetPost.reactions?.[reactionType] || [];
+      const hasReacted = currentList.includes(userId);
+      const updatedList = hasReacted
+        ? currentList.filter((id) => id !== userId)
+        : [...currentList, userId];
+
+      const postDocRef = doc(db, 'posts', postId);
+      await updateDoc(postDocRef, {
+        [`reactions.${reactionType}`]: updatedList,
+      });
+    } catch (err) {
+      console.warn('Reaction saved locally:', err);
+    }
+  };
+
+  const deletePost = async (postId: string) => {
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+    try {
+      await deleteDoc(doc(db, 'posts', postId));
+    } catch (err) {
+      console.warn('Post deleted locally:', err);
+    }
+  };
+
+  const isFollowingUniversity = (uniName: string): boolean => {
+    if (!userProfile?.followedUniversities) return false;
+    return userProfile.followedUniversities.some(
+      (u) => u.toLowerCase() === uniName.toLowerCase()
+    );
+  };
+
+  const toggleFollowUniversity = async (uniName: string) => {
+    if (!currentUser || !userProfile) return;
+    const currentList = userProfile.followedUniversities || [];
+    const isFollowing = currentList.some((u) => u.toLowerCase() === uniName.toLowerCase());
+
+    const updatedList = isFollowing
+      ? currentList.filter((u) => u.toLowerCase() !== uniName.toLowerCase())
+      : [...currentList, uniName];
+
+    // Optimistically update university followersCount
+    setUniversities((prev) =>
+      prev.map((u) => {
+        if (u.name.toLowerCase() === uniName.toLowerCase()) {
+          const currentCount = u.followersCount || 1200;
+          return {
+            ...u,
+            followersCount: isFollowing ? Math.max(0, currentCount - 1) : currentCount + 1,
+          };
+        }
+        return u;
+      })
+    );
+
+    try {
+      await updateProfileData({ followedUniversities: updatedList });
+    } catch (err) {
+      console.warn('Follow state updated locally:', err);
+    }
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -1568,6 +1675,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         alumni,
         students,
         news,
+        posts,
         changeRequests,
         verificationRequests,
         notifications,
@@ -1577,6 +1685,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         allUsers,
         loadingData,
         stats,
+        createPost,
+        reactToPost,
+        deletePost,
+        toggleFollowUniversity,
+        isFollowingUniversity,
         approveUser,
         rejectUser,
         unapproveUser,

@@ -2246,7 +2246,24 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onNavigate }) =>
                 </div>
               )}
 
-              {/* 4. Metadata */}
+              {/* 4. Credentials & Security */}
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-soft text-xs space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 font-bold uppercase text-[10px]">Email (Gmail):</span>
+                    <span className="navy font-bold text-xs">{selectedUserForModal.email}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400 font-bold uppercase text-[10px]">Password:</span>
+                    <span className="text-[11px] font-mono text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-300 font-bold flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      <span>Encrypted & Protected (Never Plaintext)</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. Metadata */}
               <div className="p-3 bg-slate-50 rounded-xl border border-soft text-[11px] text-slate-400 flex flex-wrap justify-between gap-2">
                 <span>Account UID: {selectedUserForModal.uid}</span>
                 <span>
