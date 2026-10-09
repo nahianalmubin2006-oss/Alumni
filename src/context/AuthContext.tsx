@@ -364,25 +364,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Keep the user's linked public directory record in sync with editable profile fields.
     // Legacy claimed records are located by userId rather than assuming doc ID == UID.
-    const directoryFields = [
+    const makeDirectoryUpdates = (fields: readonly (keyof UserProfile)[]) => {
+      const updates: Record<string, unknown> = { updatedAt: now };
+      for (const field of fields) {
+        if (data[field] !== undefined) updates[field] = data[field];
+      }
+      return updates;
+    };
+    const alumniUpdates = makeDirectoryUpdates([
       'name', 'university', 'department', 'studentId', 'educationLevel',
-      'studentYear', 'expectedGraduation', 'graduationYear', 'jobRole',
-      'company', 'country', 'city', 'bio', 'photoUrl', 'linkedin',
-    ] as const;
-    const directoryUpdates: Record<string, unknown> = { updatedAt: now };
-    for (const field of directoryFields) {
-      if (data[field] !== undefined) directoryUpdates[field] = data[field];
-    }
+      'graduationYear', 'jobRole', 'company', 'country', 'city', 'bio', 'photoUrl', 'linkedin',
+    ]);
+    const studentUpdates = makeDirectoryUpdates([
+      'name', 'university', 'department', 'studentId', 'educationLevel',
+      'studentYear', 'expectedGraduation', 'bio', 'photoUrl',
+    ]);
     try {
       const [alumniSnap, studentSnap] = await Promise.all([
         getDocs(query(collection(db, 'alumni'), where('userId', '==', currentUser.uid))),
         getDocs(query(collection(db, 'students'), where('userId', '==', currentUser.uid))),
       ]);
       await Promise.all([
-        ...alumniSnap.docs.map((item) => updateDoc(doc(db, 'alumni', item.id), directoryUpdates).catch((error) => {
+        ...alumniSnap.docs.map((item) => updateDoc(doc(db, 'alumni', item.id), alumniUpdates).catch((error) => {
           console.warn('Linked alumni record was not updated:', error);
         })),
-        ...studentSnap.docs.map((item) => updateDoc(doc(db, 'students', item.id), directoryUpdates).catch((error) => {
+        ...studentSnap.docs.map((item) => updateDoc(doc(db, 'students', item.id), studentUpdates).catch((error) => {
           console.warn('Linked student record was not updated:', error);
         })),
       ]);
