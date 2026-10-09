@@ -91,7 +91,6 @@ service cloud.firestore {
 
     match /test/{testId} {
       allow read: if true;
-      allow write: if isSuperAdmin();
     }
 
     // User roles and approval status are controlled by Super Admins only.
@@ -113,7 +112,12 @@ service cloud.firestore {
           request.resource.data.status == 'PENDING'
           || (isSuperAdmin() && request.resource.data.status == 'APPROVED')
         )
-        && request.resource.data.profileType in ['Student', 'Alumni', 'Admin'];
+        && request.resource.data.profileType in ['Student', 'Alumni', 'Admin']
+        && (isSuperAdmin() || (
+          request.resource.data.get('isVerifiedAlumni', false) == false
+          && request.resource.data.get('assignedUniversity', '') == ''
+          && request.resource.data.get('assignedDepartment', '') == ''
+        ));
       allow update: if request.resource.data.uid == resource.data.uid
         && request.resource.data.id == resource.data.id
         && (isSuperAdmin() || (isOwner(userId) && ownerCanEditProfile()));
@@ -210,6 +214,7 @@ service cloud.firestore {
         isSignedIn()
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.status in ['DRAFT', 'PENDING_APPROVAL']
+        && request.resource.data.get('isPermanent', false) == false
       );
       allow update: if isSuperAdmin()
         || isUniversityAdmin(resource.data.university)
