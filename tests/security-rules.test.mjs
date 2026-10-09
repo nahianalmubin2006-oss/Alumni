@@ -53,3 +53,9 @@ test('admin portal exposes four explicit roles and enforces role matching', () =
 test('Firebase admin session exchange recognizes approved institution roles', () => {
   assert.match(server, /\['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN', 'UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'\]\.includes\(user\.role\)/);
 });
+
+
+test('institution login skips central password authentication and uses Firebase role exchange', () => {
+  assert.match(adminLogin, /loginAdmin\(email\.trim\(\), password, selectedLoginRole\)/);
+  assert.match(readFileSync(new URL('../src/context/AdminContext.tsx', import.meta.url), 'utf8'), /expectedRole !== 'UNIVERSITY_ADMIN' && expectedRole !== 'DEPARTMENT_ADMIN'/);
+});
