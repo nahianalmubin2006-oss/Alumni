@@ -59,3 +59,10 @@ test('institution login skips central password authentication and uses Firebase 
   assert.match(adminLogin, /loginAdmin\(email\.trim\(\), password, selectedLoginRole\)/);
   assert.match(readFileSync(new URL('../src/context/AdminContext.tsx', import.meta.url), 'utf8'), /expectedRole !== 'UNIVERSITY_ADMIN' && expectedRole !== 'DEPARTMENT_ADMIN'/);
 });
+
+
+test('Super Admin login establishes Firebase auth before legacy server fallback', () => {
+  const adminContext = readFileSync(new URL('../src/context/AdminContext.tsx', import.meta.url), 'utf8');
+  assert.match(adminContext, /expectedRole !== 'UNIVERSITY_ADMIN' && expectedRole !== 'DEPARTMENT_ADMIN' && expectedRole !== 'SUPER_ADMIN'/);
+  assert.match(adminContext, /Super Admins should establish a Firebase session/);
+});
