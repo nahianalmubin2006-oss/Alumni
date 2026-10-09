@@ -88,7 +88,7 @@ interface ServerUser {
   id: string;
   email: string;
   name: string;
-  role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+  role: 'USER' | 'ADMIN' | 'SUPER_ADMIN' | 'CO_ADMIN' | 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN';
   status: 'APPROVED' | 'PENDING' | 'REJECTED' | 'SUSPENDED';
   university?: string;
   department?: string;
@@ -158,7 +158,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   // Verifications & Change Requests
   const [verifications, setVerifications] = useState<any[]>([]);
   const [changeRequests, setChangeRequests] = useState<any[]>([]);
-  const [approvalsTab, setApprovalsTab] = useState<'verifications' | 'changes'>('verifications');
+  const [approvalsTab, setApprovalsTab] = useState<'verifications' | 'changes' | 'admin-applications'>('verifications');
+  const [adminApplications, setAdminApplications] = useState<any[]>([]);
 
   // Audit logs
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -221,9 +222,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   // Fetch Approvals
   const loadApprovals = useCallback(async () => {
     try {
-      const [verifRes, crRes] = await Promise.all([
+      const [verifRes, crRes, appRes] = await Promise.all([
         apiFetch('/api/admin/verifications'),
         apiFetch('/api/admin/change-requests'),
+        apiFetch('/api/admin/applications'),
       ]);
       if (verifRes.ok) {
         const vData = await verifRes.json();
@@ -233,10 +235,31 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         const crData = await crRes.json();
         setChangeRequests(crData.changeRequests || []);
       }
+      if (appRes.ok) {
+        const appData = await appRes.json();
+        setAdminApplications(appData.applications || []);
+      }
     } catch (e) {
       console.warn('Failed to load approvals', e);
     }
   }, [apiFetch]);
+
+  const handleReviewAdminApplication = async (id: string, decision: 'APPROVED' | 'REJECTED') => {
+    try {
+      const response = await apiFetch('/api/admin/applications/' + encodeURIComponent(id) + '/review', {
+        method: 'POST',
+        body: JSON.stringify({ decision }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not review this application.');
+      showToast(data.message || 'Application reviewed.', 'success');
+      await loadApprovals();
+      await loadUsers();
+      await loadStats();
+    } catch (error: any) {
+      showToast(error.message || 'Could not review this application.', 'error');
+    }
+  };
 
   // Fetch Audit Logs
   const loadAuditLogs = useCallback(async () => {
@@ -1107,6 +1130,14 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   >
                     Change Requests ({changeRequests.length})
                   </button>
+                  <button
+                    onClick={() => setApprovalsTab('admin-applications')}
+                    className={`px-3 py-1.5 rounded-lg transition ${
+                      approvalsTab === 'admin-applications' ? 'bg-blue-600 text-white' : 'text-slate-400'
+                    }`}
+                  >
+                    Admin Access ({adminApplications.filter((item) => item.status === 'PENDING').length})
+                  </button>
                 </div>
               </div>
 
@@ -1223,6 +1254,42 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                       </div>
                     ))
                   )}
+                </div>
+              )}
+              {approvalsTab === 'admin-applications' && (
+                <div className="space-y-3">
+                  {adminApplications.length === 0 ? (
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-xs text-slate-400">
+                      No admin access applications have been submitted.
+                    </div>
+                  ) : adminApplications.map((application) => (
+                    <div key={application.id} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm text-white">{application.name}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold">{application.type}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                            application.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' :
+                            application.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'
+                          }`}>{application.status}</span>
+                        </div>
+                        <div className="text-xs text-slate-400 mt-1">{application.email}</div>
+                        <div className="text-xs text-slate-300 mt-2">
+                          Scope: {application.university || 'Platform-wide'}{application.department ? ' / ' + application.department : ''}
+                        </div>
+                        <div className="text-[10px] text-slate-500 mt-1">Submitted {application.createdAt ? new Date(application.createdAt).toLocaleString() : 'recently'}</div>
+                        {application.reviewerNote && <div className="text-xs text-slate-400 mt-2">Review note: {application.reviewerNote}</div>}
+                      </div>
+                      {application.status === 'PENDING' && (
+                        <div className="flex items-center gap-2 self-end sm:self-center">
+                          <button onClick={() => handleReviewAdminApplication(application.id, 'REJECTED')} className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 font-bold">Decline</button>
+                          {(isSuperAdmin || application.type !== 'CO_ADMIN') && (
+                            <button onClick={() => handleReviewAdminApplication(application.id, 'APPROVED')} className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs text-white font-bold">Approve access</button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
