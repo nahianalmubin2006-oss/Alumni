@@ -19,11 +19,11 @@ import firebaseConfig from '../firebase-applet-config.json';
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Cloud Firestore with auto-detecting long-polling transport for iframe environments
+// Initialize Cloud Firestore with forced long-polling transport for iframe preview environments
 export const db = initializeFirestore(
   app,
   {
-    experimentalAutoDetectLongPolling: true,
+    experimentalForceLongPolling: true,
   },
   firebaseConfig.firestoreDatabaseId
 );
@@ -90,26 +90,14 @@ export function handleFirestoreError(
   throw new Error(JSON.stringify(errInfo));
 }
 
-// Test initial connection to Firestore
+// Validate Connection to Firestore
 export async function testConnection(): Promise<boolean> {
   try {
-    // 5-second race timeout to prevent blocking during initialization in restricted network environments
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Connection check timeout')), 5000)
-    );
-    await Promise.race([
-      getDocFromServer(doc(db, 'test', 'connection')),
-      timeoutPromise,
-    ]);
+    await getDocFromServer(doc(db, 'test', 'connection'));
     return true;
   } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message.includes('the client is offline') ||
-        error.message.includes('timeout') ||
-        error.message.includes('Could not reach'))
-    ) {
-      console.warn('Firestore client operates in offline mode or waiting for backend readiness.');
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.error('Please check your Firebase configuration.');
       return false;
     }
     return true;

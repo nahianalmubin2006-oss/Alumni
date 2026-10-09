@@ -94,6 +94,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const snap = await getDoc(userDocRef);
       if (snap.exists()) {
         const data = snap.data() as UserProfile;
+        const localPhoto = typeof window !== 'undefined' ? localStorage.getItem(`alumni_photo_${user.uid}`) : null;
+        if (!data.photoUrl && localPhoto) {
+          data.photoUrl = localPhoto;
+        }
         if (isTrustedSuperAdmin(user)) {
           const updated = {
             ...data,
@@ -336,18 +340,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateProfileData = async (data: Partial<UserProfile>) => {
-    if (!currentUser || !userProfile) return;
-    const userDocRef = doc(db, 'users', currentUser.uid);
-    const updated = {
-      ...userProfile,
+    if (!currentUser) return;
+    const current = userProfile || {
+      id: currentUser.uid,
+      uid: currentUser.uid,
+      email: currentUser.email || '',
+      name: currentUser.displayName || 'Member',
+      role: 'STUDENT' as Role,
+      status: 'APPROVED' as UserStatus,
+      profileType: 'Student' as ProfileType,
+      university: '',
+      department: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updated: UserProfile = {
+      ...current,
       ...data,
       updatedAt: new Date().toISOString(),
     };
-    await updateDoc(userDocRef, {
-      ...data,
-      updatedAt: new Date().toISOString(),
-    });
+
+    // Immediately cache in localStorage for instant retrieval across sessions
+    if (data.photoUrl) {
+      try {
+        localStorage.setItem(`alumni_photo_${currentUser.uid}`, data.photoUrl);
+      } catch (e) {}
+    }
+
+    // Optimistic UI state update
     setUserProfile(updated);
+
+    // Save to Firestore using setDoc with merge so it works even if document didn't exist
+    try {
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      await setDoc(userDocRef, {
+        ...data,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (firestoreErr) {
+      console.warn('Firestore updateProfileData note (local state preserved):', firestoreErr);
+    }
   };
 
   // Public website role: public members operate as regular students or alumni

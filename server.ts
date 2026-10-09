@@ -12,7 +12,67 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+
+// Ensure public/uploads/avatars directory exists for profile photos
+const UPLOADS_DIR = path.resolve(__dirname, 'public/uploads/avatars');
+try {
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.warn('Notice: Failed to initialize uploads directory:', e);
+}
+
+// Serve public uploads statically
+app.use('/uploads', express.static(path.resolve(__dirname, 'public/uploads')));
+
+// Profile Avatar Upload & Local Storage API
+app.post('/api/user/upload-avatar', (req, res) => {
+  try {
+    const { image, userId } = req.body || {};
+    if (!image || typeof image !== 'string') {
+      return res.status(400).json({ error: 'Image data payload is required.' });
+    }
+
+    const safeUid = (userId && typeof userId === 'string')
+      ? userId.replace(/[^a-zA-Z0-9_-]/g, '')
+      : 'user';
+    const timestamp = Date.now();
+    const filename = `avatar-${safeUid}-${timestamp}.jpg`;
+    const filePath = path.join(UPLOADS_DIR, filename);
+
+    // Decode base64
+    const matches = image.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
+    if (matches && matches[2]) {
+      const buffer = Buffer.from(matches[2], 'base64');
+      fs.writeFileSync(filePath, buffer);
+    } else {
+      const rawBase64 = image.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(rawBase64, 'base64');
+      fs.writeFileSync(filePath, buffer);
+    }
+
+    const publicUrl = `/uploads/avatars/${filename}`;
+
+    // Update user in adminStore if present
+    const userInAdmin = adminStore.users.find((u) => u.id === safeUid || u.id === userId);
+    if (userInAdmin) {
+      (userInAdmin as any).photoUrl = publicUrl;
+      persistAdminStore();
+    }
+
+    return res.json({
+      success: true,
+      photoUrl: publicUrl,
+      message: 'Profile picture saved successfully.',
+    });
+  } catch (err: any) {
+    console.error('Failed to save profile picture on server:', err);
+    return res.status(500).json({ error: err.message || 'Failed to save avatar image' });
+  }
+});
 
 // In-memory bot metadata tracker (persisted between requests)
 let botState = {
