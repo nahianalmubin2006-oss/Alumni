@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAdmin } from '../../context/AdminContext';
 import { AdminUniversityManagement } from '../../components/admin/AdminUniversityManagement';
+import { useData } from '../../context/DataContext';
 import {
   Shield,
   Users,
@@ -107,6 +108,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   onLogoutSuccess,
   onBack,
 }) => {
+  const { profileClaims, approveProfileClaim, rejectProfileClaim } = useData();
+
   const {
     adminUser,
     isAuthenticated,
@@ -158,7 +161,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   // Verifications & Change Requests
   const [verifications, setVerifications] = useState<any[]>([]);
   const [changeRequests, setChangeRequests] = useState<any[]>([]);
-  const [approvalsTab, setApprovalsTab] = useState<'verifications' | 'changes' | 'admin-applications'>('verifications');
+  const [approvalsTab, setApprovalsTab] = useState<'verifications' | 'changes' | 'admin-applications' | 'profile-claims'>('verifications');
   const [adminApplications, setAdminApplications] = useState<any[]>([]);
 
   // Audit logs
@@ -258,6 +261,20 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       await loadStats();
     } catch (error: any) {
       showToast(error.message || 'Could not review this application.', 'error');
+    }
+  };
+
+  const handleReviewProfileClaim = async (id: string, decision: 'APPROVED' | 'REJECTED') => {
+    try {
+      if (decision === 'APPROVED') {
+        await approveProfileClaim(id, 'Profile ownership reviewed by Super Admin.');
+      } else {
+        await rejectProfileClaim(id, 'The submitted evidence was not sufficient to confirm ownership.');
+      }
+      showToast(decision === 'APPROVED' ? 'Profile claim approved and linked.' : 'Profile claim rejected.', 'success');
+      await loadApprovals();
+    } catch (error: any) {
+      showToast(error?.message || 'Could not review profile claim.', 'error');
     }
   };
 
@@ -1138,6 +1155,16 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   >
                     Admin Access ({adminApplications.filter((item) => item.status === 'PENDING').length})
                   </button>
+                  {isSuperAdmin && (
+                    <button
+                      onClick={() => setApprovalsTab('profile-claims')}
+                      className={`px-3 py-1.5 rounded-lg transition ${
+                        approvalsTab === 'profile-claims' ? 'bg-blue-600 text-white' : 'text-slate-400'
+                      }`}
+                    >
+                      Profile Claims ({profileClaims.filter((item) => item.status === 'PENDING').length})
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1192,6 +1219,39 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             >
                               Approve Badge
                             </button>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {approvalsTab === 'profile-claims' && isSuperAdmin && (
+                <div className="space-y-3">
+                  {profileClaims.length === 0 ? (
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-xs text-slate-400">
+                      No profile claim requests are recorded.
+                    </div>
+                  ) : (
+                    profileClaims.map((claim) => (
+                      <div key={claim.id} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-white">{claim.requesterName}</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${claim.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' : claim.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'}`}>{claim.status}</span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-1">{claim.requesterEmail} · {claim.university} · {claim.department}</p>
+                          <p className="text-xs text-slate-300 mt-1">Student ID: {claim.studentId || 'Not provided'} · Graduation: {claim.graduationYear || 'Not provided'}</p>
+                          {claim.notes && <p className="text-xs text-slate-300 mt-2">{claim.notes}</p>}
+                          {claim.proofUrl && <a href={claim.proofUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 mt-2 text-xs text-blue-300 hover:text-blue-200"><ExternalLink className="w-3 h-3" /> Open evidence</a>}
+                          <p className="text-[10px] text-slate-500 mt-2">Target record: {claim.targetAlumniId}</p>
+                          {claim.reviewerComment && <p className="text-xs text-slate-500 mt-1">Review note: {claim.reviewerComment}</p>}
+                        </div>
+                        {claim.status === 'PENDING' && (
+                          <div className="flex gap-2 shrink-0">
+                            <button onClick={() => void handleReviewProfileClaim(claim.id, 'REJECTED')} className="px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs font-bold text-rose-200">Reject</button>
+                            <button onClick={() => void handleReviewProfileClaim(claim.id, 'APPROVED')} className="px-3 py-2 rounded-xl bg-emerald-600 text-xs font-bold text-white">Approve & Link</button>
                           </div>
                         )}
                       </div>
