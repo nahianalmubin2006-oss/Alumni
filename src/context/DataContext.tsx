@@ -1851,9 +1851,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const uniId = 'uni-' + encodeURIComponent(trimmedUni.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+      const token = typeof window !== 'undefined' ? sessionStorage.getItem('alumniSphereAdminToken') : null;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       await fetch(`/api/admin/universities/${encodeURIComponent(uniId)}/departments`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ departments: deptNames, universityName: trimmedUni }),
       });
     } catch (e) {}
@@ -1901,8 +1904,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('Firestore delete university doc warning:', e);
     }
     try {
+      const token = typeof window !== 'undefined' ? sessionStorage.getItem('alumniSphereAdminToken') : null;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       await fetch(`/api/admin/universities/${encodeURIComponent(uniId)}`, {
         method: 'DELETE',
+        headers,
       });
     } catch (e) {}
     setUniversities((prev) => prev.filter((u) => u.id !== uniId));
