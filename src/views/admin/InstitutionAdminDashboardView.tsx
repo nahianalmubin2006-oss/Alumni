@@ -155,7 +155,7 @@ export const InstitutionAdminDashboardView: React.FC<InstitutionAdminDashboardVi
     void reload();
   }, [reload]);
 
-  const visibleDepartments = useMemo(() => {
+  const visibleDepartments = useMemo<DepartmentItem[]>(() => {
     const records = catalog.departments || [];
     return (catalog.departmentNames || []).map((name) => {
       const existing = records.find((item) => item.name.toLowerCase() === name.toLowerCase());
