@@ -195,7 +195,7 @@ service cloud.firestore {
           isOwner(resource.data.userId)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'name', 'university', 'department', 'batch', 'studentId',
-            'educationLevel', 'graduationYear', 'jobRole', 'company',
+            'educationLevel', 'graduationYear', 'jobRole', 'company', 'photoUrl',
             'country', 'city', 'bio', 'linkedin', 'updatedAt'
           ])
           && request.resource.data.userId == resource.data.userId
@@ -226,7 +226,7 @@ service cloud.firestore {
           isOwner(resource.data.userId)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'name', 'university', 'department', 'studentId', 'educationLevel',
-            'studentYear', 'expectedGraduation', 'bio', 'updatedAt'
+            'studentYear', 'expectedGraduation', 'bio', 'photoUrl', 'updatedAt'
           ])
           && request.resource.data.userId == resource.data.userId
           && request.resource.data.status == resource.data.status
