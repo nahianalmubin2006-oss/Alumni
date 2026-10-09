@@ -2019,26 +2019,6 @@ app.put('/api/admin/departments/:id', requireAdminAuth, (req: AdminRequest, res)
 // ------------------------------------------
 // INSTITUTION-SCOPED ADMIN WORKSPACE APIs
 // ------------------------------------------
-function normalizedScope(value: unknown): string {
-  return typeof value === 'string' ? value.trim().toLocaleLowerCase() : '';
-}
-
-function institutionUniversity(admin: AdminUser): string {
-  return String(admin.assignedUniversity || admin.university || '').trim();
-}
-
-function institutionDepartment(admin: AdminUser): string {
-  return String(admin.assignedDepartment || admin.department || '').trim();
-}
-
-function sameInstitution(left: unknown, right: unknown): boolean {
-  return normalizedScope(left) !== '' && normalizedScope(left) === normalizedScope(right);
-}
-
-function isInstitutionAdminRole(role: unknown): role is 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN' {
-  return role === 'UNIVERSITY_ADMIN' || role === 'DEPARTMENT_ADMIN';
-}
-
 function requireInstitutionAdmin(req: AdminRequest, res: express.Response, next: express.NextFunction) {
   requireAnyAdminAuth(req, res, () => {
     const admin = req.adminUser;
