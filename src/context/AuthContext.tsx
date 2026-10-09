@@ -342,24 +342,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentUser || !userProfile) return;
     const now = new Date().toISOString();
     const userDocRef = doc(db, 'users', currentUser.uid);
-    const updated = {
-      ...userProfile,
-      ...data,
-      updatedAt: now,
-    };
     // Update the canonical account profile first. Firestore rules prevent
     // owners from changing role, approval, verification, or admin-assignment fields.
-    const safeUpdates = { ...data, updatedAt: now };
-    delete (safeUpdates as Partial<UserProfile>).id;
-    delete (safeUpdates as Partial<UserProfile>).uid;
-    delete (safeUpdates as Partial<UserProfile>).email;
-    delete (safeUpdates as Partial<UserProfile>).role;
-    delete (safeUpdates as Partial<UserProfile>).status;
-    delete (safeUpdates as Partial<UserProfile>).profileType;
-    delete (safeUpdates as Partial<UserProfile>).isVerifiedAlumni;
-    delete (safeUpdates as Partial<UserProfile>).assignedUniversity;
-    delete (safeUpdates as Partial<UserProfile>).assignedDepartment;
-    delete (safeUpdates as Partial<UserProfile>).createdAt;
+    const safeUpdates: Partial<UserProfile> = { ...data, updatedAt: now };
+    delete safeUpdates.id;
+    delete safeUpdates.uid;
+    delete safeUpdates.email;
+    delete safeUpdates.role;
+    delete safeUpdates.status;
+    delete safeUpdates.profileType;
+    delete safeUpdates.isVerifiedAlumni;
+    delete safeUpdates.assignedUniversity;
+    delete safeUpdates.assignedDepartment;
+    delete safeUpdates.createdAt;
+    const updated = {
+      ...userProfile,
+      ...safeUpdates,
+      updatedAt: now,
+    };
     await updateDoc(userDocRef, safeUpdates);
 
     // Keep the user's linked public directory record in sync with editable profile fields.
