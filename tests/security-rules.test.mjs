@@ -73,3 +73,38 @@ test('avatar uploads require verified ownership and enforce an image-size limit'
   assert.match(server, /identity\.localId !== userId \|\| identity\.emailVerified !== true/);
   assert.match(server, /5 \* 1024 \* 1024/);
 });
+
+
+test('institution admin request form uses database-driven university and department options', () => {
+  assert.match(adminLogin, /fetch\('\/api\/admin\/request-options'\)/);
+  assert.match(adminLogin, /Select University/);
+  assert.match(adminLogin, /Select Department/);
+  assert.match(adminLogin, /department\.universityId === institutionUniversity/);
+  assert.match(adminLogin, /universityId: selectedUniversity\.id/);
+  assert.match(adminLogin, /departmentId: institutionRole === 'DEPARTMENT_ADMIN' \? selectedDepartment\?\.id/);
+  assert.doesNotMatch(adminLogin, /University \(exact name\).*<input/s);
+});
+
+test('institution admin requests are validated against the server catalog and department scope', () => {
+  assert.match(server, /app\.get\('\/api\/admin\/request-options'/);
+  assert.match(server, /Selected university does not exist in the database/);
+  assert.match(server, /Selected department does not exist or does not belong to the selected university/);
+  assert.match(server, /A pending request for this role and institution scope already exists/);
+  assert.match(server, /catalog\.universities\.find\(\(u\) => u\.id === normalizedUniversityId\)/);
+  assert.match(server, /catalog\.departments\.find\(\(d\) => d\.id === normalizedDepartmentId && d\.universityId === validUni\.id\)/);
+});
+
+test('institution admin request history is bound to the authenticated Firebase identity', () => {
+  assert.match(adminLogin, /fetch\('\/api\/admin\/applications\/my-requests'/);
+  assert.match(adminLogin, /Your admin access requests/);
+  assert.match(server, /const uid = data\.users\[0\]\.localId/);
+  assert.match(server, /app\.userId === uid \|\| app\.firebaseUid === uid \|\| app\.email\.toLowerCase\(\) === email/);
+});
+
+test('approving institution requests assigns only the requested role and validated scope', () => {
+  assert.match(server, /existingUser\.role = role/);
+  assert.match(server, /existingUser\.assignedUniversity = validUni\.name/);
+  assert.match(server, /existingUser\.assignedDepartment = validDept \? validDept\.name : ''/);
+  assert.match(server, /d\.id === normalizedDepartmentId && d\.universityId === validUni\.id/);
+  assert.match(server, /You cannot review your own administrator request/);
+});

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
 import { useAdmin } from '../../context/AdminContext';
 import { Shield, Lock, Mail, ArrowLeft, AlertCircle, KeyRound, Building2, Users } from 'lucide-react';
 import { auth } from '../../firebase';
@@ -7,6 +8,31 @@ interface AdminLoginViewProps {
   onNavigatePublic: () => void;
   onLoginSuccess: () => void;
   onBack?: () => void;
+}
+
+interface RequestUniversityOption {
+  id: string;
+  name: string;
+  type?: string;
+}
+
+interface RequestDepartmentOption {
+  id: string;
+  name: string;
+  universityId: string;
+  universityName: string;
+}
+
+interface InstitutionAdminRequest {
+  id: string;
+  type?: string;
+  requestedRole?: string;
+  university?: string;
+  department?: string;
+  status: string;
+  createdAt: string;
+  reviewedAt?: string;
+  reviewerNote?: string;
 }
 
 export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
@@ -21,6 +47,12 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
   const [institutionRole, setInstitutionRole] = useState<'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN'>('UNIVERSITY_ADMIN');
   const [institutionUniversity, setInstitutionUniversity] = useState('');
   const [institutionDepartment, setInstitutionDepartment] = useState('');
+  const [requestUniversities, setRequestUniversities] = useState<RequestUniversityOption[]>([]);
+  const [requestDepartments, setRequestDepartments] = useState<RequestDepartmentOption[]>([]);
+  const [requestCatalogLoading, setRequestCatalogLoading] = useState(false);
+  const [requestCatalogError, setRequestCatalogError] = useState('');
+  const [myRequests, setMyRequests] = useState<InstitutionAdminRequest[]>([]);
+  const [myRequestsLoading, setMyRequestsLoading] = useState(false);
   const [mode, setMode] = useState<'login' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,6 +60,63 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadRequestOptions = async () => {
+      setRequestCatalogLoading(true);
+      try {
+        const response = await fetch('/api/admin/request-options');
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Unable to load universities and departments.');
+        if (mounted) {
+          setRequestUniversities(Array.isArray(data.universities) ? data.universities : []);
+          setRequestDepartments(Array.isArray(data.departments) ? data.departments : []);
+          setRequestCatalogError('');
+        }
+      } catch (error: any) {
+        if (mounted) setRequestCatalogError(error.message || 'Unable to load university and department options.');
+      } finally {
+        if (mounted) setRequestCatalogLoading(false);
+      }
+    };
+
+    const loadMyRequests = async (user: NonNullable<typeof auth.currentUser>) => {
+      setMyRequestsLoading(true);
+      try {
+        const idToken = await user.getIdToken();
+        const response = await fetch('/api/admin/applications/my-requests', {
+          headers: { Authorization: 'Bearer ' + idToken },
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Unable to load your request history.');
+        if (mounted) setMyRequests(Array.isArray(data.requests) ? data.requests : []);
+      } catch {
+        if (mounted) setMyRequests([]);
+      } finally {
+        if (mounted) setMyRequestsLoading(false);
+      }
+    };
+
+    void loadRequestOptions();
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) void loadMyRequests(user);
+      else if (mounted) setMyRequests([]);
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  const selectedUniversity = requestUniversities.find((university) => university.id === institutionUniversity);
+  const availableDepartments = requestDepartments.filter((department) =>
+    department.universityId === institutionUniversity ||
+    (selectedUniversity && department.universityName?.toLocaleLowerCase() === selectedUniversity.name.toLocaleLowerCase())
+  );
+  const selectedDepartment = availableDepartments.find((department) => department.id === institutionDepartment);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +199,15 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
       setErrorMessage('Please sign in to your existing Alumni account on the public website, then return here to request admin access.');
       return;
     }
+    if (!institutionUniversity || !selectedUniversity) {
+      setErrorMessage('Please select a university from the available list.');
+      return;
+    }
+    if (institutionRole === 'DEPARTMENT_ADMIN' && (!institutionDepartment || !selectedDepartment)) {
+      setErrorMessage('Please select a department belonging to the selected university.');
+      return;
+    }
+
     setLoading(true);
     try {
       const idToken = await auth.currentUser.getIdToken();
@@ -119,13 +217,19 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
         body: JSON.stringify({
           idToken,
           requestedRole: institutionRole,
-          university: institutionUniversity,
-          department: institutionRole === 'DEPARTMENT_ADMIN' ? institutionDepartment : undefined,
+          universityId: selectedUniversity.id,
+          university: selectedUniversity.name,
+          departmentId: institutionRole === 'DEPARTMENT_ADMIN' ? selectedDepartment?.id : undefined,
+          department: institutionRole === 'DEPARTMENT_ADMIN' ? selectedDepartment?.name : undefined,
         }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Unable to submit the request.');
       setSuccessMessage(data.message || 'Institution admin request submitted for review.');
+      if (data.application) {
+        setMyRequests((previous) => [data.application, ...previous.filter((item) => item.id !== data.application.id)]);
+      }
+      setInstitutionDepartment('');
     } catch (error: any) {
       setErrorMessage(error.message || 'Unable to submit the request.');
     } finally {
@@ -205,11 +309,19 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
             Already approved? Sign in with your existing Alumni account →
           </button>
           <form onSubmit={handleInstitutionApplication} className="mt-5 space-y-4">
-            <div><label className="block text-xs font-bold mb-1.5">Requested role</label><select value={institutionRole} onChange={e => setInstitutionRole(e.target.value as 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN')} className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm"><option value="UNIVERSITY_ADMIN">University Admin</option><option value="DEPARTMENT_ADMIN">Department Admin</option></select></div>
-            <div><label className="block text-xs font-bold mb-1.5">University (exact name)</label><input value={institutionUniversity} onChange={e => setInstitutionUniversity(e.target.value)} required placeholder="e.g. University of Dhaka" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm" /></div>
-            {institutionRole === 'DEPARTMENT_ADMIN' && <div><label className="block text-xs font-bold mb-1.5">Department (exact name)</label><input value={institutionDepartment} onChange={e => setInstitutionDepartment(e.target.value)} required placeholder="e.g. Computer Science & Engineering" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm" /></div>}
-            <button disabled={loading || !auth.currentUser} className="w-full rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-3 text-sm font-bold">{loading ? 'Submitting…' : 'Submit access request'}</button>
+            <div><label className="block text-xs font-bold mb-1.5">Requested role</label><select value={institutionRole} onChange={e => { setInstitutionRole(e.target.value as 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN'); setInstitutionDepartment(''); setErrorMessage(''); }} className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm"><option value="UNIVERSITY_ADMIN">University Admin</option><option value="DEPARTMENT_ADMIN">Department Admin</option></select></div>
+            <div><label className="block text-xs font-bold mb-1.5">Select University</label><select value={institutionUniversity} onChange={e => { setInstitutionUniversity(e.target.value); setInstitutionDepartment(''); setErrorMessage(''); }} required disabled={requestCatalogLoading || requestUniversities.length === 0} className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm"><option value="">{requestCatalogLoading ? 'Loading universities…' : 'Choose a university'}</option>{requestUniversities.map((university) => <option key={university.id} value={university.id}>{university.name}</option>)}</select></div>
+            {institutionRole === 'DEPARTMENT_ADMIN' && <div><label className="block text-xs font-bold mb-1.5">Select Department</label><select value={institutionDepartment} onChange={e => setInstitutionDepartment(e.target.value)} required disabled={!institutionUniversity || requestCatalogLoading || availableDepartments.length === 0} className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm"><option value="">{!institutionUniversity ? 'Select a university first' : requestCatalogLoading ? 'Loading departments…' : availableDepartments.length ? 'Choose a department' : 'No departments available for this university'}</option>{availableDepartments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select>{institutionUniversity && !requestCatalogLoading && availableDepartments.length === 0 && <p className="mt-1.5 text-xs text-amber-200">No departments are currently listed for this university. Please contact an administrator to update the directory.</p>}</div>}
+            {requestCatalogError && <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">{requestCatalogError}</p>}
+            <button disabled={loading || !auth.currentUser || requestCatalogLoading || !selectedUniversity || (institutionRole === 'DEPARTMENT_ADMIN' && !selectedDepartment)} className="w-full rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-3 text-sm font-bold">{loading ? 'Submitting…' : 'Submit access request'}</button>
           </form>
+          <div className="mt-6 border-t border-slate-800 pt-5">
+            <h2 className="text-sm font-extrabold">Your admin access requests</h2>
+            <p className="mt-1 text-xs text-slate-400">Approval is required before any administrative permissions are granted.</p>
+            {myRequestsLoading && <p className="mt-3 text-xs text-slate-400">Loading request history…</p>}
+            {!myRequestsLoading && myRequests.length === 0 && <p className="mt-3 text-xs text-slate-500">No previous requests found for this account.</p>}
+            <div className="mt-3 space-y-2">{myRequests.map((request) => <div key={request.id} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-bold">{request.type || request.requestedRole || 'Admin'} · {request.university || 'University not specified'}{request.department ? ' / ' + request.department : ''}</p><p className="mt-1 text-[11px] text-slate-400">Submitted {request.createdAt ? new Date(request.createdAt).toLocaleString() : 'date unavailable'}</p></div><span className={'shrink-0 rounded-full px-2 py-1 text-[10px] font-extrabold ' + (request.status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-200' : request.status === 'REJECTED' ? 'bg-rose-500/15 text-rose-200' : 'bg-amber-500/15 text-amber-200')}>{request.status}</span></div>{request.reviewerNote && <p className="mt-2 text-[11px] text-slate-300">Reviewer note: {request.reviewerNote}</p>}</div>)}</div>
+          </div>
         </div>
       </div>
     );
