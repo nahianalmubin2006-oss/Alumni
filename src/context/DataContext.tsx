@@ -681,7 +681,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubAdminAssignments();
       unsubUsers();
     };
-  }, [currentUser]);
+  }, [currentUser, isSuperAdmin]);
 
   // Interconnected dynamic statistics
   const stats = useMemo(() => {
@@ -989,8 +989,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     claim: Omit<ProfileClaimRequest, 'id' | 'requesterId' | 'requesterName' | 'requesterEmail' | 'status' | 'createdAt' | 'updatedAt'>
   ) => {
     if (!currentUser || !userProfile) throw new Error('Sign in before requesting a profile claim.');
-    if (claim.proofUrl && !/^https:\/\//i.test(claim.proofUrl)) {
-      throw new Error('Evidence link must use HTTPS.');
+    if (!claim.proofUrl || !/^https:\/\//i.test(claim.proofUrl)) {
+      throw new Error('Provide an HTTPS evidence link before submitting a claim.');
     }
     const target = alumni.find((item) => item.id === claim.targetAlumniId);
     if (!target) throw new Error('The selected alumni record is no longer available.');
