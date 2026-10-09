@@ -66,3 +66,10 @@ test('Super Admin login establishes Firebase auth before legacy server fallback'
   assert.match(adminContext, /expectedRole !== 'UNIVERSITY_ADMIN' && expectedRole !== 'DEPARTMENT_ADMIN' && expectedRole !== 'SUPER_ADMIN'/);
   assert.match(adminContext, /Super Admins should establish a Firebase session/);
 });
+
+
+test('avatar uploads require verified ownership and enforce an image-size limit', () => {
+  assert.match(server, /const \{ image, userId, idToken \} = req\.body/);
+  assert.match(server, /identity\.localId !== userId \|\| identity\.emailVerified !== true/);
+  assert.match(server, /5 \* 1024 \* 1024/);
+});
