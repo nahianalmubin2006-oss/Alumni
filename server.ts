@@ -552,7 +552,7 @@ interface CustomUniversityStore {
     id: string;
     name: string;
     shortName?: string;
-    type: 'Public' | 'Private' | 'International';
+    type?: 'Public' | 'Private' | 'International';
     location: string;
     logoUrl?: string;
     website?: string;
@@ -1341,7 +1341,6 @@ const handleUniversityLogoUpdate = (req: express.Request, res: express.Response)
     customUniStore.customUniversities.push({
       id: key,
       name: universityName || key,
-      type: 'Public',
       location: '',
       logoUrl: trimmedLogo,
       departments: [],
@@ -1613,9 +1612,11 @@ function scopedDepartmentNames(admin: AdminUser): string[] {
   const fromCatalog = (customUniStore.departments || {})[university] ||
     (customUniStore.departments || {})[university.toLowerCase()] || [];
   const names = Array.from(new Set([...fromRecords, ...fromCatalog].map((name) => String(name).trim()).filter(Boolean)));
-  return admin.role === 'DEPARTMENT_ADMIN'
-    ? names.filter((name) => sameInstitution(name, institutionDepartment(admin)))
-    : names;
+  if (admin.role === 'DEPARTMENT_ADMIN') {
+    const assigned = institutionDepartment(admin);
+    return assigned ? [names.find((name) => sameInstitution(name, assigned)) || assigned] : [];
+  }
+  return names;
 }
 
 function scopedAdminUser(admin: AdminUser) {
