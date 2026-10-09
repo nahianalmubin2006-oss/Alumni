@@ -1280,12 +1280,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         <div className="text-[10px] text-slate-500 mt-1">Submitted {application.createdAt ? new Date(application.createdAt).toLocaleString() : 'recently'}</div>
                         {application.reviewerNote && <div className="text-xs text-slate-400 mt-2">Review note: {application.reviewerNote}</div>}
                       </div>
-                      {application.status === 'PENDING' && (
+                      {application.status === 'PENDING' && (isSuperAdmin || application.type !== 'CO_ADMIN') && (
                         <div className="flex items-center gap-2 self-end sm:self-center">
                           <button onClick={() => handleReviewAdminApplication(application.id, 'REJECTED')} className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 font-bold">Decline</button>
-                          {(isSuperAdmin || application.type !== 'CO_ADMIN') && (
-                            <button onClick={() => handleReviewAdminApplication(application.id, 'APPROVED')} className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs text-white font-bold">Approve access</button>
-                          )}
+                          <button onClick={() => handleReviewAdminApplication(application.id, 'APPROVED')} className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs text-white font-bold">Approve access</button>
                         </div>
                       )}
                     </div>
