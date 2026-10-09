@@ -75,6 +75,11 @@ export const isSuperAdminEmail = (email?: string | null): boolean => {
   return SUPER_ADMIN_EMAILS.some((adminEmail) => adminEmail.toLowerCase() === email.toLowerCase());
 };
 
+// Client-side Super Admin UI requires a verified Firebase email identity.
+// Firestore Rules and the server independently enforce the same trust boundary.
+const isTrustedSuperAdmin = (user: User | null | undefined): boolean =>
+  Boolean(user?.emailVerified && isTrustedSuperAdmin(user));
+
 export const SUPER_ADMIN_EMAIL = 'nahianalmubin2006@gmail.com';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -89,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const snap = await getDoc(userDocRef);
       if (snap.exists()) {
         const data = snap.data() as UserProfile;
-        if (isSuperAdminEmail(user.email)) {
+        if (isTrustedSuperAdmin(user)) {
           const updated = {
             ...data,
             role: 'SUPER_ADMIN' as Role,
@@ -102,7 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return data;
       } else {
         // Create initial profile for new auth user
-        const isMasterAdmin = isSuperAdminEmail(user.email);
+        const isMasterAdmin = isTrustedSuperAdmin(user);
         const initialProfile: UserProfile = {
           id: user.uid,
           uid: user.uid,
@@ -147,9 +152,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         uid: user.uid,
         email: user.email || '',
         name: user.displayName || 'AlumniSphere User',
-        role: isSuperAdminEmail(user.email) ? 'SUPER_ADMIN' : 'STUDENT',
-        status: isSuperAdminEmail(user.email) ? 'APPROVED' : 'PENDING',
-        profileType: isSuperAdminEmail(user.email) ? 'Admin' : 'Student',
+        role: isTrustedSuperAdmin(user) ? 'SUPER_ADMIN' : 'STUDENT',
+        status: isTrustedSuperAdmin(user) ? 'APPROVED' : 'PENDING',
+        profileType: isTrustedSuperAdmin(user) ? 'Admin' : 'Student',
         university: '',
         department: '',
         createdAt: new Date().toISOString(),
@@ -209,7 +214,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('User authentication could not be established.');
       }
 
-      const isMasterAdmin = isSuperAdminEmail(data.email);
+      const isMasterAdmin = isTrustedSuperAdmin(user);
       const initialRole: Role = isMasterAdmin
         ? 'SUPER_ADMIN'
         : data.profileType === 'Alumni'
@@ -349,7 +354,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const effectiveRole: Role = userProfile?.role || 'STUDENT';
 
   // Role calculations
-  const isSuperAdmin = isSuperAdminEmail(currentUser?.email) || userProfile?.role === 'SUPER_ADMIN';
+  const isSuperAdmin = isTrustedSuperAdmin(currentUser);
   const isUniversityAdmin = isSuperAdmin || userProfile?.role === 'UNIVERSITY_ADMIN';
   const isDepartmentAdmin = isSuperAdmin || userProfile?.role === 'DEPARTMENT_ADMIN';
 
