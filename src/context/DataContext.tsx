@@ -957,21 +957,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Action: Verify Alumni
   const verifyAlumni = async (alumniId: string, isVerified: boolean) => {
-    const alumniDocRef = doc(db, 'alumni', alumniId);
+    const record = alumni.find((item) => item.id === alumniId || item.userId === alumniId);
+    const alumniDocId = record?.id || alumniId;
+    const ownerUid = record?.userId || (record ? record.id : alumniId);
+    const now = new Date().toISOString();
+    const alumniDocRef = doc(db, 'alumni', alumniDocId);
     await updateDoc(alumniDocRef, {
       isVerified,
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     });
 
-    // Also update users collection if matches
-    const userDocRef = doc(db, 'users', alumniId);
+    // Claimed legacy records may have a document ID different from the owner's UID.
+    const userDocRef = doc(db, 'users', ownerUid);
     await updateDoc(userDocRef, {
       isVerifiedAlumni: isVerified,
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     }).catch(() => {});
 
     await addDoc(collection(db, 'notifications'), {
-      recipientId: alumniId,
+      recipientId: ownerUid,
       title: isVerified ? 'Alumni Verified! ✓' : 'Verification Revoked',
       message: isVerified
         ? 'Congratulations! Your alumni credentials have been verified. The Verified badge is now visible on your public profile.'
