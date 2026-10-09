@@ -183,7 +183,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Central administrators use the server credential store. Institution admins must
     // authenticate through Firebase first; sending them to the central password endpoint
     // would incorrectly count their valid login as a failed central-admin attempt.
-    if (expectedRole !== 'UNIVERSITY_ADMIN' && expectedRole !== 'DEPARTMENT_ADMIN') {
+    if (expectedRole !== 'UNIVERSITY_ADMIN' && expectedRole !== 'DEPARTMENT_ADMIN' && expectedRole !== 'SUPER_ADMIN') {
       try {
         const res = await fetch('/api/admin/auth/login', {
           method: 'POST',
@@ -239,6 +239,31 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         exchangeError = 'Invalid administrative credentials. Please verify your email and password.';
       } else if (fbErr?.message) {
         exchangeError = fbErr.message;
+      }
+    }
+
+    // Super Admins should establish a Firebase session when possible so Firestore-backed
+    // Super Admin features (such as profile-claim review) are authorized as well. Keep the
+    // legacy server credential path as a fallback for existing deployments.
+    if (expectedRole === 'SUPER_ADMIN') {
+      try {
+        const res = await fetch('/api/admin/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: trimmedEmail, password }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.token && data.user) {
+          sessionStorage.setItem(TOKEN_STORAGE_KEY, data.token);
+          setAdminToken(data.token);
+          setAdminUser(data.user);
+          setAuthError(null);
+          setAuthChecked(true);
+          setLoading(false);
+          return data.user;
+        }
+      } catch (serverErr) {
+        console.warn('Fallback server admin login failed.');
       }
     }
 
