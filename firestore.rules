@@ -170,6 +170,8 @@ service cloud.firestore {
       allow create: if isSuperAdmin() || (
         isOwner(request.resource.data.userId)
         && alumniId == request.auth.uid
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.get('isVerified', false) == false
       );
       allow update: if isSuperAdmin()
         || isUniversityAdmin(resource.data.university)
