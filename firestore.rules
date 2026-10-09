@@ -2,13 +2,11 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Default deny catch-all
+    // Deny every operation unless a collection below explicitly permits it.
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
@@ -17,16 +15,21 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // A profile's role field is not proof of Super Admin authority.
+    // Only allowlisted, email-verified Firebase identities are platform Super Admins.
     function isSuperAdmin() {
-      return (
-        (isSignedIn() && (
-          request.auth.token.email == 'nahianalmubin2006@gmail.com' ||
-          request.auth.token.email == 'nahianalmubin212528@gmail.com' ||
-          request.auth.token.email == 'nahianalmubin2@gmail.com'
-        )) ||
-        (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPER_ADMIN')
-      );
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in [
+          'nahianalmubin2006@gmail.com',
+          'nahianalmubin212528@gmail.com',
+          'nahianalmubin2@gmail.com'
+        ];
+    }
+
+    function hasUserProfile() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
     function getUserData() {
@@ -35,149 +38,309 @@ service cloud.firestore {
 
     function isUniversityAdmin(uni) {
       return isSuperAdmin() || (
-        isSignedIn() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        getUserData().role == 'UNIVERSITY_ADMIN' &&
-        getUserData().assignedUniversity == uni
+        hasUserProfile()
+        && request.auth.token.email_verified == true
+        && getUserData().role == 'UNIVERSITY_ADMIN'
+        && getUserData().assignedUniversity == uni
       );
     }
 
     function isDepartmentAdmin(uni, dept) {
       return isSuperAdmin() || isUniversityAdmin(uni) || (
-        isSignedIn() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        getUserData().role == 'DEPARTMENT_ADMIN' &&
-        getUserData().assignedUniversity == uni &&
-        getUserData().assignedDepartment == dept
+        hasUserProfile()
+        && request.auth.token.email_verified == true
+        && getUserData().role == 'DEPARTMENT_ADMIN'
+        && getUserData().assignedUniversity == uni
+        && getUserData().assignedDepartment == dept
       );
     }
 
-    // Test Connection Check
+    function canManageDirectory(uni, dept) {
+      return isSuperAdmin() || isUniversityAdmin(uni) || isDepartmentAdmin(uni, dept);
+    }
+
+    function userProfileFields() {
+      return [
+        'id', 'uid', 'email', 'name', 'role', 'status', 'profileType',
+        'university', 'department', 'studentId', 'educationLevel',
+        'studentYear', 'expectedGraduation', 'graduationYear', 'jobRole',
+        'company', 'country', 'city', 'bio', 'photoUrl', 'linkedin',
+        'isVerifiedAlumni', 'assignedUniversity', 'assignedDepartment',
+        'followedUniversities', 'savedUniversities', 'createdAt', 'updatedAt'
+      ];
+    }
+
+    function editableProfileFields() {
+      return [
+        'name', 'university', 'department', 'studentId', 'educationLevel',
+        'studentYear', 'expectedGraduation', 'graduationYear', 'jobRole',
+        'company', 'country', 'city', 'bio', 'photoUrl', 'linkedin',
+        'followedUniversities', 'savedUniversities', 'updatedAt'
+      ];
+    }
+
+    function ownerCanEditProfile() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(editableProfileFields())
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.profileType == resource.data.profileType
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
     match /test/{testId} {
       allow read: if true;
     }
 
-    // Users Collection
+    // User roles and approval status are controlled by Super Admins only.
     match /users/{userId} {
       allow read: if isSuperAdmin() || isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.uid == request.auth.uid;
+      allow create: if isOwner(userId)
+        && request.resource.data.keys().hasOnly(userProfileFields())
+        && request.resource.data.keys().hasAll([
+          'id', 'uid', 'email', 'name', 'role', 'status', 'profileType',
+          'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.id == request.auth.uid
+        && (
+          request.resource.data.role in ['STUDENT', 'ALUMNI']
+          || (isSuperAdmin() && request.resource.data.role == 'SUPER_ADMIN')
+        )
+        && (
+          request.resource.data.status == 'PENDING'
+          || (isSuperAdmin() && request.resource.data.status == 'APPROVED')
+        )
+        && request.resource.data.profileType in ['Student', 'Alumni', 'Admin']
+        && (isSuperAdmin() || (
+          request.resource.data.get('isVerifiedAlumni', false) == false
+          && request.resource.data.get('assignedUniversity', '') == ''
+          && request.resource.data.get('assignedDepartment', '') == ''
+        ));
+      allow update: if request.resource.data.uid == resource.data.uid
+        && request.resource.data.id == resource.data.id
+        && (isSuperAdmin() || (isOwner(userId) && ownerCanEditProfile()));
+      allow delete: if isSuperAdmin();
+    }
+
+    // Public directory reads; writes are limited to the responsible admins.
+    match /universities/{universityId} {
+      allow read: if true;
+      allow create: if isSuperAdmin();
       allow update: if isSuperAdmin() || (
-        isOwner(userId) &&
-        request.resource.data.role == resource.data.role &&
-        request.resource.data.status == resource.data.status
+        isUniversityAdmin(resource.data.name)
+        && request.resource.data.name == resource.data.name
       );
       allow delete: if isSuperAdmin();
     }
 
-    // Universities Collection (Public Directory, Admin Managed)
-    match /universities/{universityId} {
-      allow read: if true;
-      allow create, update: if isSuperAdmin() || isSignedIn() || (request.resource.data.name is string && request.resource.data.name.size() > 0);
-      allow delete: if isSuperAdmin();
-    }
-
-    // Departments Collection (Public Directory, Admin Managed)
     match /departments/{departmentId} {
       allow read: if true;
-      allow create: if isSuperAdmin() || (isSignedIn() && isUniversityAdmin(request.resource.data.university)) || (request.resource.data.name is string && request.resource.data.name.size() > 0);
-      allow update, delete: if isSuperAdmin() || (isSignedIn() && isUniversityAdmin(resource.data.university)) || (request.resource.data.name is string && request.resource.data.name.size() > 0);
+      allow create: if isSuperAdmin() || isUniversityAdmin(request.resource.data.university);
+      allow update: if isSuperAdmin() || (
+        request.resource.data.university == resource.data.university
+        && (
+          isUniversityAdmin(resource.data.university)
+          || isDepartmentAdmin(resource.data.university, resource.data.name)
+        )
+      );
+      allow delete: if isSuperAdmin()
+        || isUniversityAdmin(resource.data.university)
+        || isDepartmentAdmin(resource.data.university, resource.data.name);
     }
 
-    // Batches Collection (Public Directory)
     match /batches/{batchId} {
       allow read: if true;
-      allow create, update: if isSuperAdmin() || (isSignedIn() && (getUserData().role == 'UNIVERSITY_ADMIN' || getUserData().role == 'DEPARTMENT_ADMIN'));
+      allow create: if canManageDirectory(
+        request.resource.data.university,
+        request.resource.data.department
+      );
+      allow update: if canManageDirectory(
+        resource.data.university,
+        resource.data.department
+      ) && request.resource.data.university == resource.data.university;
       allow delete: if isSuperAdmin();
     }
 
-    // Alumni Collection (Public Directory)
     match /alumni/{alumniId} {
       allow read: if true;
-      allow create: if isSuperAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
-      allow update: if isSuperAdmin() || (isSignedIn() && (
-        resource.data.userId == request.auth.uid ||
-        getUserData().role == 'UNIVERSITY_ADMIN' ||
-        getUserData().role == 'DEPARTMENT_ADMIN'
-      ));
+      allow create: if isSuperAdmin() || (
+        isOwner(request.resource.data.userId)
+        && alumniId == request.auth.uid
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.get('isVerified', false) == false
+      );
+      allow update: if isSuperAdmin()
+        || isUniversityAdmin(resource.data.university)
+        || isDepartmentAdmin(resource.data.university, resource.data.department)
+        || (
+          isOwner(resource.data.userId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name', 'university', 'department', 'batch', 'studentId',
+            'educationLevel', 'graduationYear', 'jobRole', 'company',
+            'country', 'city', 'bio', 'linkedin', 'updatedAt'
+          ])
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.isVerified == resource.data.isVerified
+        );
       allow delete: if isSuperAdmin();
     }
 
-    // Students Collection (Public Directory)
     match /students/{studentId} {
       allow read: if true;
-      allow create: if isSuperAdmin() || isSignedIn() || (request.resource.data.status == 'PENDING');
-      allow update: if isSuperAdmin() || (isSignedIn() && (
-        resource.data.userId == request.auth.uid ||
-        getUserData().role == 'UNIVERSITY_ADMIN' ||
-        getUserData().role == 'DEPARTMENT_ADMIN'
-      ));
+      allow create: if isSuperAdmin() || (
+        isOwner(request.resource.data.userId)
+        && studentId == request.auth.uid
+        && request.resource.data.status == 'PENDING'
+      );
+      allow update: if isSuperAdmin()
+        || isUniversityAdmin(resource.data.university)
+        || isDepartmentAdmin(resource.data.university, resource.data.department)
+        || (
+          isOwner(resource.data.userId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name', 'university', 'department', 'studentId', 'educationLevel',
+            'studentYear', 'expectedGraduation', 'bio', 'updatedAt'
+          ])
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.status == resource.data.status
+        );
       allow delete: if isSuperAdmin();
     }
 
-    // Live News Collection (Public Directory)
     match /news/{newsId} {
       allow read: if true;
-      allow create: if isSuperAdmin() || (isSignedIn() && request.resource.data.authorId == request.auth.uid);
-      allow update: if isSuperAdmin() || (isSignedIn() && (
-        resource.data.authorId == request.auth.uid ||
-        getUserData().role == 'UNIVERSITY_ADMIN' ||
-        getUserData().role == 'DEPARTMENT_ADMIN'
-      ));
-      allow delete: if isSuperAdmin() || (isSignedIn() && (
-        getUserData().role == 'UNIVERSITY_ADMIN' ||
-        getUserData().role == 'DEPARTMENT_ADMIN'
-      )) || (resource.data.isPermanent == false);
+      allow create: if isSuperAdmin() || (
+        isSignedIn()
+        && request.resource.data.authorId == request.auth.uid
+        && (
+          (
+            request.resource.data.status in ['DRAFT', 'PENDING_APPROVAL']
+            && request.resource.data.get('isPermanent', false) == false
+          )
+          || isUniversityAdmin(request.resource.data.university)
+          || isDepartmentAdmin(request.resource.data.university, request.resource.data.department)
+        )
+      );
+      allow update: if isSuperAdmin()
+        || isUniversityAdmin(resource.data.university)
+        || isDepartmentAdmin(resource.data.university, resource.data.department)
+        || (
+          isSignedIn()
+          && resource.data.authorId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'title', 'summary', 'content', 'imageUrl', 'sourceUrl', 'updatedAt'
+          ])
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.isPermanent == resource.data.isPermanent
+        );
+      allow delete: if isSuperAdmin()
+        || isUniversityAdmin(resource.data.university)
+        || isDepartmentAdmin(resource.data.university, resource.data.department)
+        || (
+          isSignedIn()
+          && resource.data.authorId == request.auth.uid
+          && resource.data.isPermanent != true
+        );
     }
 
-    // Change Requests Collection
     match /changeRequests/{requestId} {
-      allow read: if isSuperAdmin() || (isSignedIn() && resource.data.requesterId == request.auth.uid);
-      allow create: if isSignedIn() && request.resource.data.requesterId == request.auth.uid;
-      allow update: if isSuperAdmin() || (isSignedIn() && resource.data.requesterId == request.auth.uid);
-      allow delete: if isSuperAdmin();
+      allow read: if isSuperAdmin()
+        || (isSignedIn() && resource.data.requesterId == request.auth.uid);
+      allow create: if isSignedIn()
+        && request.resource.data.requesterId == request.auth.uid
+        && request.resource.data.status == 'PENDING';
+      // Requesters cannot approve, reject, or rewrite an existing request.
+      allow update, delete: if isSuperAdmin();
     }
 
-    // Verification Requests Collection
     match /verificationRequests/{verificationId} {
-      allow read: if isSuperAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isSuperAdmin();
-      allow delete: if isSuperAdmin();
+      allow read: if isSuperAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'PENDING';
+      allow update, delete: if isSuperAdmin();
     }
 
-    // Notifications Collection
     match /notifications/{notificationId} {
-      allow read: if isSuperAdmin() || (isSignedIn() && resource.data.recipientId == request.auth.uid);
-      allow create: if isSuperAdmin() || (isSignedIn() && request.resource.data.recipientId == request.auth.uid);
-      allow update: if isSuperAdmin() || (isSignedIn() && resource.data.recipientId == request.auth.uid);
-      allow delete: if isSuperAdmin() || (isSignedIn() && resource.data.recipientId == request.auth.uid);
+      allow read: if isSuperAdmin()
+        || (isSignedIn() && resource.data.recipientId == request.auth.uid)
+        || (isSignedIn() && resource.data.recipientId == 'ADMIN' && isSuperAdmin());
+      allow create: if isSuperAdmin() || (
+        isSignedIn()
+        && request.resource.data.keys().hasOnly([
+          'recipientId', 'recipientRole', 'title', 'message', 'type',
+          'read', 'actionUrl', 'createdAt'
+        ])
+        && (
+          request.resource.data.recipientId == request.auth.uid
+          || request.resource.data.recipientId == 'ADMIN'
+        )
+      );
+      allow update: if isSuperAdmin() || (
+        isSignedIn()
+        && resource.data.recipientId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+      );
+      allow delete: if isSuperAdmin()
+        || (isSignedIn() && resource.data.recipientId == request.auth.uid);
     }
 
-    // Audit Logs Collection
     match /auditLogs/{logId} {
       allow read: if isSuperAdmin();
-      allow create: if isSignedIn();
-      allow update, delete: if false; // Immutable audit log
+      allow create: if isSuperAdmin() || (
+        hasUserProfile()
+        && request.resource.data.actorId == request.auth.uid
+        && request.resource.data.actorEmail == request.auth.token.email
+        && request.resource.data.actorRole == getUserData().role
+      );
+      allow update, delete: if false;
     }
 
-    // Admin Assignments Collection
     match /adminAssignments/{assignmentId} {
-      allow read: if isSuperAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow read: if isSuperAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow create, update, delete: if isSuperAdmin();
     }
 
-    // Platform Settings Collection
     match /platformSettings/{settingId} {
       allow read: if true;
       allow write: if isSuperAdmin();
     }
 
-    // User Posts & Community Reactions
     match /posts/{postId} {
       allow read: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSuperAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'userId', 'authorName', 'authorEmail', 'authorRole',
+          'authorUniversity', 'authorDepartment', 'authorPhotoUrl',
+          'content', 'imageUrl', 'createdAt', 'reactions'
+        ])
+        && request.resource.data.content is string
+        && request.resource.data.content.size() <= 5000;
+      // Content edits are owner-only; reactions can be changed without granting edit rights.
+      allow update: if isSuperAdmin()
+        || (
+          isSignedIn()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'content', 'imageUrl', 'updatedAt'
+          ])
+        )
+        || (
+          isSignedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'reactions', 'updatedAt'
+          ])
+        );
+      allow delete: if isSuperAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
   }
 }
