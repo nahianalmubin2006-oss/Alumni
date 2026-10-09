@@ -78,7 +78,7 @@ export const isSuperAdminEmail = (email?: string | null): boolean => {
 // Client-side Super Admin UI requires a verified Firebase email identity.
 // Firestore Rules and the server independently enforce the same trust boundary.
 const isTrustedSuperAdmin = (user: User | null | undefined): boolean =>
-  Boolean(user?.emailVerified && isTrustedSuperAdmin(user));
+  Boolean(user?.emailVerified && isSuperAdminEmail(user.email));
 
 export const SUPER_ADMIN_EMAIL = 'nahianalmubin2006@gmail.com';
 
