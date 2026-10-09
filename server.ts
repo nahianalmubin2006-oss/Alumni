@@ -990,7 +990,7 @@ app.post('/api/admin/auth/login', (req, res) => {
   }
 
   // Generic failure response to avoid account enumeration
-  if (!user || !['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN'].includes(user.role) || user.status !== 'APPROVED') {
+  if (!user || !['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN'].includes(user.role) || !['APPROVED', 'SUSPENDED'].includes(user.status)) {
     recordFailedLogin(clientIp, normalizedEmail);
     recordAuditLog({
       actorId: 'anonymous',
@@ -1160,7 +1160,7 @@ app.post('/api/admin/auth/firebase-login', async (req, res) => {
     persistAdminStore();
   }
 
-  if (!user || !['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN', 'UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role) || user.status !== 'APPROVED') {
+  if (!user || !['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN', 'UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role) || !['APPROVED', 'SUSPENDED'].includes(user.status)) {
     return res.status(403).json({ error: 'Access denied: User has no active administrator assignment.' });
   }
   if (user.firebaseUid && user.firebaseUid !== verifiedUid) {
