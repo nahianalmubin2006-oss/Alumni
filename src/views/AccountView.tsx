@@ -409,6 +409,48 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                           : 'U'
                       )}
                     </div>
+                    <label
+                      className="absolute -bottom-2 -right-2 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-blue-600 text-white shadow-lg hover:bg-blue-700"
+                      title="Upload profile picture"
+                      aria-label="Upload profile picture"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        disabled={isUploadingPhoto}
+                        onChange={async (event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = '';
+                          if (!file || !currentUser) return;
+                          if (!file.type.match(/^image\\/(jpeg|png|webp|gif)$/)) {
+                            setErrorMsg('Choose a JPG, PNG, WebP, or GIF image.');
+                            return;
+                          }
+                          if (file.size > 5 * 1024 * 1024) {
+                            setErrorMsg('Profile pictures must be 5 MB or smaller.');
+                            return;
+                          }
+                          setErrorMsg('');
+                          setSuccessMsg('');
+                          setIsUploadingPhoto(true);
+                          try {
+                            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                            const imageRef = ref(storage, `profile-photos/${currentUser.uid}/${Date.now()}-${safeName}`);
+                            await uploadBytes(imageRef, file, { contentType: file.type });
+                            const uploadedUrl = await getDownloadURL(imageRef);
+                            await updateProfileData({ photoUrl: uploadedUrl });
+                            setPhotoUrl(uploadedUrl);
+                            setSuccessMsg('Your profile picture has been updated.');
+                          } catch (error: any) {
+                            setErrorMsg(error?.message || 'Could not update the profile picture. Check Firebase Storage setup and rules.');
+                          } finally {
+                            setIsUploadingPhoto(false);
+                          }
+                        }}
+                      />
+                    </label>
                   </div>
 
                   <div className="pb-1">
