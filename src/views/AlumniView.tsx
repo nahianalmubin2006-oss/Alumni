@@ -458,21 +458,22 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
         </button>
       </div>
 
-      <div className="text-xs font-bold text-blue-600 uppercase tracking-widest">
-        Alumni Intelligence
+      <div className="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-1.5">
+        <UserCheck className="w-4 h-4 text-blue-600" />
+        <span>Verified Alumni Network</span>
       </div>
       <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mt-2">
         <div>
           <h1 className="text-2xl sm:text-4xl font-black navy">
-            Alumni by University & Department
+            Verified Alumni Directory
           </h1>
           <p className="text-slate-500 mt-2 max-w-3xl">
-            Real-time counts aggregated across all 178 institutions and 48 academic departments.
-            When an approved alumni is verified, platform statistics automatically sync.
+            Explore verified graduates across all 178 institutions and 48 academic departments.
+            Narrow down by graduation year, academic department, university, and location in real time.
           </p>
         </div>
         <span className="pill text-blue-600 self-start lg:self-end">
-          {stats.totalAlumni.toLocaleString()} total network alumni
+          {stats.totalAlumni.toLocaleString()} verified alumni
         </span>
       </div>
 
