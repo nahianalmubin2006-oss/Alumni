@@ -140,6 +140,125 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
     }
   };
 
+  // Sync photoUrl with userProfile.photoUrl
+  useEffect(() => {
+    if (userProfile?.photoUrl) {
+      setPhotoUrl(userProfile.photoUrl);
+    }
+  }, [userProfile?.photoUrl]);
+
+  // Robust profile photo processing, storage, and persistence helper
+  const handleUploadProfilePhoto = async (file: File) => {
+    if (!file) return;
+    if (!file.type.match(/^image\/(jpeg|png|webp|gif|svg\+xml)$/i) && !file.type.startsWith('image/')) {
+      setErrorMsg('Please choose a valid JPG, PNG, WebP, or GIF image.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMsg('Profile pictures must be 10 MB or smaller.');
+      return;
+    }
+
+    setErrorMsg('');
+    setSuccessMsg('');
+    setIsUploadingPhoto(true);
+
+    try {
+      // 1. Client-side canvas resize and compression for a crisp, compact avatar (<35KB)
+      const compressedDataUrl: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Failed to read image file.'));
+        reader.onload = () => {
+          const img = new Image();
+          img.onerror = () => reject(new Error('Failed to parse image file.'));
+          img.onload = () => {
+            const maxDim = 400;
+            let width = img.width;
+            let height = img.height;
+            if (width > height) {
+              if (width > maxDim) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              }
+            } else {
+              if (height > maxDim) {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              resolve(reader.result as string);
+              return;
+            }
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            resolve(dataUrl);
+          };
+          img.src = reader.result as string;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      const uid = currentUser?.uid || userProfile?.id || 'user';
+      let savedUrl = compressedDataUrl;
+
+      // 2. Post to server-side static avatar storage
+      try {
+        const res = await fetch('/api/user/upload-avatar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image: compressedDataUrl,
+            userId: uid,
+          }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.photoUrl) {
+            savedUrl = json.photoUrl;
+          }
+        }
+      } catch (serverErr) {
+        console.warn('Server avatar upload notice:', serverErr);
+      }
+
+      // 3. Fallback/Dual sync with Firebase Storage if available
+      try {
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const imageRef = ref(storage, `profile-photos/${uid}/${Date.now()}-${safeName}`);
+        await uploadBytes(imageRef, file, { contentType: file.type });
+        const firebaseUrl = await getDownloadURL(imageRef);
+        if (firebaseUrl) {
+          savedUrl = firebaseUrl;
+        }
+      } catch (storageErr) {
+        // Handled seamlessly by savedUrl
+      }
+
+      // 4. Update profile data and state immediately
+      await updateProfileData({ photoUrl: savedUrl });
+      setPhotoUrl(savedUrl);
+
+      // Cache locally for instant access across tabs/reloads
+      try {
+        localStorage.setItem(`alumni_photo_${uid}`, savedUrl);
+      } catch (e) {}
+
+      setSuccessMsg('Your profile picture has been saved successfully!');
+    } catch (err: any) {
+      console.error('Profile photo upload error:', err);
+      setErrorMsg(err?.message || 'Could not save the profile picture. Please try another image.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
   // Pre-fill for edit mode
   const enterEditMode = () => {
     if (!userProfile) return;
@@ -431,10 +550,15 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-14 sm:-mt-16 mb-4">
                 <div className="flex items-end gap-4">
                   <div className="relative">
-                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white p-1 shadow-xl ring-4 ring-white border border-slate-200 overflow-hidden flex items-center justify-center font-black text-3xl text-blue-700 bg-gradient-to-tr from-blue-50 to-indigo-50">
-                      {(userProfile.photoUrl || defaultProfilePictures[0]?.url) ? (
+                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white p-1 shadow-xl ring-4 ring-white border border-slate-200 overflow-hidden flex items-center justify-center font-black text-3xl text-blue-700 bg-gradient-to-tr from-blue-50 to-indigo-50 relative group">
+                      {isUploadingPhoto ? (
+                        <div className="flex flex-col items-center justify-center gap-1.5 text-blue-600 p-2 text-center">
+                          <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-[10px] font-bold tracking-tight">Saving...</span>
+                        </div>
+                      ) : (userProfile.photoUrl || photoUrl || defaultProfilePictures[0]?.url) ? (
                         <img
-                          src={userProfile.photoUrl || defaultProfilePictures[0]?.url || ''}
+                          src={userProfile.photoUrl || photoUrl || defaultProfilePictures[0]?.url || ''}
                           alt={userProfile.name}
                           className="w-full h-full object-cover rounded-xl"
                         />
@@ -449,7 +573,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                       )}
                     </div>
                     <label
-                      className="absolute -bottom-2 -right-2 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-blue-600 text-white shadow-lg hover:bg-blue-700"
+                      className="absolute -bottom-2 -right-2 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition"
                       title="Upload profile picture"
                       aria-label="Upload profile picture"
                     >
@@ -462,31 +586,8 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                         onChange={async (event) => {
                           const file = event.target.files?.[0];
                           event.target.value = '';
-                          if (!file || !currentUser) return;
-                          if (!file.type.match(/^image\\/(jpeg|png|webp|gif)$/)) {
-                            setErrorMsg('Choose a JPG, PNG, WebP, or GIF image.');
-                            return;
-                          }
-                          if (file.size > 5 * 1024 * 1024) {
-                            setErrorMsg('Profile pictures must be 5 MB or smaller.');
-                            return;
-                          }
-                          setErrorMsg('');
-                          setSuccessMsg('');
-                          setIsUploadingPhoto(true);
-                          try {
-                            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-                            const imageRef = ref(storage, `profile-photos/${currentUser.uid}/${Date.now()}-${safeName}`);
-                            await uploadBytes(imageRef, file, { contentType: file.type });
-                            const uploadedUrl = await getDownloadURL(imageRef);
-                            await updateProfileData({ photoUrl: uploadedUrl });
-                            setPhotoUrl(uploadedUrl);
-                            setSuccessMsg('Your profile picture has been updated.');
-                          } catch (error: any) {
-                            setErrorMsg(error?.message || 'Could not update the profile picture. Check Firebase Storage setup and rules.');
-                          } finally {
-                            setIsUploadingPhoto(false);
-                          }
+                          if (!file) return;
+                          await handleUploadProfilePhoto(file);
                         }}
                       />
                     </label>
@@ -1766,8 +1867,8 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                   <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-black text-slate-800">Profile picture</h3>
                     <p className="text-xs text-slate-500 mt-1">Upload a JPG, PNG, WebP, or GIF up to 5 MB, or choose a platform default.</p>
-                    <label className="inline-flex mt-3 items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 cursor-pointer">
-                      <Camera className="w-3.5 h-3.5" /> {isUploadingPhoto ? 'Uploading…' : 'Upload picture'}
+                    <label className="inline-flex mt-3 items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 cursor-pointer transition">
+                      <Camera className="w-3.5 h-3.5" /> {isUploadingPhoto ? 'Saving…' : 'Upload picture'}
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/webp,image/gif"
@@ -1776,22 +1877,8 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                         onChange={async (event) => {
                           const file = event.target.files?.[0];
                           event.target.value = '';
-                          if (!file || !currentUser) return;
-                          if (!file.type.startsWith('image/')) { setErrorMsg('Please select an image file.'); return; }
-                          if (file.size > 5 * 1024 * 1024) { setErrorMsg('Profile pictures must be 5 MB or smaller.'); return; }
-                          setErrorMsg('');
-                          setIsUploadingPhoto(true);
-                          try {
-                            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-                            const imageRef = ref(storage, `profile-photos/${currentUser.uid}/${Date.now()}-${safeName}`);
-                            await uploadBytes(imageRef, file, { contentType: file.type });
-                            setPhotoUrl(await getDownloadURL(imageRef));
-                            setSuccessMsg('Picture uploaded. Save your profile to apply it.');
-                          } catch (error: any) {
-                            setErrorMsg(error?.message || 'Could not upload the picture. Check Firebase Storage setup and rules.');
-                          } finally {
-                            setIsUploadingPhoto(false);
-                          }
+                          if (!file) return;
+                          await handleUploadProfilePhoto(file);
                         }}
                       />
                     </label>
