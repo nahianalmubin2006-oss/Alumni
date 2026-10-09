@@ -1130,7 +1130,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                           {pending ? (
                             <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800">Claim pending review</span>
                           ) : (
-                            <button type="button" disabled={submittingClaim} onClick={() => void handleProfileClaimSubmit(record)} className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">
+                            <button type="button" disabled={submittingClaim || !claimProofUrl.trim()} onClick={() => void handleProfileClaimSubmit(record)} className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">
                               {submittingClaim ? 'Submitting…' : 'Request to claim'}
                             </button>
                           )}
@@ -1139,7 +1139,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                     })}
                   </div>
                   <div className="grid sm:grid-cols-2 gap-3">
-                    <label className="text-xs font-bold text-slate-600">Evidence link (HTTPS) *<input type="url" value={claimProofUrl} onChange={(e) => setClaimProofUrl(e.target.value)} placeholder="https://..." className="account-input mt-1" /></label>
+                    <label className="text-xs font-bold text-slate-600">Evidence link (HTTPS) *<input required type="url" value={claimProofUrl} onChange={(e) => setClaimProofUrl(e.target.value)} placeholder="https://..." className="account-input mt-1" /></label>
                     <label className="text-xs font-bold text-slate-600">Notes for reviewer<textarea value={claimNotes} onChange={(e) => setClaimNotes(e.target.value)} maxLength={1000} rows={2} placeholder="Explain how this record belongs to you" className="account-input mt-1" /></label>
                   </div>
                   <p className="text-[11px] text-slate-500">Evidence and notes are shared with authorized reviewers. Never enter your password or sensitive financial information.</p>
