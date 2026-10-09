@@ -48,6 +48,9 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
 
   const {
     submitVerificationRequest,
+    alumni,
+    profileClaims,
+    submitProfileClaim,
     posts,
     createPost,
     reactToPost,
@@ -111,6 +114,9 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
   const [verificationModalOpen, setVerificationModalOpen] = useState(false);
   const [proofUrl, setProofUrl] = useState('');
   const [verificationNotes, setVerificationNotes] = useState('');
+  const [claimProofUrl, setClaimProofUrl] = useState('');
+  const [claimNotes, setClaimNotes] = useState('');
+  const [submittingClaim, setSubmittingClaim] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -428,6 +434,39 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
       setLoading(false);
     }
   };
+
+  const handleProfileClaimSubmit = async (record: (typeof alumni)[number]) => {
+    if (!currentUser || !userProfile) return;
+    setErrorMsg('');
+    setSuccessMsg('');
+    setSubmittingClaim(true);
+    try {
+      await submitProfileClaim({
+        targetAlumniId: record.id,
+        university: record.university,
+        department: record.department,
+        studentId: record.studentId || '',
+        graduationYear: record.graduationYear || record.batch || '',
+        proofUrl: claimProofUrl.trim(),
+        notes: claimNotes.trim(),
+      });
+      setSuccessMsg('Profile claim submitted. A Super Admin must review the evidence before the record is linked.');
+      setClaimProofUrl('');
+      setClaimNotes('');
+    } catch (error: any) {
+      setErrorMsg(error?.message || 'Could not submit your profile claim.');
+    } finally {
+      setSubmittingClaim(false);
+    }
+  };
+
+  const claimCandidates = currentUser && userProfile
+    ? alumni.filter((record) => {
+        const matchesEmail = Boolean(record.email && record.email.toLowerCase() === (currentUser.email || '').toLowerCase());
+        const matchesStudentId = Boolean(record.studentId && userProfile.studentId && record.studentId.trim().toLowerCase() === userProfile.studentId.trim().toLowerCase());
+        return (matchesEmail || matchesStudentId) && (!record.userId || record.userId === currentUser.uid) && record.userId !== currentUser.uid && record.id !== currentUser.uid;
+      })
+    : [];
 
   const handleVerificationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1169,6 +1208,56 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                   >
                     Request Verification Badge →
                   </button>
+                </div>
+              )}
+
+              {/* Claim an existing alumni directory record */}
+              {currentUser && claimCandidates.length > 0 && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 space-y-4">
+                  <div>
+                    <b className="block text-sm navy">Claim an existing alumni profile</b>
+                    <p className="mt-1 text-xs text-slate-600">We found directory records matching your signed-in email or student ID. Submit evidence; the record will not be linked until a Super Admin reviews it.</p>
+                  </div>
+                  <div className="space-y-3">
+                    {claimCandidates.map((record) => {
+                      const pending = profileClaims.some((claim) => claim.targetAlumniId === record.id && claim.status === 'PENDING');
+                      return (
+                        <div key={record.id} className="rounded-xl border border-amber-200 bg-white p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div>
+                            <p className="font-bold text-sm navy">{record.name}</p>
+                            <p className="text-xs text-slate-500 mt-1">{record.university} · {record.department} · Batch {record.graduationYear || record.batch}</p>
+                            <p className="text-[11px] text-slate-500 mt-1">Student ID: {record.studentId || 'Not recorded'}</p>
+                          </div>
+                          {pending ? (
+                            <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800">Claim pending review</span>
+                          ) : (
+                            <button type="button" disabled={submittingClaim || !claimProofUrl.trim()} onClick={() => void handleProfileClaimSubmit(record)} className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">
+                              {submittingClaim ? 'Submitting…' : 'Request to claim'}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <label className="text-xs font-bold text-slate-600">Evidence link (HTTPS) *<input required type="url" value={claimProofUrl} onChange={(e) => setClaimProofUrl(e.target.value)} placeholder="https://..." className="account-input mt-1" /></label>
+                    <label className="text-xs font-bold text-slate-600">Notes for reviewer<textarea value={claimNotes} onChange={(e) => setClaimNotes(e.target.value)} maxLength={1000} rows={2} placeholder="Explain how this record belongs to you" className="account-input mt-1" /></label>
+                  </div>
+                  <p className="text-[11px] text-slate-500">Evidence and notes are shared with authorized reviewers. Never enter your password or sensitive financial information.</p>
+                </div>
+              )}
+
+              {profileClaims.filter((claim) => claim.requesterId === currentUser?.uid).length > 0 && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <b className="text-sm navy">Your profile claim history</b>
+                  <div className="mt-2 space-y-2">
+                    {profileClaims.filter((claim) => claim.requesterId === currentUser?.uid).map((claim) => (
+                      <div key={claim.id} className="flex items-center justify-between gap-3 text-xs">
+                        <span>{claim.university} · {claim.department}</span>
+                        <span className={claim.status === 'APPROVED' ? 'font-bold text-emerald-700' : claim.status === 'REJECTED' ? 'font-bold text-rose-700' : 'font-bold text-amber-700'}>{claim.status}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
