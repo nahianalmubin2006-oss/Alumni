@@ -492,10 +492,10 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                   <button
                     onClick={enterEditMode}
                     className="inline-flex items-center gap-2 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl text-xs font-bold text-blue-700 transition shadow-xs cursor-pointer"
-                    aria-label="Edit profile or choose a default picture"
+                    aria-label="Change profile picture or edit profile"
                   >
                     <Camera className="w-4 h-4" />
-                    Edit Profile / Default Picture
+                    Change Picture / Edit Profile
                   </button>
                   <button
                     onClick={logout}
