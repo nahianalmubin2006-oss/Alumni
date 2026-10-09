@@ -662,8 +662,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Interconnected dynamic statistics
   const stats = useMemo(() => {
-    // Approved alumni count from database
-    const approvedAlumni = alumni.filter((a) => a.status === 'APPROVED');
+    // Exclude legacy records linked to current Student profiles from alumni totals.
+    const approvedAlumni = alumni.filter((a) => {
+      if (a.status !== 'APPROVED') return false;
+      const linkedUserId = a.userId || a.id;
+      const linkedProfile = allUsers.find((user) => user.uid === linkedUserId || user.id === linkedUserId);
+      return linkedProfile?.profileType !== 'Student';
+    });
     // Calculate total base alumni across universities + individual dynamic approved alumni additions
     const totalAlumni = approvedAlumni.length;
 
