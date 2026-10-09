@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAdmin } from '../../context/AdminContext';
-import { Shield, Lock, Mail, ArrowLeft, AlertCircle, KeyRound } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowLeft, AlertCircle, KeyRound, Building2, Users, GraduationCap } from 'lucide-react';
+import { auth } from '../../firebase';
 
 interface AdminLoginViewProps {
   onNavigatePublic: () => void;
@@ -14,6 +15,11 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
   onBack,
 }) => {
   const { loginAdmin, sendAdminPasswordReset } = useAdmin();
+  const [portalMode, setPortalMode] = useState<'choice' | 'central-login' | 'co-admin-signup' | 'institution-request'>('choice');
+  const [applicantName, setApplicantName] = useState('');
+  const [institutionRole, setInstitutionRole] = useState<'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN'>('UNIVERSITY_ADMIN');
+  const [institutionUniversity, setInstitutionUniversity] = useState('');
+  const [institutionDepartment, setInstitutionDepartment] = useState('');
   const [mode, setMode] = useState<'login' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -68,6 +74,133 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
       setLoading(false);
     }
   };
+
+  const handleCoAdminApplication = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+    setLoading(true);
+    try {
+      const response = await fetch('/api/admin/applications/co-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: applicantName, email, password }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to submit the application.');
+      setSuccessMessage(data.message || 'Application submitted for Super Admin review.');
+      setPassword('');
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Unable to submit the application.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInstitutionApplication = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+    if (!auth.currentUser) {
+      setErrorMessage('Please sign in to your existing Alumni account on the public website, then return here to request admin access.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      const response = await fetch('/api/admin/applications/institution', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken,
+          requestedRole: institutionRole,
+          university: institutionUniversity,
+          department: institutionRole === 'DEPARTMENT_ADMIN' ? institutionDepartment : undefined,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to submit the request.');
+      setSuccessMessage(data.message || 'Institution admin request submitted for review.');
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Unable to submit the request.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (portalMode === 'choice') {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-3xl">
+          <button onClick={onNavigatePublic} className="mb-6 text-xs text-slate-400 hover:text-white">← Back to public website</button>
+          <div className="text-center mb-8">
+            <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center mx-auto mb-4"><Shield className="w-7 h-7" /></div>
+            <h1 className="text-3xl font-black">AlumniSphere Admin Portal</h1>
+            <p className="text-sm text-slate-400 mt-2">Choose the administration path for your approved role.</p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <button onClick={() => { setPortalMode('central-login'); setMode('login'); }} className="text-left rounded-3xl border border-blue-500/30 bg-slate-900 p-6 hover:border-blue-400 transition">
+              <div className="w-11 h-11 rounded-xl bg-blue-500/15 text-blue-300 flex items-center justify-center mb-4"><Shield className="w-5 h-5" /></div>
+              <h2 className="text-lg font-extrabold">Central Admin</h2>
+              <p className="text-xs text-slate-400 mt-2 leading-relaxed">For Super Admin and approved Co-admin accounts. Co-admin applications require Super Admin approval.</p>
+              <span className="inline-block mt-5 text-xs font-bold text-blue-300">Continue to central login →</span>
+            </button>
+            <button onClick={() => setPortalMode('institution-request')} className="text-left rounded-3xl border border-slate-700 bg-slate-900 p-6 hover:border-blue-400 transition">
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/15 text-emerald-300 flex items-center justify-center mb-4"><Building2 className="w-5 h-5" /></div>
+              <h2 className="text-lg font-extrabold">University & Department Admin</h2>
+              <p className="text-xs text-slate-400 mt-2 leading-relaxed">Request a scoped role using your existing, verified Alumni account. No duplicate account is created.</p>
+              <span className="inline-block mt-5 text-xs font-bold text-emerald-300">Request institution access →</span>
+            </button>
+          </div>
+          <button onClick={() => setPortalMode('co-admin-signup')} className="mt-4 w-full rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-left hover:border-blue-400 transition flex items-center gap-3">
+            <Users className="w-5 h-5 text-amber-300" />
+            <span><strong className="block text-sm">Apply to become a Co-admin</strong><span className="text-xs text-slate-400">Application only — access remains disabled until a Super Admin approves it.</span></span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (portalMode === 'co-admin-signup') {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-6 sm:p-8">
+          <button onClick={() => setPortalMode('choice')} className="text-xs text-slate-400 hover:text-white mb-5">← Back to portal options</button>
+          <h1 className="text-2xl font-black">Co-admin application</h1>
+          <p className="text-xs text-slate-400 mt-2">Your credentials are stored as a pending application. You cannot log in until the Super Admin approves it.</p>
+          {successMessage && <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">{successMessage}</div>}
+          {errorMessage && <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">{errorMessage}</div>}
+          <form onSubmit={handleCoAdminApplication} className="mt-5 space-y-4">
+            <div><label className="block text-xs font-bold mb-1.5">Full name</label><input value={applicantName} onChange={e => setApplicantName(e.target.value)} required minLength={2} autoComplete="name" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm" /></div>
+            <div><label className="block text-xs font-bold mb-1.5">Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm" /></div>
+            <div><label className="block text-xs font-bold mb-1.5">Password (minimum 10 characters)</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={10} autoComplete="new-password" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm" /></div>
+            <button disabled={loading} className="w-full rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-3 text-sm font-bold">{loading ? 'Submitting…' : 'Submit for Super Admin approval'}</button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  if (portalMode === 'institution-request') {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-6 sm:p-8">
+          <button onClick={() => setPortalMode('choice')} className="text-xs text-slate-400 hover:text-white mb-5">← Back to portal options</button>
+          <h1 className="text-2xl font-black">Institution admin request</h1>
+          <p className="text-xs text-slate-400 mt-2">Use your existing Alumni account. Your signed-in identity is verified by the server; your profile is not replaced.</p>
+          {auth.currentUser ? <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">Signed in as {auth.currentUser.email}</div> : <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Sign in to your normal Alumni account first, then return here.</div>}
+          {successMessage && <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">{successMessage}</div>}
+          {errorMessage && <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">{errorMessage}</div>}
+          <form onSubmit={handleInstitutionApplication} className="mt-5 space-y-4">
+            <div><label className="block text-xs font-bold mb-1.5">Requested role</label><select value={institutionRole} onChange={e => setInstitutionRole(e.target.value as 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN')} className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm"><option value="UNIVERSITY_ADMIN">University Admin</option><option value="DEPARTMENT_ADMIN">Department Admin</option></select></div>
+            <div><label className="block text-xs font-bold mb-1.5">University (exact name)</label><input value={institutionUniversity} onChange={e => setInstitutionUniversity(e.target.value)} required placeholder="e.g. University of Dhaka" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm" /></div>
+            {institutionRole === 'DEPARTMENT_ADMIN' && <div><label className="block text-xs font-bold mb-1.5">Department (exact name)</label><input value={institutionDepartment} onChange={e => setInstitutionDepartment(e.target.value)} required placeholder="e.g. Computer Science & Engineering" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm" /></div>}
+            <button disabled={loading || !auth.currentUser} className="w-full rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-3 text-sm font-bold">{loading ? 'Submitting…' : 'Submit access request'}</button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-between py-6 sm:py-10 px-3 sm:px-6">
