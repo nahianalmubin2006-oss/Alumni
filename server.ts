@@ -1585,7 +1585,7 @@ app.get('/api/admin/users', requireAdminAuth, (req, res) => {
   }
 
   // Strip password hashes before returning
-  const sanitized = results.map(({ passwordHash, ...rest }) => rest);
+  const sanitized = results.map(({ passwordHash, firebaseUid, ...rest }) => rest);
   return res.json({ success: true, count: sanitized.length, users: sanitized });
 });
 
