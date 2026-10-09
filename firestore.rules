@@ -107,19 +107,24 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.id == request.auth.uid
         && (
-          request.resource.data.role in ['STUDENT', 'ALUMNI']
-          || (isSuperAdmin() && request.resource.data.role == 'SUPER_ADMIN')
-        )
-        && (
-          request.resource.data.status == 'PENDING'
-          || (isSuperAdmin() && request.resource.data.status == 'APPROVED')
-        )
-        && request.resource.data.profileType in ['Student', 'Alumni', 'Admin']
-        && (isSuperAdmin() || (
-          request.resource.data.get('isVerifiedAlumni', false) == false
-          && request.resource.data.get('assignedUniversity', '') == ''
-          && request.resource.data.get('assignedDepartment', '') == ''
-        ));
+          (
+            isSuperAdmin()
+            && request.resource.data.role == 'SUPER_ADMIN'
+            && request.resource.data.status == 'APPROVED'
+            && request.resource.data.profileType == 'Admin'
+          )
+          || (
+            !isSuperAdmin()
+            && request.resource.data.status == 'PENDING'
+            && (
+              (request.resource.data.role == 'STUDENT' && request.resource.data.profileType == 'Student')
+              || (request.resource.data.role == 'ALUMNI' && request.resource.data.profileType == 'Alumni')
+            )
+            && request.resource.data.get('isVerifiedAlumni', false) == false
+            && request.resource.data.get('assignedUniversity', '') == ''
+            && request.resource.data.get('assignedDepartment', '') == ''
+          )
+        );
       allow update: if request.resource.data.uid == resource.data.uid
         && request.resource.data.id == resource.data.id
         && (isSuperAdmin() || (isOwner(userId) && ownerCanEditProfile()));
@@ -161,6 +166,9 @@ service cloud.firestore {
       allow update: if canManageDirectory(
         resource.data.university,
         resource.data.department
+      ) && canManageDirectory(
+        request.resource.data.university,
+        request.resource.data.department
       ) && request.resource.data.university == resource.data.university;
       allow delete: if isSuperAdmin();
     }
@@ -174,8 +182,15 @@ service cloud.firestore {
         && request.resource.data.get('isVerified', false) == false
       );
       allow update: if isSuperAdmin()
-        || isUniversityAdmin(resource.data.university)
-        || isDepartmentAdmin(resource.data.university, resource.data.department)
+        || (
+          isUniversityAdmin(resource.data.university)
+          && request.resource.data.university == resource.data.university
+        )
+        || (
+          isDepartmentAdmin(resource.data.university, resource.data.department)
+          && request.resource.data.university == resource.data.university
+          && request.resource.data.department == resource.data.department
+        )
         || (
           isOwner(resource.data.userId)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -198,8 +213,15 @@ service cloud.firestore {
         && request.resource.data.status == 'PENDING'
       );
       allow update: if isSuperAdmin()
-        || isUniversityAdmin(resource.data.university)
-        || isDepartmentAdmin(resource.data.university, resource.data.department)
+        || (
+          isUniversityAdmin(resource.data.university)
+          && request.resource.data.university == resource.data.university
+        )
+        || (
+          isDepartmentAdmin(resource.data.university, resource.data.department)
+          && request.resource.data.university == resource.data.university
+          && request.resource.data.department == resource.data.department
+        )
         || (
           isOwner(resource.data.userId)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -267,6 +289,39 @@ service cloud.firestore {
       allow update, delete: if isSuperAdmin();
     }
 
+    // Profile claims can be submitted only by the authenticated claimant.
+    // Only trusted Super Admins may review them; requesters cannot self-approve.
+    match /profileClaims/{claimId} {
+      allow read: if isSuperAdmin()
+        || (isSignedIn() && resource.data.requesterId == request.auth.uid);
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly([
+          'requesterId', 'requesterName', 'requesterEmail', 'targetAlumniId',
+          'university', 'department', 'studentId', 'graduationYear',
+          'proofUrl', 'notes', 'status', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'requesterId', 'requesterName', 'requesterEmail', 'targetAlumniId',
+          'university', 'department', 'studentId', 'graduationYear',
+          'proofUrl', 'notes', 'status', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.requesterId == request.auth.uid
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.targetAlumniId is string
+        && request.resource.data.targetAlumniId.size() > 0
+        && request.resource.data.proofUrl is string
+        && request.resource.data.proofUrl.size() <= 2000
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 1000;
+      allow update: if isSuperAdmin()
+        && resource.data.status == 'PENDING'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'updatedAt', 'reviewedBy', 'reviewerComment'
+        ])
+        && request.resource.data.status in ['APPROVED', 'REJECTED'];
+      allow delete: if false;
+    }
+
     match /notifications/{notificationId} {
       allow read: if isSuperAdmin()
         || (isSignedIn() && resource.data.recipientId == request.auth.uid)
@@ -293,12 +348,9 @@ service cloud.firestore {
 
     match /auditLogs/{logId} {
       allow read: if isSuperAdmin();
-      allow create: if isSuperAdmin() || (
-        hasUserProfile()
-        && request.resource.data.actorId == request.auth.uid
-        && request.resource.data.actorEmail == request.auth.token.email
-        && request.resource.data.actorRole == getUserData().role
-      );
+      // Audit entries are privileged records; client-authored audit rows are not trusted.
+      // Server-side administrative mutations write their audit trail separately.
+      allow create: if isSuperAdmin();
       allow update, delete: if false;
     }
 
