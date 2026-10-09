@@ -81,12 +81,21 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
     }
   }, [universities, selectedUniId]);
 
-  // State for Logo update form
+  // State for Logo update form & University Info Editor
   const [customLogoInput, setCustomLogoInput] = useState('');
   const [logoPreviewUrl, setLogoPreviewUrl] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoFeedback, setLogoFeedback] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isSavingLogo, setIsSavingLogo] = useState(false);
+
+  // State for Comprehensive University Info Editor
+  const [editorUniName, setEditorUniName] = useState('');
+  const [editorUniShort, setEditorUniShort] = useState('');
+  const [editorUniType, setEditorUniType] = useState<'Public' | 'Private' | 'International'>('Public');
+  const [editorUniLocation, setEditorUniLocation] = useState('');
+  const [editorUniWebsite, setEditorUniWebsite] = useState('');
+  const [editorUniOverview, setEditorUniOverview] = useState('');
+  const [editorUniStatus, setEditorUniStatus] = useState<'Active' | 'Inactive'>('Active');
 
   // State for Edit University Modal
   const [editingUni, setEditingUni] = useState<University | null>(null);
@@ -195,8 +204,25 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
       const currentLogo = activeUni.logoUrl || getUniversityLogo(activeUni.name) || '';
       setCustomLogoInput(currentLogo);
       setLogoPreviewUrl(currentLogo);
+      setEditorUniName(activeUni.name || '');
+      setEditorUniShort(activeUni.shortName || activeUni.code || '');
+      setEditorUniType(activeUni.type || 'Public');
+      setEditorUniLocation(activeUni.location || '');
+      setEditorUniWebsite(activeUni.website || '');
+      setEditorUniOverview(activeUni.overview || '');
+      setEditorUniStatus(activeUni.status || 'Active');
     }
-  }, [activeUni?.id]);
+  }, [
+    activeUni?.id,
+    activeUni?.name,
+    activeUni?.logoUrl,
+    activeUni?.location,
+    activeUni?.website,
+    activeUni?.overview,
+    activeUni?.status,
+    activeUni?.type,
+    activeUni?.shortName,
+  ]);
 
   // When university changes, reset form previews
   const handleSelectUniversity = (uniId: string) => {
@@ -206,6 +232,13 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
       const currentLogo = uni.logoUrl || getUniversityLogo(uni.name) || '';
       setCustomLogoInput(currentLogo);
       setLogoPreviewUrl(currentLogo);
+      setEditorUniName(uni.name || '');
+      setEditorUniShort(uni.shortName || uni.code || '');
+      setEditorUniType(uni.type || 'Public');
+      setEditorUniLocation(uni.location || '');
+      setEditorUniWebsite(uni.website || '');
+      setEditorUniOverview(uni.overview || '');
+      setEditorUniStatus(uni.status || 'Active');
       setLogoFile(null);
     }
     setLogoFeedback(null);
@@ -246,15 +279,10 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
     });
   };
 
-  // Submit Logo Update (Firebase Storage + Firestore)
+  // Submit Full University Info & Logo Update (Firebase Storage + Firestore + Server + LocalStorage)
   const handleSaveLogo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeUni) return;
-
-    if (!logoFile && !customLogoInput.trim()) {
-      setLogoFeedback({ text: 'Please provide a valid logo image URL or select an image to upload.', type: 'error' });
-      return;
-    }
 
     setIsSavingLogo(true);
     setLogoFeedback(null);
@@ -281,18 +309,37 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
         }
       }
 
-      await updateUniversityLogo(activeUni.id, finalLogoUrl);
+      const effectiveLogo =
+        finalLogoUrl || activeUni.logoUrl || getUniversityLogo(editorUniName.trim() || activeUni.name) || '';
+
+      const updatedUni: Partial<University> = {
+        id: activeUni.id,
+        name: editorUniName.trim() || activeUni.name,
+        shortName: editorUniShort.trim(),
+        code: editorUniShort.trim(),
+        type: editorUniType,
+        location: editorUniLocation.trim(),
+        website: editorUniWebsite.trim(),
+        overview: editorUniOverview.trim(),
+        status: editorUniStatus,
+        logoUrl: effectiveLogo,
+      };
+
+      await saveUniversity(updatedUni);
+      if (effectiveLogo) {
+        await updateUniversityLogo(activeUni.id, effectiveLogo);
+      }
 
       setLogoFeedback({
-        text: `Official emblem for "${activeUni.name}" updated successfully! Changes are live across all public profiles.`,
+        text: `All information and emblem for "${updatedUni.name}" saved successfully! Changes are immediately live across the entire website (Homepage, Universities Directory, Department pages, and Alumni Directory).`,
         type: 'success',
       });
       setLogoFile(null);
-      setCustomLogoInput(finalLogoUrl);
-      setLogoPreviewUrl(finalLogoUrl);
+      setCustomLogoInput(effectiveLogo);
+      setLogoPreviewUrl(effectiveLogo);
     } catch (err: any) {
       setLogoFeedback({
-        text: err.message || 'Failed to update university logo. Please try again.',
+        text: err.message || 'Failed to update university details. Please try again.',
         type: 'error',
       });
     } finally {
@@ -374,13 +421,20 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
 
       await saveUniversity(updated);
 
-      if (finalLogo && finalLogo !== editingUni.logoUrl) {
+      if (finalLogo) {
         await updateUniversityLogo(editingUni.id, finalLogo);
       }
 
+      setLogoFeedback({
+        text: `All information and emblem for "${updated.name}" saved successfully! Changes are immediately live across the entire website (Homepage, Universities Directory, Department pages, and Alumni Directory).`,
+        type: 'success',
+      });
       setEditingUni(null);
     } catch (err: any) {
-      alert(err.message || 'Failed to update university details.');
+      setLogoFeedback({
+        text: err.message || 'Failed to update university details. Please try again.',
+        type: 'error',
+      });
     } finally {
       setIsSavingUniEdit(false);
     }
@@ -832,11 +886,24 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
       {activeSubTab === 'universities' && (
         <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
-            <div>
-              <h3 className="text-lg font-black text-white">University Directory Management</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Edit profiles, manage official insignia, and configure institutional parameters.
-              </p>
+            <div className="flex items-center gap-3">
+              {onBackToOverview && (
+                <button
+                  type="button"
+                  onClick={onBackToOverview}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition cursor-pointer shrink-0"
+                  title="Return to Dashboard Overview"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 text-blue-400" />
+                  <span>← Overview</span>
+                </button>
+              )}
+              <div>
+                <h3 className="text-lg font-black text-white">University Directory Management</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Edit profiles, manage official insignia, and configure institutional parameters.
+                </p>
+              </div>
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -961,227 +1028,398 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
       )}
 
       {/* ============================================================== */}
-      {/* SUB-TAB: UPDATE UNIVERSITY LOGO */}
+      {/* SUB-TAB: UNIVERSITY INFO & LOGO EDITOR */}
       {/* ============================================================== */}
       {activeSubTab === 'logo' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* University Picker Column */}
-          <div className="lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col h-[650px]">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                <Search className="w-4 h-4 text-blue-400" />
-                <span>Select University ({filteredUniversities.length})</span>
-              </h3>
-            </div>
-
-            {/* Search Input */}
-            <div className="relative mb-3">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-              <input
-                type="text"
-                value={searchUni}
-                onChange={(e) => setSearchUni(e.target.value)}
-                placeholder="Search university name, city..."
-                className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pl-10 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-              />
-            </div>
-
-            {/* Universities Scrollable List */}
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-              {filteredUniversities.map((uni) => {
-                const isSelected = uni.id === activeUni?.id;
-                return (
-                  <button
-                    key={uni.id}
-                    onClick={() => handleSelectUniversity(uni.id)}
-                    className={`w-full text-left p-3 rounded-2xl border transition flex items-center gap-3 group cursor-pointer ${
-                      isSelected
-                        ? 'bg-blue-600/15 border-blue-500/60 ring-1 ring-blue-500/40 text-white'
-                        : 'bg-slate-800/50 border-slate-700/60 hover:bg-slate-800 hover:border-slate-600 text-slate-300'
-                    }`}
-                  >
-                    <UniversityLogo name={uni.name} logoUrl={uni.logoUrl} size="sm" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-bold truncate group-hover:text-blue-300 transition">
-                        {uni.name}
-                      </div>
-                      <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
-                        <span className="font-semibold text-slate-300">{uni.type}</span>
-                        {uni.location && <span>• {uni.location}</span>}
-                      </div>
-                    </div>
-                    {isSelected && <ChevronRight className="w-4 h-4 text-blue-400 shrink-0" />}
-                  </button>
-                );
-              })}
+        <div className="space-y-6">
+          {/* Top navigation with Back Button */}
+          <div className="flex items-center justify-between gap-4">
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('universities')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 border border-slate-700/80 hover:border-blue-500 hover:bg-slate-800 text-xs font-bold text-slate-200 transition cursor-pointer shadow-sm group"
+              title="Return to Universities List"
+            >
+              <ArrowLeft className="w-4 h-4 text-blue-400 group-hover:-translate-x-1 transition" />
+              <span>← Back to Universities List</span>
+            </button>
+            <div className="text-xs text-slate-400 font-semibold hidden sm:block">
+              Editing: <span className="text-blue-400 font-bold">{activeUni?.name}</span>
             </div>
           </div>
 
-          {/* Logo Editor Form Column */}
-          <div className="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
-            {activeUni ? (
-              <form onSubmit={handleSaveLogo} className="space-y-6">
-                <div className="flex items-start justify-between gap-4 pb-5 border-b border-slate-800">
-                  <div className="flex items-center gap-3">
-                    <UniversityLogo name={activeUni.name} logoUrl={activeUni.logoUrl} size="md" />
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20">
-                        {activeUni.type} Institution
-                      </span>
-                      <h3 className="text-lg font-black text-white mt-1 leading-snug">
-                        {activeUni.name}
-                      </h3>
-                      <p className="text-xs text-slate-400">{activeUni.location || 'Bangladesh'}</p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEditUni(activeUni)}
-                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0"
-                    title="Edit University Name, Location, Website, Overview"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 text-blue-400" />
-                    <span>Edit University Info</span>
-                  </button>
-                </div>
-
-                {logoFeedback && (
-                  <div
-                    className={`p-3.5 rounded-2xl text-xs flex items-start gap-2.5 animate-in fade-in duration-200 ${
-                      logoFeedback.type === 'success'
-                        ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
-                        : 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
-                    }`}
-                  >
-                    {logoFeedback.type === 'success' ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                    )}
-                    <span className="leading-relaxed">{logoFeedback.text}</span>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                    Emblem Preview & Live Test
-                  </label>
-                  <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-around gap-6">
-                    <div className="text-center">
-                      <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                        Current Live Logo
-                      </div>
-                      <div className="flex justify-center">
-                        <UniversityLogo name={activeUni.name} logoUrl={activeUni.logoUrl} size="xl" />
-                      </div>
-                    </div>
-
-                    <div className="hidden sm:block w-px h-24 bg-slate-800" />
-
-                    <div className="text-center">
-                      <div className="text-[11px] font-bold text-blue-400 uppercase tracking-wider mb-2">
-                        New Logo Preview
-                      </div>
-                      <div className="flex justify-center">
-                        {logoPreviewUrl ? (
-                          <div className="w-24 h-24 rounded-2xl bg-white p-2 border border-blue-500/50 shadow-lg shadow-blue-500/10 flex items-center justify-center overflow-hidden">
-                            <img
-                              src={logoPreviewUrl}
-                              alt="New logo preview"
-                              className="w-full h-full object-contain"
-                              onError={() =>
-                                setLogoFeedback({
-                                  text: 'The provided image URL could not be loaded. Please check the URL or upload a file.',
-                                  type: 'error',
-                                })
-                              }
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-24 h-24 rounded-2xl bg-slate-800 border border-dashed border-slate-700 flex flex-col items-center justify-center text-slate-500 text-[10px] p-2 text-center">
-                            <ImageIcon className="w-6 h-6 mb-1 text-slate-600" />
-                            <span>No logo selected</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Upload Local File to Firebase Storage Option */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                    Upload New Emblem File (Firebase Storage)
-                  </label>
-                  <label className="flex items-center justify-center gap-2 w-full bg-slate-800 hover:bg-slate-750 border border-dashed border-slate-600 rounded-xl p-3 text-xs text-slate-300 cursor-pointer transition hover:text-white hover:border-blue-400">
-                    <Upload className="w-4 h-4 text-blue-400" />
-                    <span>
-                      {logoFile ? `Selected: ${logoFile.name}` : 'Choose PNG, SVG, JPG, WEBP file (Max 2MB)'}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageFileUpload}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-
-                {/* Or enter Direct URL */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                    Or Enter Direct Logo Image URL
-                  </label>
-                  <input
-                    type="url"
-                    value={customLogoInput}
-                    onChange={(e) => handleLogoUrlChange(e.target.value)}
-                    placeholder="https://upload.wikimedia.org/... or /logos/custom.svg"
-                    className="w-full bg-slate-800/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition font-mono"
-                  />
-                  <p className="text-[11px] text-slate-400 mt-1.5">
-                    Paste any official university emblem URL or upload above.
-                  </p>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-800">
-                  <button
-                    type="submit"
-                    disabled={isSavingLogo}
-                    className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-bold text-xs py-3 px-4 rounded-xl transition shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    {isSavingLogo ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        <span>Uploading & Updating Emblem...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        <span>Save & Apply Logo in Firestore</span>
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleResetDefaultLogo}
-                    disabled={isSavingLogo}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-3 px-4 rounded-xl transition border border-slate-700 flex items-center gap-2 cursor-pointer"
-                    title="Reset to system default insignia"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    <span>Reset Default</span>
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div className="p-12 text-center text-slate-500">
-                Please select a university from the list to view and update its logo.
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* University Picker Column */}
+            <div className="lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col h-[750px]">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <Search className="w-4 h-4 text-blue-400" />
+                  <span>Select University ({filteredUniversities.length})</span>
+                </h3>
               </div>
-            )}
+
+              {/* Search Input */}
+              <div className="relative mb-3">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  value={searchUni}
+                  onChange={(e) => setSearchUni(e.target.value)}
+                  placeholder="Search university name, city..."
+                  className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pl-10 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                />
+              </div>
+
+              {/* Universities Scrollable List */}
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                {filteredUniversities.map((uni) => {
+                  const isSelected = uni.id === activeUni?.id;
+                  return (
+                    <button
+                      key={uni.id}
+                      onClick={() => handleSelectUniversity(uni.id)}
+                      className={`w-full text-left p-3 rounded-2xl border transition flex items-center gap-3 group cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-600/15 border-blue-500/60 ring-1 ring-blue-500/40 text-white'
+                          : 'bg-slate-800/50 border-slate-700/60 hover:bg-slate-800 hover:border-slate-600 text-slate-300'
+                      }`}
+                    >
+                      <UniversityLogo name={uni.name} logoUrl={uni.logoUrl} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-bold truncate group-hover:text-blue-300 transition">
+                          {uni.name}
+                        </div>
+                        <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                          <span className="font-semibold text-slate-300">{uni.type}</span>
+                          {uni.location && <span>• {uni.location}</span>}
+                        </div>
+                      </div>
+                      {isSelected && <ChevronRight className="w-4 h-4 text-blue-400 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* University Info & Logo Editor Form Column */}
+            <div className="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+              {activeUni ? (
+                <form onSubmit={handleSaveLogo} className="space-y-6">
+                  <div className="flex items-start justify-between gap-4 pb-5 border-b border-slate-800">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <UniversityLogo name={activeUni.name} logoUrl={logoPreviewUrl || activeUni.logoUrl} size="md" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20">
+                            {editorUniType} Institution
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              editorUniStatus === 'Active'
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                            }`}
+                          >
+                            {editorUniStatus}
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-black text-white mt-1 leading-snug truncate">
+                          {editorUniName || activeUni.name}
+                        </h3>
+                        <p className="text-xs text-slate-400 truncate">{editorUniLocation || 'Bangladesh'}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setActiveSubTab('universities')}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold transition cursor-pointer"
+                        title="Back to universities directory"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5 text-blue-400" />
+                        <span>← Back to List</span>
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSavingLogo}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white text-xs font-bold transition cursor-pointer shadow-sm shadow-blue-600/30"
+                        title="Save University Details & Official Logo Emblem"
+                      >
+                        {isSavingLogo ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <span>Saving...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-3.5 h-3.5" />
+                            <span>Save Info & Logo</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {logoFeedback && (
+                    <div
+                      className={`p-3.5 rounded-2xl text-xs flex items-start gap-2.5 animate-in fade-in duration-200 ${
+                        logoFeedback.type === 'success'
+                          ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+                          : 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
+                      }`}
+                    >
+                      {logoFeedback.type === 'success' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                      )}
+                      <span className="leading-relaxed">{logoFeedback.text}</span>
+                    </div>
+                  )}
+
+                  {/* Section 1: University Core Info Update */}
+                  <div className="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4 sm:p-5 space-y-4">
+                    <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-blue-400" />
+                      <span>University Information & Details</span>
+                    </h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
+                          Official University Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={editorUniName}
+                          onChange={(e) => setEditorUniName(e.target.value)}
+                          required
+                          placeholder="e.g. University of Dhaka"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition font-semibold"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
+                          Short Name / Acronym (Code)
+                        </label>
+                        <input
+                          type="text"
+                          value={editorUniShort}
+                          onChange={(e) => setEditorUniShort(e.target.value)}
+                          placeholder="e.g. DU, BUET, NSU"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition uppercase font-bold"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
+                          Institution Type
+                        </label>
+                        <select
+                          value={editorUniType}
+                          onChange={(e) => setEditorUniType(e.target.value as any)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500 transition"
+                        >
+                          <option value="Public">Public Institution</option>
+                          <option value="Private">Private Institution</option>
+                          <option value="International">International Institution</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
+                          Campus Location / City
+                        </label>
+                        <div className="relative">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                          <input
+                            type="text"
+                            value={editorUniLocation}
+                            onChange={(e) => setEditorUniLocation(e.target.value)}
+                            placeholder="e.g. Nilkhet, Dhaka"
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
+                          Official Website URL
+                        </label>
+                        <div className="relative">
+                          <Globe className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                          <input
+                            type="url"
+                            value={editorUniWebsite}
+                            onChange={(e) => setEditorUniWebsite(e.target.value)}
+                            placeholder="https://du.ac.bd"
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
+                          Directory Status
+                        </label>
+                        <select
+                          value={editorUniStatus}
+                          onChange={(e) => setEditorUniStatus(e.target.value as any)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500 transition"
+                        >
+                          <option value="Active">Active (Visible in Directory)</option>
+                          <option value="Inactive">Inactive (Hidden from Directory)</option>
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
+                          Institutional Overview / Description
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={editorUniOverview}
+                          onChange={(e) => setEditorUniOverview(e.target.value)}
+                          placeholder="Comprehensive academic overview, achievements, faculty mission..."
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition leading-relaxed"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 2: Logo and Official Emblem Update */}
+                  <div className="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4 sm:p-5 space-y-4">
+                    <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-amber-400" />
+                      <span>Official Insignia / Logo Emblem</span>
+                    </h4>
+
+                    <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-around gap-4">
+                      <div className="text-center">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                          Current Live Logo
+                        </div>
+                        <div className="flex justify-center">
+                          <UniversityLogo name={activeUni.name} logoUrl={activeUni.logoUrl} size="lg" />
+                        </div>
+                      </div>
+
+                      <div className="hidden sm:block w-px h-16 bg-slate-800" />
+
+                      <div className="text-center">
+                        <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1.5">
+                          New Logo Preview
+                        </div>
+                        <div className="flex justify-center">
+                          {logoPreviewUrl ? (
+                            <div className="w-16 h-16 rounded-xl bg-white p-1.5 border border-blue-500/50 shadow-md flex items-center justify-center overflow-hidden">
+                              <img
+                                src={logoPreviewUrl}
+                                alt="New logo preview"
+                                className="w-full h-full object-contain"
+                                onError={() =>
+                                  setLogoFeedback({
+                                    text: 'The provided image URL could not be loaded. Please check the URL or upload a file.',
+                                    type: 'error',
+                                  })
+                                }
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-16 h-16 rounded-xl bg-slate-800 border border-dashed border-slate-700 flex flex-col items-center justify-center text-slate-500 text-[10px] p-1 text-center">
+                              <ImageIcon className="w-4 h-4 mb-0.5 text-slate-600" />
+                              <span>No logo</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Upload Local File */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                        Upload New Emblem File (Firebase Storage)
+                      </label>
+                      <label className="flex items-center justify-center gap-2 w-full bg-slate-800 hover:bg-slate-750 border border-dashed border-slate-600 rounded-xl p-3 text-xs text-slate-300 cursor-pointer transition hover:text-white hover:border-blue-400">
+                        <Upload className="w-4 h-4 text-blue-400" />
+                        <span>
+                          {logoFile ? `Selected: ${logoFile.name}` : 'Choose PNG, SVG, JPG, WEBP file (Max 2MB)'}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageFileUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    {/* Or Enter Direct URL */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                        Or Direct Emblem Image URL
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="url"
+                          value={customLogoInput}
+                          onChange={(e) => handleLogoUrlChange(e.target.value)}
+                          placeholder="https://upload.wikimedia.org/... or /logos/custom.svg"
+                          className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleResetDefaultLogo}
+                          disabled={isSavingLogo}
+                          className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs px-3 py-2 rounded-xl transition border border-slate-700 flex items-center gap-1.5 cursor-pointer shrink-0"
+                          title="Reset to system default insignia"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Reset Default</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons (SAVE & BACK) */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-4 border-t border-slate-800">
+                    <button
+                      type="submit"
+                      disabled={isSavingLogo}
+                      className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-black text-xs sm:text-sm py-3.5 px-6 rounded-xl transition shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {isSavingLogo ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Saving University Info & Emblem...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4" />
+                          <span>Save University Info & Logo</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveSubTab('universities')}
+                      className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs py-3.5 px-5 rounded-xl transition border border-slate-700 flex items-center justify-center gap-2 cursor-pointer"
+                      title="Return to universities directory"
+                    >
+                      <ArrowLeft className="w-4 h-4 text-blue-400" />
+                      <span>Back to Universities List</span>
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="p-12 text-center text-slate-500">
+                  Please select a university from the list to view and update its info and logo.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1190,7 +1428,37 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
       {/* SUB-TAB: DEPARTMENT MANAGEMENT */}
       {/* ============================================================== */}
       {activeSubTab === 'departments' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="space-y-6">
+          {/* Top navigation with Back Button */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('universities')}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 border border-slate-700/80 hover:border-blue-500 hover:bg-slate-800 text-xs font-bold text-slate-200 transition cursor-pointer shadow-sm group"
+                title="Return to Universities List"
+              >
+                <ArrowLeft className="w-4 h-4 text-blue-400 group-hover:-translate-x-1 transition" />
+                <span>← Back to Universities List</span>
+              </button>
+              {onBackToOverview && (
+                <button
+                  type="button"
+                  onClick={onBackToOverview}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer"
+                  title="Return to Dashboard Overview"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Overview</span>
+                </button>
+              )}
+            </div>
+            <div className="text-xs text-slate-400 font-semibold hidden sm:block">
+              Managing departments for: <span className="text-blue-400 font-bold">{activeUni?.name}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* University Selector Column */}
           <div className="lg:col-span-4 bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col h-[650px]">
             <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 mb-3">
@@ -1412,24 +1680,52 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
             )}
           </div>
         </div>
+      </div>
       )}
 
       {/* ============================================================== */}
       {/* SUB-TAB: ADD NEW UNIVERSITY FORM */}
       {/* ============================================================== */}
       {activeSubTab === 'add-university' && (
-        <div className="max-w-4xl mx-auto bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl">
-          <div className="border-b border-slate-800 pb-5 mb-6">
-            <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-widest">
-              Manual Institution Registration
-            </span>
-            <h3 className="text-xl sm:text-2xl font-black text-white mt-1">
-              Add New University to Platform
-            </h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-              Registers an authentic university into the directory. All initial metrics (alumni, students, employment) begin at 0 and update automatically from real user submissions.
-            </p>
+        <div className="space-y-6">
+          {/* Top navigation with Back Button */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('universities')}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 border border-slate-700/80 hover:border-blue-500 hover:bg-slate-800 text-xs font-bold text-slate-200 transition cursor-pointer shadow-sm group"
+                title="Return to Universities List"
+              >
+                <ArrowLeft className="w-4 h-4 text-blue-400 group-hover:-translate-x-1 transition" />
+                <span>← Back to Universities List</span>
+              </button>
+              {onBackToOverview && (
+                <button
+                  type="button"
+                  onClick={onBackToOverview}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer"
+                  title="Return to Dashboard Overview"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Overview</span>
+                </button>
+              )}
+            </div>
           </div>
+
+          <div className="max-w-4xl mx-auto bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl">
+            <div className="border-b border-slate-800 pb-5 mb-6">
+              <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-widest">
+                Manual Institution Registration
+              </span>
+              <h3 className="text-xl sm:text-2xl font-black text-white mt-1">
+                Add New University to Platform
+              </h3>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                Registers an authentic university into the directory. All initial metrics (alumni, students, employment) begin at 0 and update automatically from real user submissions.
+              </p>
+            </div>
 
           {createFeedback && (
             <div
@@ -1604,11 +1900,11 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
               />
             </div>
 
-            <div className="pt-4 border-t border-slate-800">
+            <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <button
                 type="submit"
                 disabled={isCreatingUni}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 text-white font-bold text-xs py-3 px-6 rounded-xl transition shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 text-white font-bold text-xs py-3 px-6 rounded-xl transition shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isCreatingUni ? (
                   <>
@@ -1622,9 +1918,20 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
                   </>
                 )}
               </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('universities')}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs py-3 px-5 rounded-xl transition border border-slate-700 flex items-center justify-center gap-2 cursor-pointer"
+                title="Return to universities directory"
+              >
+                <ArrowLeft className="w-4 h-4 text-blue-400" />
+                <span>← Back to Universities</span>
+              </button>
             </div>
           </form>
         </div>
+      </div>
       )}
 
       {/* ============================================================== */}
@@ -1634,8 +1941,20 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-              <h3 className="text-base font-black text-white">Edit University Details</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingUni(null)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold transition cursor-pointer"
+                  title="Back to universities list"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 text-blue-400" />
+                  <span>← Back</span>
+                </button>
+                <h3 className="text-base font-black text-white">Edit University Details</h3>
+              </div>
               <button
+                type="button"
                 onClick={() => setEditingUni(null)}
                 className="text-slate-400 hover:text-white cursor-pointer"
               >
@@ -1742,20 +2061,31 @@ export const AdminUniversityManagement: React.FC<AdminUniversityManagementProps>
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setEditingUni(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition cursor-pointer"
                 >
-                  Cancel
+                  <ArrowLeft className="w-3.5 h-3.5 text-blue-400" />
+                  <span>← Back to Universities</span>
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingUniEdit}
-                  className="bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition cursor-pointer"
+                  className="bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-blue-600/30"
                 >
-                  {isSavingUniEdit ? 'Saving...' : 'Save Changes'}
+                  {isSavingUniEdit ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Saving Info & Logo...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Save University Info & Logo</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

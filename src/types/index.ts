@@ -48,6 +48,7 @@ export interface UserProfile {
   assignedUniversity?: string;
   assignedDepartment?: string;
   followedUniversities?: string[];
+  savedUniversities?: string[];
   createdAt: string;
   updatedAt: string;
 }

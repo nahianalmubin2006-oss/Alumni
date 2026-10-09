@@ -72,14 +72,15 @@ service cloud.firestore {
     // Universities Collection (Public Directory, Admin Managed)
     match /universities/{universityId} {
       allow read: if true;
-      allow create, update, delete: if isSuperAdmin();
+      allow create, update: if isSuperAdmin() || isSignedIn() || (request.resource.data.name is string && request.resource.data.name.size() > 0);
+      allow delete: if isSuperAdmin();
     }
 
     // Departments Collection (Public Directory, Admin Managed)
     match /departments/{departmentId} {
       allow read: if true;
-      allow create: if isSuperAdmin() || (isSignedIn() && isUniversityAdmin(request.resource.data.university));
-      allow update, delete: if isSuperAdmin() || (isSignedIn() && isUniversityAdmin(resource.data.university));
+      allow create: if isSuperAdmin() || (isSignedIn() && isUniversityAdmin(request.resource.data.university)) || (request.resource.data.name is string && request.resource.data.name.size() > 0);
+      allow update, delete: if isSuperAdmin() || (isSignedIn() && isUniversityAdmin(resource.data.university)) || (request.resource.data.name is string && request.resource.data.name.size() > 0);
     }
 
     // Batches Collection (Public Directory)

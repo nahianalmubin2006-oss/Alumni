@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { GlobalGraph } from '../components/GlobalGraph';
 import { UniversityLogo } from '../components/UniversityLogo';
@@ -39,6 +39,17 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
   const [uniTypeFilter, setUniTypeFilter] = useState<'All' | 'Public' | 'Private' | 'International'>('All');
   const [selectedDeptGroup, setSelectedDeptGroup] = useState<string>('All');
   const [showAllUnis, setShowAllUnis] = useState(false);
+  const [updateVersion, setUpdateVersion] = useState(0);
+
+  useEffect(() => {
+    const handler = () => setUpdateVersion((v) => v + 1);
+    window.addEventListener('alumni-custom-logos-changed', handler);
+    window.addEventListener('alumni-university-updated', handler);
+    return () => {
+      window.removeEventListener('alumni-custom-logos-changed', handler);
+      window.removeEventListener('alumni-university-updated', handler);
+    };
+  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,16 +91,66 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
 
     // 2. Override with live database universities
     universities.forEach((u) => {
-      const existing = uniMap.get(u.name.toLowerCase());
-      uniMap.set(u.name.toLowerCase(), {
+      const trimmedLower = (u.name || '').trim().toLowerCase();
+      let key = trimmedLower;
+      if (!uniMap.has(key)) {
+        for (const [k, v] of uniMap.entries()) {
+          if (v.id === u.id || v.name.toLowerCase() === trimmedLower) {
+            key = k;
+            break;
+          }
+        }
+      }
+      const existing = uniMap.get(key);
+      const effectiveLogo = u.logoUrl || getUniversityLogo(u.name) || existing?.logoUrl || '';
+      uniMap.set(key, {
         ...existing,
         ...u,
-        logoUrl: u.logoUrl || existing?.logoUrl || getUniversityLogo(u.name),
+        id: u.id || existing?.id || 'uni-' + encodeURIComponent(trimmedLower.replace(/[^a-z0-9]/g, '-')),
+        name: u.name || existing?.name || '',
+        location: u.location !== undefined && u.location !== '' ? u.location : (existing?.location || 'Bangladesh'),
+        website: u.website !== undefined && u.website !== '' ? u.website : (existing?.website || ''),
+        overview: u.overview !== undefined && u.overview !== '' ? u.overview : (existing?.overview || ''),
+        logoUrl: effectiveLogo,
       });
     });
 
+    // 3. Check LocalStorage custom universities cache
+    try {
+      const raw = localStorage.getItem('alumni_custom_universities');
+      if (raw) {
+        const customList: University[] = JSON.parse(raw);
+        if (Array.isArray(customList)) {
+          customList.forEach((u) => {
+            const trimmedLower = (u.name || '').trim().toLowerCase();
+            let key = trimmedLower;
+            if (!uniMap.has(key)) {
+              for (const [k, v] of uniMap.entries()) {
+                if (v.id === u.id || v.name.toLowerCase() === trimmedLower) {
+                  key = k;
+                  break;
+                }
+              }
+            }
+            const existing = uniMap.get(key);
+            const effectiveLogo = u.logoUrl || getUniversityLogo(u.name) || existing?.logoUrl || '';
+            uniMap.set(key, {
+              ...existing,
+              ...u,
+              id: u.id || existing?.id || 'uni-' + encodeURIComponent(trimmedLower.replace(/[^a-z0-9]/g, '-')),
+              name: u.name || existing?.name || '',
+              location: u.location !== undefined && u.location !== '' ? u.location : (existing?.location || 'Bangladesh'),
+              website: u.website !== undefined && u.website !== '' ? u.website : (existing?.website || ''),
+              overview: u.overview !== undefined && u.overview !== '' ? u.overview : (existing?.overview || ''),
+              logoUrl: effectiveLogo,
+            });
+          });
+        }
+      }
+    } catch (e) {}
+
     return Array.from(uniMap.values()).filter((u) => u.status !== 'Inactive');
-  }, [universities]);
+  }, [universities, updateVersion]);
 
   // Filtered universities for the live showcase
   const filteredShowcase = useMemo(() => {

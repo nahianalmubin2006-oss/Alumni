@@ -153,15 +153,55 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { currentUser, userProfile, isSuperAdmin, updateProfileData } = useAuth();
 
   // Directory metadata is non-factual until verified; all metrics start at zero.
-  const [universities, setUniversities] = useState<University[]>(() =>
-    ALL_DIRECTORY_UNIVERSITIES.map((u) => ({
+  const [universities, setUniversities] = useState<University[]>(() => {
+    const baseline: University[] = ALL_DIRECTORY_UNIVERSITIES.map((u) => ({
       id: 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-')),
-      name: u.name, type: u.type, location: '', verified: false,
-      alumniCount: 0, studentCount: 0, followersCount: 0, departmentCount: 0,
-      employmentRate: 0, higherStudiesRate: 0, countriesCount: 0, companiesCount: 0,
+      name: u.name,
+      type: u.type,
+      location: '',
+      verified: false,
+      alumniCount: 0,
+      studentCount: 0,
+      followersCount: 0,
+      departmentCount: 0,
+      employmentRate: 0,
+      higherStudiesRate: 0,
+      countriesCount: 0,
+      companiesCount: 0,
       website: '',
-    }))
-  );
+    }));
+
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('alumni_custom_universities');
+        if (raw) {
+          const customList: University[] = JSON.parse(raw);
+          if (Array.isArray(customList) && customList.length > 0) {
+            const map = new Map<string, University>();
+            baseline.forEach((b) => map.set(b.id, b));
+            customList.forEach((c) => {
+              const existing =
+                map.get(c.id) ||
+                Array.from(map.values()).find((b) => b.name.toLowerCase() === c.name.toLowerCase());
+              const finalId =
+                c.id ||
+                existing?.id ||
+                'uni-' + encodeURIComponent(c.name.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+              map.set(finalId, {
+                ...existing,
+                ...c,
+                id: finalId,
+                logoUrl: c.logoUrl || existing?.logoUrl || getUniversityLogo(c.name) || '',
+              });
+            });
+            return Array.from(map.values());
+          }
+        }
+      } catch (e) {}
+    }
+
+    return baseline;
+  });
   const [departments, setDepartments] = useState<Department[]>([]);
 
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -220,22 +260,40 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Super Admin synchronizes verified directory metadata and clears fabricated counters.
+  // Super Admin synchronizes verified directory metadata once without overwriting existing data
   useEffect(() => {
     const initializeDatabase = async () => {
       if (!isSuperAdmin) return;
       try {
         const uniSnap = await getDocs(collection(db, 'universities'));
-        const knownNames = new Set(ALL_DIRECTORY_UNIVERSITIES.map((u) => u.name.toLowerCase()));
+        const existingIds = new Set(uniSnap.docs.map((d) => d.id));
+        const existingNames = new Set(
+          uniSnap.docs.map((d) => ((d.data() as any).name || '').toLowerCase())
+        );
 
         for (const u of ALL_DIRECTORY_UNIVERSITIES) {
           const id = 'uni-' + encodeURIComponent(u.name.toLowerCase().replace(/[^a-z0-9]/g, '-'));
-          await setDoc(doc(db, 'universities', id), {
-            id, name: u.name, type: u.type, location: '', verified: false,
-            alumniCount: 0, studentCount: 0, departmentCount: 0,
-            employmentRate: 0, higherStudiesRate: 0, countriesCount: 0, companiesCount: 0,
-            website: '', updatedAt: new Date().toISOString(),
-          }, { merge: true });
+          // Only create baseline document if it does NOT already exist in Firestore
+          if (!existingIds.has(id) && !existingNames.has(u.name.toLowerCase())) {
+            const logo = getUniversityLogo(u.name) || '';
+            await setDoc(doc(db, 'universities', id), {
+              id,
+              name: u.name,
+              type: u.type,
+              location: '',
+              verified: false,
+              logoUrl: logo,
+              alumniCount: 0,
+              studentCount: 0,
+              departmentCount: 0,
+              employmentRate: 0,
+              higherStudiesRate: 0,
+              countriesCount: 0,
+              companiesCount: 0,
+              website: '',
+              updatedAt: new Date().toISOString(),
+            });
+          }
         }
 
         const deptSnap = await getDocs(collection(db, 'departments'));
@@ -274,17 +332,38 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const map = new Map<string, University>();
             for (const u of prev) map.set(u.id, u);
             for (const cu of data.customUniversities) {
-              map.set(cu.id, {
-                id: cu.id,
-                name: cu.name,
-                type: cu.type || 'Public',
-                location: cu.location || '',
-                logoUrl: cu.logoUrl || '',
-                website: cu.website || '',
-                alumniCount: 0,
-                departmentCount: cu.departments?.length || 0,
-                employmentRate: 0,
-                overview: cu.description || '',
+              const existing =
+                map.get(cu.id) ||
+                Array.from(map.values()).find(
+                  (u) => u.name.toLowerCase() === (cu.name || '').toLowerCase()
+                );
+              const finalId =
+                cu.id ||
+                existing?.id ||
+                'uni-' + encodeURIComponent((cu.name || '').toLowerCase().replace(/[^a-z0-9]/g, '-'));
+
+              const finalLogo = cu.logoUrl || existing?.logoUrl || getUniversityLogo(cu.name) || '';
+              if (finalLogo) {
+                setCustomLogo(finalId, finalLogo);
+                setCustomLogo(cu.name, finalLogo);
+              }
+
+              map.set(finalId, {
+                ...existing,
+                ...cu,
+                id: finalId,
+                name: cu.name || existing?.name || '',
+                shortName: cu.shortName || existing?.shortName || '',
+                type: (cu.type || existing?.type || 'Public') as any,
+                location: cu.location !== undefined ? cu.location : (existing?.location || ''),
+                logoUrl: finalLogo,
+                website: cu.website !== undefined ? cu.website : (existing?.website || ''),
+                alumniCount: existing?.alumniCount || 0,
+                studentCount: existing?.studentCount || 0,
+                departmentCount: cu.departments?.length || existing?.departmentCount || 0,
+                employmentRate: existing?.employmentRate || 0,
+                overview: cu.description || cu.overview || existing?.overview || '',
+                status: (cu.status || existing?.status || 'Active') as any,
               });
             }
             return Array.from(map.values());
@@ -327,14 +406,28 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const dbUnis: University[] = [];
         snap.forEach((d) => {
           const item = d.data() as University;
-          dbUnis.push({ ...item, id: d.id || item.id });
+          const uniId = d.id || item.id;
+          const logo = item.logoUrl || getUniversityLogo(item.name) || '';
+          if (logo) {
+            setCustomLogo(uniId, logo);
+            if (item.name) setCustomLogo(item.name, logo);
+          }
+          dbUnis.push({ ...item, id: uniId, logoUrl: logo });
         });
         if (dbUnis.length > 0) {
           setUniversities((prev) => {
             const map = new Map<string, University>();
             for (const u of prev) map.set(u.id, u);
             for (const du of dbUnis) {
-              map.set(du.id, { ...map.get(du.id), ...du });
+              const prevItem = map.get(du.id);
+              map.set(du.id, {
+                ...prevItem,
+                ...du,
+                logoUrl: du.logoUrl || prevItem?.logoUrl || '',
+                location: du.location !== undefined && du.location !== '' ? du.location : (prevItem?.location || ''),
+                website: du.website !== undefined && du.website !== '' ? du.website : (prevItem?.website || ''),
+                overview: du.overview !== undefined && du.overview !== '' ? du.overview : (prevItem?.overview || ''),
+              });
             }
             return Array.from(map.values());
           });
@@ -1484,67 +1577,108 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const saveUniversity = async (uni: Partial<University>) => {
     const trimmedName = (uni.name || '').trim();
     const id = uni.id || 'uni-' + encodeURIComponent(trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '-'));
-    const existingUni = universities.find((u) => u.id === id);
+    const existingUni = universities.find(
+      (u) => u.id === id || (trimmedName && u.name.toLowerCase() === trimmedName.toLowerCase())
+    );
+
     const fullUni: University = {
       id,
-      name: trimmedName,
-      shortName: uni.shortName ? String(uni.shortName).trim() : '',
-      code: uni.code ? String(uni.code).trim() : '',
-      type: (uni.type || 'Public') as 'Public' | 'Private' | 'International',
-      location: uni.location ? String(uni.location).trim() : '',
-      logoUrl: uni.logoUrl || getUniversityLogo(trimmedName),
-      status: uni.status || 'Active',
+      name: trimmedName || existingUni?.name || id,
+      shortName: uni.shortName !== undefined ? String(uni.shortName).trim() : (existingUni?.shortName || ''),
+      code: uni.code !== undefined ? String(uni.code).trim() : (existingUni?.code || existingUni?.shortName || ''),
+      type: (uni.type || existingUni?.type || 'Public') as 'Public' | 'Private' | 'International',
+      location: uni.location !== undefined ? String(uni.location).trim() : (existingUni?.location || ''),
+      logoUrl: uni.logoUrl || existingUni?.logoUrl || getUniversityLogo(trimmedName || existingUni?.name || '') || '',
+      status: uni.status || existingUni?.status || 'Active',
       verified: uni.verified ?? existingUni?.verified ?? false,
-      alumniCount: uni.alumniCount ?? 0,
-      studentCount: uni.studentCount ?? 0,
-      followersCount: uni.followersCount ?? 0,
-      departmentCount: uni.departmentCount ?? 0,
-      employmentRate: uni.employmentRate ?? 0,
-      higherStudiesRate: uni.higherStudiesRate ?? 0,
-      countriesCount: uni.countriesCount ?? 0,
-      companiesCount: uni.companiesCount ?? 0,
-      overview: uni.overview ? String(uni.overview).trim() : '',
-      website: uni.website ? String(uni.website).trim() : '',
+      alumniCount: uni.alumniCount ?? existingUni?.alumniCount ?? 0,
+      studentCount: uni.studentCount ?? existingUni?.studentCount ?? 0,
+      followersCount: uni.followersCount ?? existingUni?.followersCount ?? 0,
+      departmentCount: uni.departmentCount ?? existingUni?.departmentCount ?? 0,
+      employmentRate: uni.employmentRate ?? existingUni?.employmentRate ?? 0,
+      higherStudiesRate: uni.higherStudiesRate ?? existingUni?.higherStudiesRate ?? 0,
+      countriesCount: uni.countriesCount ?? existingUni?.countriesCount ?? 0,
+      companiesCount: uni.companiesCount ?? existingUni?.companiesCount ?? 0,
+      overview: uni.overview !== undefined ? String(uni.overview).trim() : (existingUni?.overview || ''),
+      website: uni.website !== undefined ? String(uni.website).trim() : (existingUni?.website || ''),
       updatedAt: new Date().toISOString(),
-      createdAt: uni.createdAt || new Date().toISOString(),
+      createdAt: existingUni?.createdAt || uni.createdAt || new Date().toISOString(),
     };
 
+    // 1. Immediately store in LocalStorage for 100% resilient client persistence
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('alumni_custom_universities');
+        const list = raw ? JSON.parse(raw) : [];
+        const filtered = Array.isArray(list)
+          ? list.filter((item: any) => item.id !== id && item.name?.toLowerCase() !== fullUni.name.toLowerCase())
+          : [];
+        filtered.push(fullUni);
+        localStorage.setItem('alumni_custom_universities', JSON.stringify(filtered));
+      } catch (e) {}
+
+      if (fullUni.logoUrl) {
+        setCustomLogo(id, fullUni.logoUrl);
+        setCustomLogo(fullUni.name, fullUni.logoUrl);
+        setCustomLogo(id.toLowerCase(), fullUni.logoUrl);
+        setCustomLogo(fullUni.name.toLowerCase(), fullUni.logoUrl);
+      }
+    }
+
+    // 2. Immediately update in-memory React state so UI reflects it with ZERO lag
+    setUniversities((prev) => {
+      const exists = prev.some((u) => u.id === id || u.name.toLowerCase() === fullUni.name.toLowerCase());
+      if (exists) {
+        return prev.map((u) =>
+          u.id === id || u.name.toLowerCase() === fullUni.name.toLowerCase() ? { ...u, ...fullUni } : u
+        );
+      }
+      return [fullUni, ...prev];
+    });
+
+    // 3. Dispatch broadcast events so active views, cards, and logos refresh right now
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('alumni-custom-logos-changed', {
+          detail: { nameOrId: id, name: fullUni.name, logoUrl: fullUni.logoUrl },
+        })
+      );
+      window.dispatchEvent(
+        new CustomEvent('alumni-university-updated', {
+          detail: fullUni,
+        })
+      );
+    }
+
+    // 4. Save to Firestore
     try {
       await setDoc(doc(db, 'universities', id), fullUni, { merge: true });
     } catch (e) {
       console.warn('Firestore university save note:', e);
     }
 
-    if (fullUni.logoUrl) {
-      setCustomLogo(id, fullUni.logoUrl);
-      setCustomLogo(trimmedName, fullUni.logoUrl);
-    }
-
+    // 5. Save to Server Disk Storage (/api/admin/universities and fallback /api/universities)
     const token = typeof window !== 'undefined' ? sessionStorage.getItem('alumniSphereAdminToken') : null;
     const adminHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) adminHeaders['Authorization'] = `Bearer ${token}`;
 
     try {
-      await fetch('/api/admin/universities', {
-        method: 'POST',
+      await fetch(`/api/admin/universities/${encodeURIComponent(id)}`, {
+        method: 'PUT',
         headers: adminHeaders,
         body: JSON.stringify(fullUni),
       });
-    } catch (e) {}
-
-    setUniversities((prev) => {
-      const exists = prev.some((u) => u.id === id);
-      if (exists) {
-        return prev.map((u) => (u.id === id ? { ...u, ...fullUni } : u));
-      }
-      return [fullUni, ...prev];
-    });
-
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('alumni-custom-logos-changed', { detail: { nameOrId: id, logoUrl: fullUni.logoUrl } }));
+    } catch (e) {
+      try {
+        await fetch(`/api/universities/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fullUni),
+        });
+      } catch (err) {}
     }
 
-    await logAudit('UNIVERSITY_SAVED', 'UNIVERSITY', id, `Saved university ${trimmedName}`);
+    await logAudit('UNIVERSITY_SAVED', 'UNIVERSITY', id, `Saved university ${fullUni.name}`);
   };
 
   const saveDepartment = async (dept: Partial<Department>) => {
@@ -1603,14 +1737,49 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUniversityLogo = async (uniIdOrName: string, logoUrl: string) => {
     const trimmedUrl = logoUrl.trim();
-    setCustomLogo(uniIdOrName, trimmedUrl);
-
     const found = universities.find(
       (u) => u.id === uniIdOrName || u.name.toLowerCase() === uniIdOrName.toLowerCase()
     );
     const id = found?.id || 'uni-' + encodeURIComponent(uniIdOrName.toLowerCase().replace(/[^a-z0-9]/g, '-'));
     const name = found?.name || uniIdOrName;
 
+    // 1. Immediately update custom logo in cache and LocalStorage
+    setCustomLogo(uniIdOrName, trimmedUrl);
+    setCustomLogo(id, trimmedUrl);
+    setCustomLogo(name, trimmedUrl);
+    setCustomLogo(id.toLowerCase(), trimmedUrl);
+    setCustomLogo(name.toLowerCase(), trimmedUrl);
+
+    // 2. Immediately update LocalStorage custom universities cache
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('alumni_custom_universities');
+        const list = raw ? JSON.parse(raw) : [];
+        const filtered = Array.isArray(list)
+          ? list.filter((item: any) => item.id !== id && item.name?.toLowerCase() !== name.toLowerCase())
+          : [];
+        const mergedUni = found ? { ...found, logoUrl: trimmedUrl } : { id, name, logoUrl: trimmedUrl };
+        filtered.push(mergedUni);
+        localStorage.setItem('alumni_custom_universities', JSON.stringify(filtered));
+      } catch (e) {}
+    }
+
+    // 3. Immediately update React state so all user pages and cards re-render right now
+    setUniversities((prev) =>
+      prev.map((u) => (u.id === id || u.name.toLowerCase() === name.toLowerCase() ? { ...u, logoUrl: trimmedUrl } : u))
+    );
+
+    // 4. Dispatch events to notify all active views
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('alumni-custom-logos-changed', { detail: { nameOrId: id, logoUrl: trimmedUrl } }));
+      window.dispatchEvent(
+        new CustomEvent('alumni-university-updated', {
+          detail: { id, name, logoUrl: trimmedUrl },
+        })
+      );
+    }
+
+    // 5. Save to Firestore
     try {
       await setDoc(
         doc(db, 'universities', id),
@@ -1626,6 +1795,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('Firestore university logo update warning:', e);
     }
 
+    // 6. Save to Server Disk Storage (/api/admin/universities/:id/logo and fallback /api/universities/:id/logo)
     const token = typeof window !== 'undefined' ? sessionStorage.getItem('alumniSphereAdminToken') : null;
     const adminHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) adminHeaders['Authorization'] = `Bearer ${token}`;
@@ -1636,14 +1806,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         headers: adminHeaders,
         body: JSON.stringify({ logoUrl: trimmedUrl, universityName: name }),
       });
-    } catch (e) {}
-
-    setUniversities((prev) =>
-      prev.map((u) => (u.id === id || u.name.toLowerCase() === name.toLowerCase() ? { ...u, logoUrl: trimmedUrl } : u))
-    );
-
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('alumni-custom-logos-changed', { detail: { nameOrId: id, logoUrl: trimmedUrl } }));
+    } catch (e) {
+      try {
+        await fetch(`/api/universities/${encodeURIComponent(id)}/logo`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ logoUrl: trimmedUrl, universityName: name }),
+        });
+      } catch (err) {}
     }
 
     await logAudit('UNIVERSITY_LOGO_UPDATED', 'UNIVERSITY', id, `Updated logo for ${name}`);

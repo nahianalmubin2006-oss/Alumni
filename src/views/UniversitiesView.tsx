@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import type { University } from '../types';
@@ -21,6 +21,17 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate, 
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'All' | 'Public' | 'Private' | 'International'>('All');
   const [sortBy, setSortBy] = useState<'name' | 'type' | 'alumni' | 'followers' | 'students'>('name');
+  const [updateVersion, setUpdateVersion] = useState(0);
+
+  useEffect(() => {
+    const handler = () => setUpdateVersion((v) => v + 1);
+    window.addEventListener('alumni-custom-logos-changed', handler);
+    window.addEventListener('alumni-university-updated', handler);
+    return () => {
+      window.removeEventListener('alumni-custom-logos-changed', handler);
+      window.removeEventListener('alumni-university-updated', handler);
+    };
+  }, []);
 
   // Highlights of hot topics or alumni prize winners across universities
   const universityHighlights = useMemo(() => {
@@ -67,13 +78,63 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate, 
 
     // 2. Database universities override or add new
     universities.forEach((u) => {
-      const existing = uniMap.get(u.name.toLowerCase());
-      uniMap.set(u.name.toLowerCase(), {
+      const trimmedLower = (u.name || '').trim().toLowerCase();
+      let key = trimmedLower;
+      if (!uniMap.has(key)) {
+        for (const [k, v] of uniMap.entries()) {
+          if (v.id === u.id || v.name.toLowerCase() === trimmedLower) {
+            key = k;
+            break;
+          }
+        }
+      }
+      const existing = uniMap.get(key);
+      const effectiveLogo = u.logoUrl || getUniversityLogo(u.name) || existing?.logoUrl || '';
+      uniMap.set(key, {
         ...existing,
         ...u,
-        logoUrl: u.logoUrl || existing?.logoUrl || getUniversityLogo(u.name),
+        id: u.id || existing?.id || 'uni-' + encodeURIComponent(trimmedLower.replace(/[^a-z0-9]/g, '-')),
+        name: u.name || existing?.name || '',
+        location: u.location !== undefined && u.location !== '' ? u.location : (existing?.location || ''),
+        website: u.website !== undefined && u.website !== '' ? u.website : (existing?.website || ''),
+        overview: u.overview !== undefined && u.overview !== '' ? u.overview : (existing?.overview || ''),
+        logoUrl: effectiveLogo,
       });
     });
+
+    // 2.5 LocalStorage custom universities cache
+    try {
+      const raw = localStorage.getItem('alumni_custom_universities');
+      if (raw) {
+        const customList: University[] = JSON.parse(raw);
+        if (Array.isArray(customList)) {
+          customList.forEach((u) => {
+            const trimmedLower = (u.name || '').trim().toLowerCase();
+            let key = trimmedLower;
+            if (!uniMap.has(key)) {
+              for (const [k, v] of uniMap.entries()) {
+                if (v.id === u.id || v.name.toLowerCase() === trimmedLower) {
+                  key = k;
+                  break;
+                }
+              }
+            }
+            const existing = uniMap.get(key);
+            const effectiveLogo = u.logoUrl || getUniversityLogo(u.name) || existing?.logoUrl || '';
+            uniMap.set(key, {
+              ...existing,
+              ...u,
+              id: u.id || existing?.id || 'uni-' + encodeURIComponent(trimmedLower.replace(/[^a-z0-9]/g, '-')),
+              name: u.name || existing?.name || '',
+              location: u.location !== undefined && u.location !== '' ? u.location : (existing?.location || ''),
+              website: u.website !== undefined && u.website !== '' ? u.website : (existing?.website || ''),
+              overview: u.overview !== undefined && u.overview !== '' ? u.overview : (existing?.overview || ''),
+              logoUrl: effectiveLogo,
+            });
+          });
+        }
+      }
+    } catch (e) {}
 
     // 3. Calculate live stats from real Firebase data for every active university
     const combined: University[] = Array.from(uniMap.values())
@@ -153,7 +214,7 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate, 
 
         return a.name.localeCompare(b.name);
       });
-  }, [universities, departments, alumni, students, search, typeFilter, sortBy]);
+  }, [universities, departments, alumni, students, search, typeFilter, sortBy, updateVersion]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-5 py-7 sm:py-10">

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { University } from '../types';
@@ -64,18 +64,68 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
   const [selectedNewsDept, setSelectedNewsDept] = useState('All');
   const [newsFilterType, setNewsFilterType] = useState<'ALL' | 'HOT' | 'ACHIEVEMENTS' | 'PERMANENT'>('ALL');
   const [isScanningUniNews, setIsScanningUniNews] = useState(false);
+  const [updateVersion, setUpdateVersion] = useState(0);
+
+  useEffect(() => {
+    const handler = () => setUpdateVersion((v) => v + 1);
+    window.addEventListener('alumni-custom-logos-changed', handler);
+    window.addEventListener('alumni-university-updated', handler);
+    return () => {
+      window.removeEventListener('alumni-custom-logos-changed', handler);
+      window.removeEventListener('alumni-university-updated', handler);
+    };
+  }, []);
 
   // Administrative controls belong strictly to the separated Admin Portal
   const canMakePermanent = false;
 
   // Find university record or generate representation
   const university = useMemo(() => {
-    return universities.find((u) => u.name.toLowerCase() === universityName.toLowerCase()) || {
-      id: '', name: universityName, type: 'Public' as const, location: '', verified: false,
-      alumniCount: 0, studentCount: 0, followersCount: 0, departmentCount: 0,
-      employmentRate: 0, higherStudiesRate: 0, countriesCount: 0, companiesCount: 0,
+    const qName = universityName.toLowerCase().trim();
+    let found = universities.find(
+      (u) => u.name.toLowerCase().trim() === qName || u.id === universityName
+    );
+
+    if (!found) {
+      try {
+        const raw = localStorage.getItem('alumni_custom_universities');
+        if (raw) {
+          const customList: University[] = JSON.parse(raw);
+          if (Array.isArray(customList)) {
+            found = customList.find(
+              (u) => u.name.toLowerCase().trim() === qName || u.id === universityName
+            );
+          }
+        }
+      } catch (e) {}
+    }
+
+    const customLogo = getUniversityLogo(universityName, found?.logoUrl);
+
+    if (found) {
+      return {
+        ...found,
+        logoUrl: found.logoUrl || customLogo || '',
+      };
+    }
+
+    return {
+      id: 'uni-' + encodeURIComponent(qName.replace(/[^a-z0-9]/g, '-')),
+      name: universityName,
+      type: 'Public' as const,
+      location: '',
+      logoUrl: customLogo || '',
+      verified: false,
+      alumniCount: 0,
+      studentCount: 0,
+      followersCount: 0,
+      departmentCount: 0,
+      employmentRate: 0,
+      higherStudiesRate: 0,
+      countriesCount: 0,
+      companiesCount: 0,
     };
-  }, [universities, universityName]);
+  }, [universities, universityName, updateVersion]);
 
   // Related alumni
   const uniAlumni = useMemo(() => {

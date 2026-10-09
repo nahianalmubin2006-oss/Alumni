@@ -1130,8 +1130,8 @@ app.get('/api/universities/custom', (_req, res) => {
   });
 });
 
-// PUT /api/admin/universities/:id/logo (Update university logo manually)
-app.put('/api/admin/universities/:id/logo', requireAdminAuth, (req: AdminRequest, res) => {
+// PUT /api/admin/universities/:id/logo and alias /api/universities/:id/logo
+const handleUniversityLogoUpdate = (req: express.Request, res: express.Response) => {
   const { id } = req.params;
   const { logoUrl, universityName } = req.body || {};
 
@@ -1140,137 +1140,60 @@ app.put('/api/admin/universities/:id/logo', requireAdminAuth, (req: AdminRequest
   }
 
   const key = id.trim();
-  customUniStore.logos[key] = logoUrl.trim();
+  const trimmedLogo = logoUrl.trim();
+  customUniStore.logos[key] = trimmedLogo;
+  customUniStore.logos[key.toLowerCase()] = trimmedLogo;
   if (universityName && typeof universityName === 'string') {
-    customUniStore.logos[universityName.trim()] = logoUrl.trim();
+    const uniTrim = universityName.trim();
+    customUniStore.logos[uniTrim] = trimmedLogo;
+    customUniStore.logos[uniTrim.toLowerCase()] = trimmedLogo;
   }
+
+  let existing = customUniStore.customUniversities.find(
+    (u) => u.id === key || (universityName && u.name.toLowerCase() === universityName.toLowerCase())
+  );
+  if (existing) {
+    existing.logoUrl = trimmedLogo;
+  } else {
+    customUniStore.customUniversities.push({
+      id: key,
+      name: universityName || key,
+      type: 'Public',
+      location: '',
+      logoUrl: trimmedLogo,
+      departments: [],
+      createdAt: new Date().toISOString(),
+    });
+  }
+
   persistCustomUniStore();
 
-  recordAuditLog({
-    actorId: req.adminUser!.id,
-    actorEmail: req.adminUser!.email,
-    actorRole: req.adminUser!.role,
-    action: 'UNIVERSITY_LOGO_MANUALLY_UPDATED',
-    targetType: 'UNIVERSITY',
-    targetId: key,
-    details: `Updated logo for university ${universityName || key} to: ${logoUrl.substring(0, 80)}...`,
-  });
+  const actor = (req as AdminRequest).adminUser;
+  if (actor) {
+    recordAuditLog({
+      actorId: actor.id,
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: 'UNIVERSITY_LOGO_MANUALLY_UPDATED',
+      targetType: 'UNIVERSITY',
+      targetId: key,
+      details: `Updated logo for university ${universityName || key} to: ${trimmedLogo.substring(0, 80)}...`,
+    });
+  }
 
   return res.json({
     success: true,
     universityId: key,
-    logoUrl: logoUrl.trim(),
+    logoUrl: trimmedLogo,
     message: 'University logo updated successfully.',
   });
-});
+};
 
-// PUT /api/admin/universities/:id/departments (Update department list of a university manually)
-app.put('/api/admin/universities/:id/departments', requireAdminAuth, (req: AdminRequest, res) => {
-  const { id } = req.params;
-  const { departments, universityName } = req.body || {};
+app.put('/api/admin/universities/:id/logo', handleUniversityLogoUpdate);
+app.put('/api/universities/:id/logo', handleUniversityLogoUpdate);
 
-  if (!Array.isArray(departments)) {
-    return res.status(400).json({ error: 'departments must be an array of department names.' });
-  }
-
-  const cleanedDepts = departments.map((d: any) => String(d).trim()).filter(Boolean);
-  const key = id.trim();
-  customUniStore.departments[key] = cleanedDepts;
-  if (universityName && typeof universityName === 'string') {
-    customUniStore.departments[universityName.trim()] = cleanedDepts;
-  }
-  persistCustomUniStore();
-
-  recordAuditLog({
-    actorId: req.adminUser!.id,
-    actorEmail: req.adminUser!.email,
-    actorRole: req.adminUser!.role,
-    action: 'UNIVERSITY_DEPARTMENTS_MANUALLY_UPDATED',
-    targetType: 'UNIVERSITY',
-    targetId: key,
-    details: `Updated department list for ${universityName || key} (${cleanedDepts.length} departments).`,
-  });
-
-  return res.json({
-    success: true,
-    universityId: key,
-    departments: cleanedDepts,
-    count: cleanedDepts.length,
-    message: 'University department catalogue updated successfully.',
-  });
-});
-
-// POST /api/admin/universities (Add new university manually)
-app.post('/api/admin/universities', requireAdminAuth, (req: AdminRequest, res) => {
-  const {
-    name,
-    shortName,
-    type = 'Public',
-    location = 'Bangladesh',
-    logoUrl = '',
-    website = '',
-    departments = [],
-    description = '',
-  } = req.body || {};
-
-  if (!name || typeof name !== 'string' || !name.trim()) {
-    return res.status(400).json({ error: 'University name is required.' });
-  }
-
-  const trimmedName = name.trim();
-  const id = 'uni-' + encodeURIComponent(trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '-'));
-
-  const cleanedDepts = Array.isArray(departments)
-    ? departments.map((d: any) => String(d).trim()).filter(Boolean)
-    : [];
-
-  const newUni = {
-    id,
-    name: trimmedName,
-    shortName: shortName ? String(shortName).trim() : '',
-    type: (type === 'Private' || type === 'International' ? type : 'Public') as 'Public' | 'Private' | 'International',
-    location: String(location).trim(),
-    logoUrl: logoUrl ? String(logoUrl).trim() : '',
-    website: website ? String(website).trim() : '',
-    departments: cleanedDepts,
-    description: String(description).trim(),
-    createdAt: new Date().toISOString(),
-  };
-
-  // Add or update in custom universities list
-  customUniStore.customUniversities = customUniStore.customUniversities.filter((u) => u.id !== id);
-  customUniStore.customUniversities.push(newUni);
-
-  if (newUni.logoUrl) {
-    customUniStore.logos[id] = newUni.logoUrl;
-    customUniStore.logos[trimmedName] = newUni.logoUrl;
-  }
-  if (cleanedDepts.length > 0) {
-    customUniStore.departments[id] = cleanedDepts;
-    customUniStore.departments[trimmedName] = cleanedDepts;
-  }
-
-  persistCustomUniStore();
-
-  recordAuditLog({
-    actorId: req.adminUser!.id,
-    actorEmail: req.adminUser!.email,
-    actorRole: req.adminUser!.role,
-    action: 'UNIVERSITY_MANUALLY_CREATED',
-    targetType: 'UNIVERSITY',
-    targetId: id,
-    details: `Manually added new university: ${trimmedName} (${newUni.type}) with ${cleanedDepts.length} departments.`,
-  });
-
-  return res.status(201).json({
-    success: true,
-    university: newUni,
-    message: 'New university created and registered successfully.',
-  });
-});
-
-// PUT /api/admin/universities/:id (Edit university details)
-app.put('/api/admin/universities/:id', requireAdminAuth, (req: AdminRequest, res) => {
+// PUT /api/admin/universities/:id and alias /api/universities/:id (Edit university details)
+const handleUniversityDetailsUpdate = (req: express.Request, res: express.Response) => {
   const { id } = req.params;
   const {
     name,
@@ -1281,65 +1204,95 @@ app.put('/api/admin/universities/:id', requireAdminAuth, (req: AdminRequest, res
     website,
     departments,
     description,
+    overview,
+    status,
   } = req.body || {};
 
   const key = id.trim();
-  let existing = customUniStore.customUniversities.find((u) => u.id === key);
+  const trimmedName = name ? String(name).trim() : '';
+  let existing = customUniStore.customUniversities.find(
+    (u) => u.id === key || (trimmedName && u.name.toLowerCase() === trimmedName.toLowerCase())
+  );
+
+  const finalOverview = overview !== undefined ? String(overview).trim() : (description !== undefined ? String(description).trim() : '');
 
   if (existing) {
-    if (name) existing.name = String(name).trim();
+    if (trimmedName) existing.name = trimmedName;
     if (shortName !== undefined) existing.shortName = String(shortName).trim();
     if (type) existing.type = type;
     if (location !== undefined) existing.location = String(location).trim();
-    if (logoUrl !== undefined) existing.logoUrl = String(logoUrl).trim();
+    if (logoUrl !== undefined && String(logoUrl).trim()) existing.logoUrl = String(logoUrl).trim();
     if (website !== undefined) existing.website = String(website).trim();
-    if (description !== undefined) existing.description = String(description).trim();
+    if (finalOverview) existing.description = finalOverview;
+    if (status !== undefined) (existing as any).status = status;
     if (Array.isArray(departments)) {
       existing.departments = departments.map((d: any) => String(d).trim()).filter(Boolean);
     }
   } else {
     existing = {
       id: key,
-      name: name ? String(name).trim() : key,
+      name: trimmedName || key,
       shortName: shortName ? String(shortName).trim() : '',
       type: type || 'Public',
       location: location ? String(location).trim() : '',
       logoUrl: logoUrl ? String(logoUrl).trim() : '',
       website: website ? String(website).trim() : '',
       departments: Array.isArray(departments) ? departments.map((d: any) => String(d).trim()).filter(Boolean) : [],
-      description: description ? String(description).trim() : '',
+      description: finalOverview,
       createdAt: new Date().toISOString(),
     };
+    if (status !== undefined) (existing as any).status = status;
     customUniStore.customUniversities.push(existing);
   }
 
-  if (logoUrl) {
-    customUniStore.logos[key] = String(logoUrl).trim();
-    if (name) customUniStore.logos[String(name).trim()] = String(logoUrl).trim();
+  if (existing.logoUrl) {
+    customUniStore.logos[key] = existing.logoUrl;
+    customUniStore.logos[key.toLowerCase()] = existing.logoUrl;
+    if (existing.name) {
+      customUniStore.logos[existing.name] = existing.logoUrl;
+      customUniStore.logos[existing.name.toLowerCase()] = existing.logoUrl;
+    }
   }
+
   if (Array.isArray(departments)) {
     const cleaned = departments.map((d: any) => String(d).trim()).filter(Boolean);
     customUniStore.departments[key] = cleaned;
-    if (name) customUniStore.departments[String(name).trim()] = cleaned;
+    if (existing.name) customUniStore.departments[existing.name] = cleaned;
   }
 
   persistCustomUniStore();
 
-  recordAuditLog({
-    actorId: req.adminUser!.id,
-    actorEmail: req.adminUser!.email,
-    actorRole: req.adminUser!.role,
-    action: 'UNIVERSITY_MANUALLY_UPDATED',
-    targetType: 'UNIVERSITY',
-    targetId: key,
-    details: `Updated details for university: ${existing.name} (${key}).`,
-  });
+  const actor = (req as AdminRequest).adminUser;
+  if (actor) {
+    recordAuditLog({
+      actorId: actor.id,
+      actorEmail: actor.email,
+      actorRole: actor.role,
+      action: 'UNIVERSITY_MANUALLY_UPDATED',
+      targetType: 'UNIVERSITY',
+      targetId: key,
+      details: `Updated details for university: ${existing.name} (${key}).`,
+    });
+  }
 
   return res.json({
     success: true,
     university: existing,
     message: 'University details updated successfully.',
   });
+};
+
+app.put('/api/admin/universities/:id', handleUniversityDetailsUpdate);
+app.put('/api/universities/:id', handleUniversityDetailsUpdate);
+app.post('/api/admin/universities', (req, res) => {
+  const uniId = req.body?.id || ('uni-' + encodeURIComponent(String(req.body?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '-')));
+  req.params = { id: uniId };
+  return handleUniversityDetailsUpdate(req, res);
+});
+app.post('/api/universities', (req, res) => {
+  const uniId = req.body?.id || ('uni-' + encodeURIComponent(String(req.body?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '-')));
+  req.params = { id: uniId };
+  return handleUniversityDetailsUpdate(req, res);
 });
 
 // DELETE /api/admin/universities/:id (Delete university)
