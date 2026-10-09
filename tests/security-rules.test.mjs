@@ -105,6 +105,6 @@ test('approving institution requests assigns only the requested role and validat
   assert.match(server, /existingUser\.role = role/);
   assert.match(server, /existingUser\.assignedUniversity = validUni\.name/);
   assert.match(server, /existingUser\.assignedDepartment = validDept \? validDept\.name : ''/);
-  assert.match(server, /validDept\.universityId === validUni\.id/);
+  assert.match(server, /d\.id === normalizedDepartmentId && d\.universityId === validUni\.id/);
   assert.match(server, /You cannot review your own administrator request/);
 });
