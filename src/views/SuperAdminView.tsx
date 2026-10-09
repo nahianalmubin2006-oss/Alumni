@@ -323,7 +323,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onNavigate }) =>
     return allUsers
       .filter((u) => {
         const matchesStatus = userStatusFilter === 'ALL' || u.status === userStatusFilter;
-        const matchesRole = userRoleFilter === 'ALL' || u.role === userRoleFilter;
+        const matchesRole = userRoleFilter === 'ALL' || u.role === userRoleFilter || (userRoleFilter === 'STUDENT' && u.profileType === 'Student') || (userRoleFilter === 'ALUMNI' && u.profileType === 'Alumni');
         const matchesUni = userUniFilter === 'ALL' || u.university === userUniFilter;
         const searchTarget = [
           u.name,
@@ -366,7 +366,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onNavigate }) =>
   }, [allUsers]);
 
   const pendingMembers = useMemo(() => {
-    return allUsers.filter((u) => u.status === 'PENDING');
+    return allUsers.filter((u) => u.status === 'PENDING' && u.profileType !== 'Student' && u.profileType !== 'Alumni');
   }, [allUsers]);
 
   const handleAssignSubmit = async (e: React.FormEvent) => {
@@ -945,6 +945,37 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onNavigate }) =>
             )}
           </div>
 
+          {/* Degree Verification Notices Banner for Super Admin */}
+          {verificationRequests.filter((v) => v.status === 'PENDING').length > 0 && (
+            <div className="card p-5 bg-gradient-to-r from-purple-900/90 to-indigo-950 text-white shadow-xl border border-purple-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 rounded-2xl bg-purple-500/20 text-purple-300 border border-purple-400/30">
+                  <IdCard className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-black text-white tracking-wide uppercase">
+                      Degree Verification Notice
+                    </h3>
+                    <span className="bg-purple-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                      {verificationRequests.filter((v) => v.status === 'PENDING').length} Pending
+                    </span>
+                  </div>
+                  <p className="text-xs text-purple-200/90 mt-0.5">
+                    Alumni have submitted academic transcripts and graduation credentials for degree verification badge approval.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveTab('verifications')}
+                className="bg-white hover:bg-purple-50 text-purple-950 font-black text-xs px-4 py-2.5 rounded-xl transition shadow-md shrink-0 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>Review Degree Badges</span>
+                <span>→</span>
+              </button>
+            </div>
+          )}
+
           {/* Quick Pending Approvals and Change Requests Grid */}
           <div className="grid md:grid-cols-2 gap-6">
             <div className="card p-6 shadow-xl border-soft">
@@ -969,7 +1000,8 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onNavigate }) =>
               <div className="mt-4 divide-y divide-soft">
                 {pendingMembers.length === 0 ? (
                   <div className="py-8 text-center text-xs text-slate-400">
-                    ✓ All member applications have been reviewed. No pending approvals.
+                    <p className="font-semibold text-slate-600">✓ Students and alumni join directly without review.</p>
+                    <p className="text-[11px] text-slate-400 mt-1">All {allUsers.length} members are active in the campus directory.</p>
                   </div>
                 ) : (
                   pendingMembers.slice(0, 5).map((u) => (
@@ -1538,6 +1570,65 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onNavigate }) =>
                   <span>Export JSON</span>
                 </button>
               </div>
+            </div>
+
+            {/* Quick Category Filter Switcher */}
+            <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-soft">
+              <button
+                type="button"
+                onClick={() => setUserRoleFilter('ALL')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  userRoleFilter === 'ALL'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white border border-soft text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                All Members ({allUsers.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setUserRoleFilter('STUDENT')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  userRoleFilter === 'STUDENT'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white border border-soft text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Students ({allUsers.filter((u) => u.profileType === 'Student' || u.role === 'STUDENT').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setUserRoleFilter('ALUMNI')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  userRoleFilter === 'ALUMNI'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white border border-soft text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Alumni ({allUsers.filter((u) => u.profileType === 'Alumni' || u.role === 'ALUMNI').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setUserRoleFilter('UNIVERSITY_ADMIN')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  userRoleFilter === 'UNIVERSITY_ADMIN'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white border border-soft text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                University Admins ({allUsers.filter((u) => u.role === 'UNIVERSITY_ADMIN').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setUserRoleFilter('DEPARTMENT_ADMIN')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  userRoleFilter === 'DEPARTMENT_ADMIN'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white border border-soft text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Department Admins ({allUsers.filter((u) => u.role === 'DEPARTMENT_ADMIN').length})
+              </button>
             </div>
 
             {/* Filter Dropdowns Grid */}

@@ -55,18 +55,25 @@ export const DepartmentAdminView: React.FC<DepartmentAdminViewProps> = ({ onNavi
   }, [allUsers, assignedUni, assignedDept]);
 
   const [deptSearch, setDeptSearch] = useState('');
+  const [deptRoleFilter, setDeptRoleFilter] = useState<'ALL' | 'STUDENT' | 'ALUMNI'>('ALL');
 
   const filteredDeptUsers = useMemo(() => {
-    if (!deptSearch.trim()) return deptUsers;
+    let list = deptUsers;
+    if (deptRoleFilter === 'STUDENT') {
+      list = list.filter((u) => u.profileType === 'Student' || u.role === 'STUDENT');
+    } else if (deptRoleFilter === 'ALUMNI') {
+      list = list.filter((u) => u.profileType === 'Alumni' || u.role === 'ALUMNI');
+    }
+    if (!deptSearch.trim()) return list;
     const q = deptSearch.toLowerCase();
-    return deptUsers.filter(
+    return list.filter(
       (u) =>
         u.name?.toLowerCase().includes(q) ||
         u.email?.toLowerCase().includes(q) ||
         u.studentId?.toLowerCase().includes(q) ||
         u.role?.toLowerCase().includes(q)
     );
-  }, [deptUsers, deptSearch]);
+  }, [deptUsers, deptSearch, deptRoleFilter]);
 
   const deptAlumni = alumni.filter(
     (a) =>
@@ -314,6 +321,43 @@ export const DepartmentAdminView: React.FC<DepartmentAdminViewProps> = ({ onNavi
                   className="w-full pl-9 pr-3 py-1.5 border border-soft rounded-xl text-xs bg-white outline-none focus:border-blue-400"
                 />
               </div>
+            </div>
+
+            {/* Quick Member Filter Tabs */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-soft">
+              <button
+                type="button"
+                onClick={() => setDeptRoleFilter('ALL')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  deptRoleFilter === 'ALL'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white border border-soft text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                All Department Members ({deptUsers.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeptRoleFilter('STUDENT')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  deptRoleFilter === 'STUDENT'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white border border-soft text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Students ({deptUsers.filter((u) => u.profileType === 'Student' || u.role === 'STUDENT').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeptRoleFilter('ALUMNI')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  deptRoleFilter === 'ALUMNI'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white border border-soft text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Alumni ({deptUsers.filter((u) => u.profileType === 'Alumni' || u.role === 'ALUMNI').length})
+              </button>
             </div>
 
             <div className="overflow-x-auto">

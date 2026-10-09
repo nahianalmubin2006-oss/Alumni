@@ -99,6 +99,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = snap.data() as UserProfile;
         const localPhoto = typeof window !== 'undefined' ? localStorage.getItem(`alumni_photo_${user.uid}`) : null;
         if (!data.photoUrl && localPhoto) data.photoUrl = localPhoto;
+        // Ensure student and alumni profiles never require manual review to become active
+        if ((data.profileType === 'Student' || data.profileType === 'Alumni') && data.status === 'PENDING') {
+          data.status = 'APPROVED';
+          updateDoc(userDocRef, { status: 'APPROVED', updatedAt: new Date().toISOString() }).catch(() => {});
+        }
         if (isTrustedSuperAdmin(user)) {
           const updated = {
             ...data,
@@ -111,7 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         return data;
       } else {
-        // Create initial profile for new auth user
+        // Create initial profile for new auth user - students and alumni are immediately approved
         const isMasterAdmin = isTrustedSuperAdmin(user);
         const initialProfile: UserProfile = {
           id: user.uid,
@@ -119,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: user.email || '',
           name: user.displayName || (isMasterAdmin ? 'Nahian Al Mubin' : user.email?.split('@')[0]) || 'Member',
           role: isMasterAdmin ? 'SUPER_ADMIN' : 'STUDENT',
-          status: isMasterAdmin ? 'APPROVED' : 'PENDING',
+          status: 'APPROVED',
           profileType: isMasterAdmin ? 'Admin' : 'Student',
           university: isMasterAdmin ? 'University of Dhaka' : '',
           department: isMasterAdmin ? 'Computer Science & Engineering' : '',
@@ -158,7 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: user.email || '',
         name: user.displayName || 'AlumniSphere User',
         role: isTrustedSuperAdmin(user) ? 'SUPER_ADMIN' : 'STUDENT',
-        status: isTrustedSuperAdmin(user) ? 'APPROVED' : 'PENDING',
+        status: 'APPROVED',
         profileType: isTrustedSuperAdmin(user) ? 'Admin' : 'Student',
         university: '',
         department: '',
@@ -226,13 +231,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ? 'ALUMNI'
         : 'STUDENT';
 
+      // No admin review is needed to become a student or alumni - status is immediately APPROVED
       const newProfile: UserProfile = {
         id: user.uid,
         uid: user.uid,
         email: data.email,
         name: data.name,
         role: initialRole,
-        status: isMasterAdmin ? 'APPROVED' : 'PENDING',
+        status: 'APPROVED',
         profileType: data.profileType,
         university: data.university,
         department: data.department,
@@ -257,7 +263,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await setDoc(userDocRef, newProfile);
       setUserProfile(newProfile);
 
-      // Create matching student/alumni record in pending state
+      // Create matching student/alumni record immediately active in directory
       if (data.profileType === 'Alumni') {
         const alumniDocRef = doc(db, 'alumni', user.uid);
         await setDoc(alumniDocRef, {
@@ -278,7 +284,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           bio: data.bio || '',
           linkedin: data.linkedin || '',
           isVerified: isMasterAdmin,
-          status: isMasterAdmin ? 'APPROVED' : 'PENDING',
+          status: 'APPROVED',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
@@ -296,18 +302,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           studentYear: data.studentYear || '',
           expectedGraduation: data.expectedGraduation || '',
           bio: data.bio || '',
-          status: isMasterAdmin ? 'APPROVED' : 'PENDING',
+          status: 'APPROVED',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
       }
 
-      // Add notification for admin
+      // Add notification for admin so administrators can see the new student/alumni
       await addDoc(collection(db, 'notifications'), {
         recipientId: 'ADMIN',
         recipientRole: 'SUPER_ADMIN',
-        title: `New ${data.profileType} Registration`,
-        message: `${data.name} registered for ${data.university} (${data.department}) and is awaiting approval.`,
+        title: `New ${data.profileType} Joined`,
+        message: `${data.name} joined as a ${data.profileType} for ${data.university} (${data.department}). Profile is immediately active in directory.`,
         type: 'ACCOUNT',
         read: false,
         actionUrl: '/admin',

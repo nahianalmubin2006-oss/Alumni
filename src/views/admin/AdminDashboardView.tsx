@@ -812,15 +812,15 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               {/* KPI Grid */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
                 <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-                  <div className="text-xs text-slate-400 font-semibold">Total Registered Users</div>
+                  <div className="text-xs text-slate-400 font-semibold">Total Registered Members</div>
                   <div className="text-3xl font-black text-white mt-2">{stats.totalUsers}</div>
-                  <div className="text-[10px] text-slate-500 mt-1">Students & Alumni</div>
+                  <div className="text-[10px] text-emerald-400 mt-1">✓ Instant Active Access for Students & Alumni</div>
                 </div>
 
                 <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-                  <div className="text-xs text-slate-400 font-semibold">Pending Review Queue</div>
-                  <div className="text-3xl font-black text-amber-400 mt-2">{stats.pendingUsers}</div>
-                  <div className="text-[10px] text-slate-500 mt-1">Awaiting verification</div>
+                  <div className="text-xs text-slate-400 font-semibold">Degree Badge Requests</div>
+                  <div className="text-3xl font-black text-amber-400 mt-2">{stats.pendingVerifications}</div>
+                  <div className="text-[10px] text-slate-500 mt-1">Awaiting degree verification review</div>
                 </div>
 
                 <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
@@ -928,6 +928,54 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 </div>
               </div>
 
+              {/* Quick Member Category Tabs */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRoleFilter('ALL')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    roleFilter === 'ALL'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  All Users ({users.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRoleFilter('STUDENT')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    roleFilter === 'STUDENT'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Students ({users.filter((u) => (u.role as string) === 'STUDENT' || u.profileType === 'Student').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRoleFilter('ALUMNI')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    roleFilter === 'ALUMNI'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Alumni ({users.filter((u) => (u.role as string) === 'ALUMNI' || u.profileType === 'Alumni').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRoleFilter('ADMIN')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    roleFilter === 'ADMIN' || roleFilter === 'SUPER_ADMIN'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Administrators ({users.filter((u) => u.role === 'ADMIN' || u.role === 'SUPER_ADMIN').length})
+                </button>
+              </div>
+
               {/* Filters */}
               <div className="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-2xl flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
                 <div className="w-full md:w-80 relative">
@@ -948,9 +996,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                   >
                     <option value="ALL">All Roles</option>
-                    <option value="USER">USER</option>
-                    <option value="ADMIN">ADMIN</option>
-                    <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+                    <option value="STUDENT">Student</option>
+                    <option value="ALUMNI">Alumni</option>
+                    <option value="USER">User</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="SUPER_ADMIN">Super Admin</option>
                   </select>
 
                   <select
@@ -1201,6 +1251,18 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                           {v.notes && (
                             <div className="text-xs text-slate-300 mt-2 bg-slate-800/80 p-2.5 rounded-xl border border-slate-700/60">
                               <strong>Notes:</strong> {v.notes}
+                            </div>
+                          )}
+                          {v.proofUrl && (
+                            <div className="mt-1.5">
+                              <a
+                                href={v.proofUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs text-blue-400 hover:text-blue-300 underline font-semibold"
+                              >
+                                Inspect Verification Document ↗
+                              </a>
                             </div>
                           )}
                         </div>

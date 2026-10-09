@@ -222,6 +222,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [adminAssignments, setAdminAssignments] = useState<AdminAssignment[]>([]);
   const [platformSettings, setPlatformSettings] = useState<PlatformSetting>(INITIAL_PLATFORM_SETTINGS);
+  const [rawUsers, setRawUsers] = useState<UserProfile[]>([]);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [loadingData, setLoadingData] = useState<boolean>(false);
 
@@ -573,16 +574,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setNotifications([]);
       setAuditLogs([]);
       setAdminAssignments([]);
+      setRawUsers([]);
       setAllUsers([]);
       setLoadingData(false);
       return;
     }
 
+    const changeRequestsQuery = isSuperAdmin
+      ? collection(db, 'changeRequests')
+      : query(collection(db, 'changeRequests'), where('requesterId', '==', currentUser.uid));
     const unsubChangeRequests = onSnapshot(
-      query(collection(db, 'changeRequests'), where('requesterId', '==', currentUser.uid)),
+      changeRequestsQuery,
       (snap) => {
         const list: ChangeRequest[] = [];
-        snap.forEach((d) => list.push(d.data() as ChangeRequest));
+        snap.forEach((d) => list.push({ ...(d.data() as ChangeRequest), id: d.id }));
         setChangeRequests(list);
       },
       (error) => {
@@ -590,11 +595,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
+    const verificationRequestsQuery = isSuperAdmin
+      ? collection(db, 'verificationRequests')
+      : query(collection(db, 'verificationRequests'), where('userId', '==', currentUser.uid));
     const unsubVerificationRequests = onSnapshot(
-      query(collection(db, 'verificationRequests'), where('userId', '==', currentUser.uid)),
+      verificationRequestsQuery,
       (snap) => {
         const list: VerificationRequest[] = [];
-        snap.forEach((d) => list.push(d.data() as VerificationRequest));
+        snap.forEach((d) => list.push({ ...(d.data() as VerificationRequest), id: d.id }));
         setVerificationRequests(list);
       },
       (error) => {
@@ -617,8 +625,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
+    const notificationsQuery = isSuperAdmin
+      ? collection(db, 'notifications')
+      : query(collection(db, 'notifications'), where('recipientId', '==', currentUser.uid));
     const unsubNotifications = onSnapshot(
-      query(collection(db, 'notifications'), where('recipientId', '==', currentUser.uid)),
+      notificationsQuery,
       (snap) => {
         const list: AppNotification[] = [];
         snap.forEach((d) => list.push({ ...d.data(), id: d.id } as AppNotification));
@@ -641,8 +652,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
+    const adminAssignmentsQuery = isSuperAdmin
+      ? collection(db, 'adminAssignments')
+      : query(collection(db, 'adminAssignments'), where('userId', '==', currentUser.uid));
     const unsubAdminAssignments = onSnapshot(
-      query(collection(db, 'adminAssignments'), where('userId', '==', currentUser.uid)),
+      adminAssignmentsQuery,
       (snap) => {
         const list: AdminAssignment[] = [];
         snap.forEach((d) => list.push({ ...d.data(), id: d.id } as AdminAssignment));
@@ -653,8 +667,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
+    const usersQuery = isSuperAdmin
+      ? collection(db, 'users')
+      : query(collection(db, 'users'), where('uid', '==', currentUser.uid));
     const unsubUsers = onSnapshot(
-      query(collection(db, 'users'), where('uid', '==', currentUser.uid)),
+      usersQuery,
       (snap) => {
         const list: UserProfile[] = [];
         snap.forEach((d) => {
@@ -664,7 +681,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Sort so newly added members appear first!
         list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-        setAllUsers(list);
+        setRawUsers(list);
         setLoadingData(false);
       },
       (error) => {
@@ -684,11 +701,88 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [currentUser, isSuperAdmin]);
 
+  // Interconnected member unification: ensure all students and alumni are always visible in all admin panels
+  // and have APPROVED status with zero admin review required.
+  useEffect(() => {
+    const userMap = new Map<string, UserProfile>();
+
+    // 1. Database users from users collection
+    rawUsers.forEach((u) => {
+      const isStudentOrAlumni = u.profileType === 'Student' || u.profileType === 'Alumni' || u.role === 'STUDENT' || u.role === 'ALUMNI';
+      userMap.set(u.uid || u.id, {
+        ...u,
+        status: isStudentOrAlumni ? 'APPROVED' : u.status,
+      });
+    });
+
+    // 2. All campus alumni records (approved by default)
+    alumni.forEach((a) => {
+      const key = a.userId || a.id;
+      if (!userMap.has(key)) {
+        userMap.set(key, {
+          id: a.id,
+          uid: key,
+          name: a.name,
+          email: a.email || `${a.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@alumni.ac.bd`,
+          role: 'ALUMNI',
+          status: 'APPROVED',
+          profileType: 'Alumni',
+          university: a.university,
+          department: a.department,
+          studentId: a.studentId || '',
+          graduationYear: a.graduationYear || a.batch || '',
+          jobRole: a.jobRole || '',
+          company: a.company || '',
+          country: a.country || 'Bangladesh',
+          city: a.city || '',
+          bio: a.bio || '',
+          photoUrl: a.photoUrl || '',
+          linkedin: a.linkedin || '',
+          isVerifiedAlumni: a.isVerified || false,
+          createdAt: a.createdAt || new Date().toISOString(),
+          updatedAt: a.updatedAt || new Date().toISOString(),
+        });
+      }
+    });
+
+    // 3. All registered campus students (approved by default)
+    students.forEach((s) => {
+      const key = s.userId || s.id;
+      if (!userMap.has(key)) {
+        userMap.set(key, {
+          id: s.id,
+          uid: key,
+          name: s.name,
+          email: s.email || `${s.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@campus.ac.bd`,
+          role: 'STUDENT',
+          status: 'APPROVED',
+          profileType: 'Student',
+          university: s.university,
+          department: s.department,
+          studentId: s.studentId || '',
+          studentYear: s.studentYear || 'Current Student',
+          educationLevel: s.educationLevel || 'Undergraduate',
+          expectedGraduation: s.expectedGraduation || '',
+          bio: s.bio || '',
+          photoUrl: s.photoUrl || '',
+          isVerifiedAlumni: false,
+          createdAt: s.createdAt || new Date().toISOString(),
+          updatedAt: s.updatedAt || new Date().toISOString(),
+        });
+      }
+    });
+
+    const unified = Array.from(userMap.values()).sort(
+      (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    );
+    setAllUsers(unified);
+  }, [rawUsers, alumni, students]);
+
   // Interconnected dynamic statistics
   const stats = useMemo(() => {
     // Exclude legacy records linked to current Student profiles from alumni totals.
     const approvedAlumni = alumni.filter((a) => {
-      if (a.status !== 'APPROVED') return false;
+      if (a.status && a.status !== 'APPROVED') return false;
       const linkedUserId = a.userId || a.id;
       const linkedProfile = allUsers.find((user) => user.uid === linkedUserId || user.id === linkedUserId);
       return linkedProfile?.profileType !== 'Student';
@@ -696,7 +790,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Calculate total base alumni across universities + individual dynamic approved alumni additions
     const totalAlumni = approvedAlumni.length;
 
-    const approvedStudents = students.filter((s) => s.status === 'APPROVED');
+    const approvedStudents = students.filter((s) => !s.status || s.status === 'APPROVED');
     const totalStudents = approvedStudents.length;
 
     const countries = new Set<string>();
@@ -707,7 +801,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (a.company) companies.add(a.company);
     });
 
-    const pendingApprovals = allUsers.filter((u) => u.status === 'PENDING').length + changeRequests.filter((c) => c.status === 'PENDING').length;
+    // Students and alumni join directly without review. Only pending administrative changes require review.
+    const pendingApprovals = allUsers.filter((u) => u.status === 'PENDING' && u.profileType !== 'Student' && u.profileType !== 'Alumni').length + changeRequests.filter((c) => c.status === 'PENDING').length;
     const pendingNews = news.filter((n) => n.status === 'PENDING_APPROVAL').length;
     const pendingVerifications = verificationRequests.filter((v) => v.status === 'PENDING').length;
 

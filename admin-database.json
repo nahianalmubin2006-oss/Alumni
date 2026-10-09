@@ -3,7 +3,7 @@
     {
       "id": "usr-superadmin-nahian",
       "email": "nahianalmubin2006@gmail.com",
-      "passwordHash": "a41e17a78a47da9e5f66952ea929ac15:03ade7cdd5071313f099b9fb08e1a7451cf851bdb2023e27bddd53bed0e2d13e7c760f8cf8394ab39c28f2522fcf04af5a1c2724f3a5ad5a3225b36529b08485",
+      "passwordHash": "8cf38f8c5cede05e6885834f67297c91:e00d62afbeaa084d24c723bb8d5dc11037b4184ab6122ad66d72200457abaa4276bb0af5f2d19786413185c63a5df17a254892940d42f5725ee8f76802e42e35",
       "name": "Nahian Al Mubin",
       "role": "SUPER_ADMIN",
       "status": "APPROVED",
@@ -13,8 +13,8 @@
       "jobRole": "Platform Founder & Lead Architect",
       "company": "AlumniSphere Core Engineering",
       "createdAt": "2026-10-08T10:18:49.427Z",
-      "updatedAt": "2026-10-08T16:29:00.000Z",
-      "lastLoginAt": "2026-10-08T17:04:18.682Z"
+      "updatedAt": "2026-10-09T19:38:41.292Z",
+      "lastLoginAt": "2026-10-09T19:38:04.207Z"
     },
     {
       "id": "usr-superadmin-nahian-212528",
@@ -47,9 +47,163 @@
       "createdAt": "2026-10-08T15:30:00.000Z",
       "updatedAt": "2026-10-08T16:29:00.000Z",
       "lastLoginAt": null
+    },
+    {
+      "id": "alumni-tanvir-hasan",
+      "email": "tanvir.hasan@alumni.ac.bd",
+      "passwordHash": "",
+      "name": "Tanvir Hasan",
+      "role": "USER",
+      "status": "APPROVED",
+      "university": "University of Dhaka",
+      "department": "Computer Science & Engineering",
+      "profileType": "Alumni",
+      "studentId": "DU-CSE-15021",
+      "graduationYear": "2019",
+      "jobRole": "Senior Software Engineer",
+      "company": "Google",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "alumni-farhana-yasmin",
+      "email": "farhana.yasmin@buet.ac.bd",
+      "passwordHash": "",
+      "name": "Dr. Farhana Yasmin",
+      "role": "USER",
+      "status": "APPROVED",
+      "university": "Bangladesh University of Engineering & Technology",
+      "department": "Electrical & Electronic Engineering",
+      "profileType": "Alumni",
+      "studentId": "BUET-EEE-1406",
+      "graduationYear": "2018",
+      "jobRole": "AI Research Scientist",
+      "company": "Meta AI",
+      "createdAt": "2026-01-02T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z"
+    },
+    {
+      "id": "alumni-asif-mahmud",
+      "email": "asif.mahmud@alumni.ac.bd",
+      "passwordHash": "",
+      "name": "Asif Mahmud",
+      "role": "USER",
+      "status": "APPROVED",
+      "university": "Jahangirnagar University",
+      "department": "Economics",
+      "profileType": "Alumni",
+      "studentId": "JU-ECON-13045",
+      "graduationYear": "2017",
+      "jobRole": "Lead Quantitative Strategist",
+      "company": "Spotify",
+      "createdAt": "2026-01-03T00:00:00.000Z",
+      "updatedAt": "2026-01-03T00:00:00.000Z"
+    },
+    {
+      "id": "alumni-sabrina-rahman",
+      "email": "sabrina.rahman@northsouth.edu",
+      "passwordHash": "",
+      "name": "Sabrina Rahman",
+      "role": "USER",
+      "status": "APPROVED",
+      "university": "North South University",
+      "department": "Marketing",
+      "profileType": "Alumni",
+      "studentId": "NSU-BBA-16209",
+      "graduationYear": "2020",
+      "jobRole": "Senior Product Marketing Manager",
+      "company": "Grab",
+      "createdAt": "2026-01-04T00:00:00.000Z",
+      "updatedAt": "2026-01-04T00:00:00.000Z"
+    },
+    {
+      "id": "alumni-shahriar-kabir",
+      "email": "shahriar.kabir@g.bracu.ac.bd",
+      "passwordHash": "",
+      "name": "Shahriar Kabir",
+      "role": "USER",
+      "status": "APPROVED",
+      "university": "BRAC University",
+      "department": "Computer Science & Engineering",
+      "profileType": "Alumni",
+      "studentId": "BRACU-CSE-16301",
+      "graduationYear": "2020",
+      "jobRole": "Cloud Solutions Architect",
+      "company": "Amazon Web Services",
+      "createdAt": "2026-01-05T00:00:00.000Z",
+      "updatedAt": "2026-01-05T00:00:00.000Z"
+    },
+    {
+      "id": "alumni-naimur-rahman",
+      "email": "naimur.rahman@sust.edu",
+      "passwordHash": "",
+      "name": "Naimur Rahman",
+      "role": "USER",
+      "status": "APPROVED",
+      "university": "Shahjalal University of Science & Technology",
+      "department": "Software Engineering",
+      "profileType": "Alumni",
+      "studentId": "SUST-SWE-12003",
+      "graduationYear": "2016",
+      "jobRole": "Staff Infrastructure Engineer",
+      "company": "Stripe",
+      "createdAt": "2026-01-06T00:00:00.000Z",
+      "updatedAt": "2026-01-06T00:00:00.000Z"
+    },
+    {
+      "id": "alumni-fahmida-sultana",
+      "email": "fahmida.sultana@ru.ac.bd",
+      "passwordHash": "",
+      "name": "Fahmida Sultana",
+      "role": "USER",
+      "status": "APPROVED",
+      "university": "University of Rajshahi",
+      "department": "Applied Chemistry & Chemical Engineering",
+      "profileType": "Alumni",
+      "studentId": "RU-ACCE-15102",
+      "graduationYear": "2019",
+      "jobRole": "Senior Materials Scientist",
+      "company": "BASF",
+      "createdAt": "2026-01-07T00:00:00.000Z",
+      "updatedAt": "2026-01-07T00:00:00.000Z"
     }
   ],
   "auditLogs": [
+    {
+      "id": "audit-1791574721292-nu2yd",
+      "timestamp": "2026-10-09T19:38:41.292Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "ADMIN_PASSWORD_CHANGED",
+      "targetType": "USER",
+      "targetId": "usr-superadmin-nahian",
+      "details": "Administrator successfully rotated authentication password."
+    },
+    {
+      "id": "audit-1791574684207-csk4t",
+      "timestamp": "2026-10-09T19:38:04.207Z",
+      "actorId": "usr-superadmin-nahian",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "SUPER_ADMIN",
+      "action": "ADMIN_LOGIN_SUCCESS",
+      "targetType": "SESSION",
+      "targetId": "200c87e7",
+      "details": "Administrator logged into SUPER_ADMIN workspace.",
+      "ip": "103.73.36.112"
+    },
+    {
+      "id": "audit-1791574045470-l21jw",
+      "timestamp": "2026-10-09T19:27:25.470Z",
+      "actorId": "Xte3ExZKNQfFQS3BSSQ2yqiED3r1",
+      "actorEmail": "nahianalmubin2006@gmail.com",
+      "actorRole": "USER",
+      "action": "INSTITUTION_ADMIN_APPLICATION_SUBMITTED",
+      "targetType": "ADMIN_APPLICATION",
+      "targetId": "admin-app-f3f063d9f057ed500c6aa53c",
+      "details": "Requested UNIVERSITY_ADMIN for Bangladesh University of Professionals (uni-bangladesh-university-of-professionals).",
+      "ip": "103.73.36.112"
+    },
     {
       "id": "audit-1791479065685-45uq0",
       "timestamp": "2026-10-08T17:04:25.685Z",
@@ -170,7 +324,21 @@
       "ip": "103.73.36.112"
     }
   ],
-  "verifications": [],
+  "verifications": [
+    {
+      "id": "verif-1791576126762",
+      "userId": "usr-1791576126762",
+      "userName": "Test Alum",
+      "userEmail": "",
+      "university": "University of Dhaka",
+      "department": "CSE",
+      "graduationYear": "2022",
+      "proofUrl": "https://example.com/proof",
+      "notes": "",
+      "status": "PENDING",
+      "createdAt": "2026-10-09T20:02:06.762Z"
+    }
+  ],
   "changeRequests": [],
   "settings": {
     "maintenanceMode": false,
@@ -179,5 +347,21 @@
     "allowAlumniBadges": true,
     "systemVersion": "2.5.0-enterprise",
     "lastUpdated": "2026-10-08T13:49:00.000Z"
-  }
+  },
+  "adminApplications": [
+    {
+      "id": "admin-app-f3f063d9f057ed500c6aa53c",
+      "userId": "Xte3ExZKNQfFQS3BSSQ2yqiED3r1",
+      "firebaseUid": "Xte3ExZKNQfFQS3BSSQ2yqiED3r1",
+      "name": "Nahian Al Mubin",
+      "email": "nahianalmubin2006@gmail.com",
+      "type": "UNIVERSITY_ADMIN",
+      "requestedRole": "UNIVERSITY_ADMIN",
+      "universityId": "uni-bangladesh-university-of-professionals",
+      "university": "Bangladesh University of Professionals",
+      "departmentId": null,
+      "status": "PENDING",
+      "createdAt": "2026-10-09T19:27:25.469Z"
+    }
+  ]
 }

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import fs from 'fs';
 import { GoogleGenAI } from '@google/genai';
+import { INITIAL_ALUMNI } from './src/data/initialData';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -622,6 +623,32 @@ let adminStore: AdminStoreData = (() => {
 
 // Backward-compatible schema migration for existing admin-database.json files.
 if (!Array.isArray(adminStore.adminApplications)) adminStore.adminApplications = [];
+
+// Ensure all platform students and alumni are populated so administrators can see all members
+const seededUserEmails = new Set(adminStore.users.map((u) => u.email.toLowerCase()));
+for (const a of INITIAL_ALUMNI) {
+  const email = a.email || `${a.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@alumni.ac.bd`;
+  if (!seededUserEmails.has(email.toLowerCase())) {
+    adminStore.users.push({
+      id: a.id,
+      email: email.toLowerCase(),
+      passwordHash: '',
+      name: a.name,
+      role: 'USER',
+      status: 'APPROVED',
+      university: a.university,
+      department: a.department,
+      profileType: 'Alumni',
+      studentId: a.studentId || '',
+      graduationYear: a.graduationYear || a.batch || '',
+      jobRole: a.jobRole || '',
+      company: a.company || '',
+      createdAt: a.createdAt || new Date().toISOString(),
+      updatedAt: a.updatedAt || new Date().toISOString(),
+    });
+    seededUserEmails.add(email.toLowerCase());
+  }
+}
 
 function persistAdminStore() {
   try {
@@ -2555,6 +2582,37 @@ app.delete('/api/admin/users/:id', requireAdminAuth, (req: AdminRequest, res) =>
 // GET /api/admin/verifications
 app.get('/api/admin/verifications', requireAdminAuth, (_req, res) => {
   return res.json({ success: true, verifications: adminStore.verifications });
+});
+
+// POST /api/admin/verifications/submit - Client degree verification submission
+app.post('/api/admin/verifications/submit', (req, res) => {
+  const { id, userId, userName, userEmail, university, department, batch, proofUrl, notes } = req.body || {};
+  if (!userName || !university) {
+    return res.status(400).json({ error: 'User name and university are required.' });
+  }
+  const item: VerificationItem = {
+    id: id || `verif-${Date.now()}`,
+    userId: userId || `usr-${Date.now()}`,
+    userName,
+    userEmail: userEmail || '',
+    university,
+    department: department || '',
+    graduationYear: batch || '2023',
+    proofUrl: proofUrl || '',
+    notes: notes || '',
+    status: 'PENDING',
+    createdAt: new Date().toISOString(),
+  };
+
+  const existingIdx = adminStore.verifications.findIndex((v) => v.id === item.id || (v.userId === item.userId && v.status === 'PENDING'));
+  if (existingIdx >= 0) {
+    adminStore.verifications[existingIdx] = item;
+  } else {
+    adminStore.verifications.unshift(item);
+  }
+  persistAdminStore();
+
+  return res.json({ success: true, verification: item });
 });
 
 // POST /api/admin/verifications/:id/approve

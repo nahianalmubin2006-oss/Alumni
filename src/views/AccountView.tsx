@@ -386,7 +386,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
         bio: bio.trim(),
         linkedin: linkedin.trim(),
       });
-      setSuccessMsg('Account created successfully! Your profile is pending institutional verification.');
+      setSuccessMsg('Account created successfully! Welcome to the university community.');
       setViewState('default');
     } catch (err: any) {
       if (err?.code === 'auth/email-already-in-use') {
@@ -662,10 +662,29 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                 </div>
               )}
 
-              {userProfile.status === 'PENDING' && (
+              {userProfile.status === 'PENDING' && userProfile.profileType !== 'Student' && userProfile.profileType !== 'Alumni' && (
                 <div className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-                  <b>Account Pending Admin Review:</b> Your registration is currently awaiting verification
-                  by administrators. Your profile is visible, but institutional badges will unlock upon approval.
+                  <b>Account Pending Admin Review:</b> Your administrative application is currently awaiting review
+                  by administrators.
+                </div>
+              )}
+
+              {(userProfile.profileType === 'Student' || userProfile.profileType === 'Alumni') && (
+                <div className="mt-4 p-3.5 rounded-xl bg-emerald-50/90 border border-emerald-200/90 text-emerald-900 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>
+                      <b>Active {userProfile.profileType} Profile:</b> You are a confirmed member of {userProfile.university || 'your university'}. No administrative approval is required to participate in the directory.
+                    </span>
+                  </div>
+                  {userProfile.profileType === 'Alumni' && !userProfile.isVerifiedAlumni && (
+                    <button
+                      onClick={() => setVerificationModalOpen(true)}
+                      className="bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition shrink-0 cursor-pointer shadow-xs"
+                    >
+                      Request Degree Badge →
+                    </button>
+                  )}
                 </div>
               )}
             </div>

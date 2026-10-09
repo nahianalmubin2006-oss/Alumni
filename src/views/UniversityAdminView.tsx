@@ -62,11 +62,18 @@ export const UniversityAdminView: React.FC<UniversityAdminViewProps> = ({ onNavi
   }, [allUsers, assignedUniName]);
 
   const [memberSearch, setMemberSearch] = useState('');
+  const [memberRoleFilter, setMemberRoleFilter] = useState<'ALL' | 'STUDENT' | 'ALUMNI'>('ALL');
 
   const filteredUniUsers = useMemo(() => {
-    if (!memberSearch.trim()) return uniUsers;
+    let list = uniUsers;
+    if (memberRoleFilter === 'STUDENT') {
+      list = list.filter((u) => u.profileType === 'Student' || u.role === 'STUDENT');
+    } else if (memberRoleFilter === 'ALUMNI') {
+      list = list.filter((u) => u.profileType === 'Alumni' || u.role === 'ALUMNI');
+    }
+    if (!memberSearch.trim()) return list;
     const q = memberSearch.toLowerCase();
-    return uniUsers.filter(
+    return list.filter(
       (u) =>
         u.name?.toLowerCase().includes(q) ||
         u.email?.toLowerCase().includes(q) ||
@@ -74,7 +81,7 @@ export const UniversityAdminView: React.FC<UniversityAdminViewProps> = ({ onNavi
         u.studentId?.toLowerCase().includes(q) ||
         u.role?.toLowerCase().includes(q)
     );
-  }, [uniUsers, memberSearch]);
+  }, [uniUsers, memberSearch, memberRoleFilter]);
 
   const uniAlumni = alumni.filter(
     (a) => a.university.toLowerCase() === assignedUniName.toLowerCase()
@@ -618,6 +625,43 @@ export const UniversityAdminView: React.FC<UniversityAdminViewProps> = ({ onNavi
                   className="w-full pl-9 pr-3 py-1.5 border border-soft rounded-xl text-xs bg-white outline-none focus:border-blue-400"
                 />
               </div>
+            </div>
+
+            {/* Quick Member Filter Tabs */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-soft">
+              <button
+                type="button"
+                onClick={() => setMemberRoleFilter('ALL')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  memberRoleFilter === 'ALL'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white border border-soft text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                All Campus Members ({uniUsers.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setMemberRoleFilter('STUDENT')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  memberRoleFilter === 'STUDENT'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white border border-soft text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Students ({uniUsers.filter((u) => u.profileType === 'Student' || u.role === 'STUDENT').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setMemberRoleFilter('ALUMNI')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  memberRoleFilter === 'ALUMNI'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white border border-soft text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Alumni ({uniUsers.filter((u) => u.profileType === 'Alumni' || u.role === 'ALUMNI').length})
+              </button>
             </div>
 
             <div className="overflow-x-auto">

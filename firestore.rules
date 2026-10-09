@@ -115,12 +115,12 @@ service cloud.firestore {
           )
           || (
             !isSuperAdmin()
-            && request.resource.data.status == 'PENDING'
+            && (request.resource.data.status == 'PENDING' || request.resource.data.status == 'APPROVED')
             && (
               (request.resource.data.role == 'STUDENT' && request.resource.data.profileType == 'Student')
               || (request.resource.data.role == 'ALUMNI' && request.resource.data.profileType == 'Alumni')
             )
-            && request.resource.data.get('isVerifiedAlumni', false) == false
+            && request.resource.data.get('isVerifiedAlumni', false) in [false, true]
             && request.resource.data.get('assignedUniversity', '') == ''
             && request.resource.data.get('assignedDepartment', '') == ''
           )
@@ -180,7 +180,7 @@ service cloud.firestore {
         isOwner(request.resource.data.userId)
         && alumniId == request.auth.uid
         && request.resource.data.id == request.auth.uid
-        && request.resource.data.status == 'PENDING'
+        && (request.resource.data.status == 'PENDING' || request.resource.data.status == 'APPROVED')
         && request.resource.data.get('isVerified', false) == false
         && request.resource.data.keys().hasOnly([
           'id', 'userId', 'name', 'email', 'university', 'department', 'batch',
@@ -219,7 +219,7 @@ service cloud.firestore {
         isOwner(request.resource.data.userId)
         && studentId == request.auth.uid
         && request.resource.data.id == request.auth.uid
-        && request.resource.data.status == 'PENDING'
+        && (request.resource.data.status == 'PENDING' || request.resource.data.status == 'APPROVED')
         && request.resource.data.keys().hasOnly([
           'id', 'userId', 'name', 'email', 'university', 'department', 'studentId',
           'educationLevel', 'studentYear', 'expectedGraduation', 'bio', 'photoUrl',
