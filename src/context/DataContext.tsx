@@ -24,6 +24,7 @@ import {
   NewsArticle,
   ChangeRequest,
   VerificationRequest,
+  ProfileClaimRequest,
   AppNotification,
   AuditLog,
   AdminAssignment,
@@ -55,6 +56,11 @@ interface DataContextType {
   posts: UserPost[];
   changeRequests: ChangeRequest[];
   verificationRequests: VerificationRequest[];
+  profileClaims: ProfileClaimRequest[];
+  canReviewProfileClaims: boolean;
+  submitProfileClaim: (claim: Omit<ProfileClaimRequest, 'id' | 'requesterId' | 'requesterName' | 'requesterEmail' | 'status' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  approveProfileClaim: (id: string, comment?: string) => Promise<void>;
+  rejectProfileClaim: (id: string, comment?: string) => Promise<void>;
   notifications: AppNotification[];
   auditLogs: AuditLog[];
   adminAssignments: AdminAssignment[];
@@ -211,6 +217,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [posts, setPosts] = useState<UserPost[]>(INITIAL_POSTS);
   const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
   const [verificationRequests, setVerificationRequests] = useState<VerificationRequest[]>([]);
+  const [profileClaims, setProfileClaims] = useState<ProfileClaimRequest[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [adminAssignments, setAdminAssignments] = useState<AdminAssignment[]>([]);
@@ -562,6 +569,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentUser) {
       setChangeRequests([]);
       setVerificationRequests([]);
+      setProfileClaims([]);
       setNotifications([]);
       setAuditLogs([]);
       setAdminAssignments([]);
@@ -591,6 +599,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       },
       (error) => {
         console.warn('VerificationRequests listener note:', error.message);
+      }
+    );
+
+    const claimsQuery = isSuperAdmin
+      ? collection(db, 'profileClaims')
+      : query(collection(db, 'profileClaims'), where('requesterId', '==', currentUser.uid));
+    const unsubProfileClaims = onSnapshot(
+      claimsQuery,
+      (snap) => {
+        const list: ProfileClaimRequest[] = [];
+        snap.forEach((d) => list.push({ ...(d.data() as ProfileClaimRequest), id: d.id }));
+        setProfileClaims(list.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+      },
+      (error) => {
+        console.warn('Profile claims listener note:', error.message);
       }
     );
 
@@ -653,12 +676,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       unsubChangeRequests();
       unsubVerificationRequests();
+      unsubProfileClaims();
       unsubNotifications();
       unsubAuditLogs();
       unsubAdminAssignments();
       unsubUsers();
     };
-  }, [currentUser]);
+  }, [currentUser, isSuperAdmin]);
 
   // Interconnected dynamic statistics
   const stats = useMemo(() => {
@@ -934,21 +958,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Action: Verify Alumni
   const verifyAlumni = async (alumniId: string, isVerified: boolean) => {
-    const alumniDocRef = doc(db, 'alumni', alumniId);
+    const record = alumni.find((item) => item.id === alumniId || item.userId === alumniId);
+    const alumniDocId = record?.id || alumniId;
+    const ownerUid = record?.userId || (record ? record.id : alumniId);
+    const now = new Date().toISOString();
+    const alumniDocRef = doc(db, 'alumni', alumniDocId);
     await updateDoc(alumniDocRef, {
       isVerified,
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     });
 
-    // Also update users collection if matches
-    const userDocRef = doc(db, 'users', alumniId);
+    // Claimed legacy records may have a document ID different from the owner's UID.
+    const userDocRef = doc(db, 'users', ownerUid);
     await updateDoc(userDocRef, {
       isVerifiedAlumni: isVerified,
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     }).catch(() => {});
 
     await addDoc(collection(db, 'notifications'), {
-      recipientId: alumniId,
+      recipientId: ownerUid,
       title: isVerified ? 'Alumni Verified! ✓' : 'Verification Revoked',
       message: isVerified
         ? 'Congratulations! Your alumni credentials have been verified. The Verified badge is now visible on your public profile.'
@@ -960,6 +988,113 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     await logAudit(isVerified ? 'ALUMNI_VERIFIED' : 'ALUMNI_UNVERIFIED', 'ALUMNI', alumniId, `Verification state set to ${isVerified}`);
+  };
+
+  const submitProfileClaim = async (
+    claim: Omit<ProfileClaimRequest, 'id' | 'requesterId' | 'requesterName' | 'requesterEmail' | 'status' | 'createdAt' | 'updatedAt'>
+  ) => {
+    if (!currentUser || !userProfile) throw new Error('Sign in before requesting a profile claim.');
+    if (!claim.proofUrl || !/^https:\/\//i.test(claim.proofUrl)) {
+      throw new Error('Provide an HTTPS evidence link before submitting a claim.');
+    }
+    const target = alumni.find((item) => item.id === claim.targetAlumniId);
+    if (!target) throw new Error('The selected alumni record is no longer available.');
+    if (target.userId && target.userId !== currentUser.uid) {
+      throw new Error('This alumni record is already linked to another account.');
+    }
+    if (target.userId === currentUser.uid) throw new Error('This alumni record is already linked to your account.');
+    const duplicate = profileClaims.some((item) =>
+      item.requesterId === currentUser.uid &&
+      item.targetAlumniId === claim.targetAlumniId &&
+      item.status === 'PENDING'
+    );
+    if (duplicate) throw new Error('You already have a pending claim for this record.');
+    const now = new Date().toISOString();
+    await addDoc(collection(db, 'profileClaims'), {
+      ...claim,
+      requesterId: currentUser.uid,
+      requesterName: userProfile.name,
+      requesterEmail: currentUser.email || userProfile.email,
+      status: 'PENDING',
+      createdAt: now,
+      updatedAt: now,
+    });
+    await logAudit('PROFILE_CLAIM_SUBMITTED', 'ALUMNI', claim.targetAlumniId, 'Submitted an alumni profile claim for review.');
+  };
+
+  const approveProfileClaim = async (id: string, comment?: string) => {
+    if (!isSuperAdmin) throw new Error('Only a trusted Super Admin can approve profile claims.');
+    const claim = profileClaims.find((item) => item.id === id);
+    if (!claim || claim.status !== 'PENDING') throw new Error('Pending profile claim not found.');
+    const target = alumni.find((item) => item.id === claim.targetAlumniId);
+    if (!target) throw new Error('The target alumni record no longer exists.');
+    if (target.userId && target.userId !== claim.requesterId) {
+      throw new Error('The target record has already been claimed by another account.');
+    }
+    const now = new Date().toISOString();
+    await updateDoc(doc(db, 'alumni', claim.targetAlumniId), {
+      userId: claim.requesterId,
+      updatedAt: now,
+    });
+    await updateDoc(doc(db, 'users', claim.requesterId), {
+      profileType: 'Alumni',
+      role: 'ALUMNI',
+      status: 'APPROVED',
+      name: target.name,
+      university: target.university,
+      department: target.department,
+      studentId: target.studentId || '',
+      educationLevel: target.educationLevel || '',
+      graduationYear: target.graduationYear || target.batch || '',
+      jobRole: target.jobRole || '',
+      company: target.company || '',
+      country: target.country || '',
+      city: target.city || '',
+      bio: target.bio || '',
+      photoUrl: target.photoUrl || '',
+      linkedin: target.linkedin || '',
+      isVerifiedAlumni: target.isVerified === true,
+      updatedAt: now,
+    });
+    await updateDoc(doc(db, 'profileClaims', id), {
+      status: 'APPROVED',
+      reviewedBy: userProfile?.name || currentUser?.email || 'Super Admin',
+      reviewerComment: comment || 'Profile ownership confirmed.',
+      updatedAt: now,
+    });
+    await addDoc(collection(db, 'notifications'), {
+      recipientId: claim.requesterId,
+      title: 'Alumni profile claim approved',
+      message: 'Your claim has been approved and your account is now linked to the alumni record.',
+      type: 'PROFILE_CLAIM',
+      read: false,
+      actionUrl: '/account',
+      createdAt: now,
+    });
+    await logAudit('PROFILE_CLAIM_APPROVED', 'ALUMNI', claim.targetAlumniId, 'Approved profile claim for ' + claim.requesterEmail);
+  };
+
+  const rejectProfileClaim = async (id: string, comment?: string) => {
+    if (!isSuperAdmin) throw new Error('Only a trusted Super Admin can reject profile claims.');
+    const claim = profileClaims.find((item) => item.id === id);
+    if (!claim || claim.status !== 'PENDING') throw new Error('Pending profile claim not found.');
+    const now = new Date().toISOString();
+    await updateDoc(doc(db, 'profileClaims', id), {
+      status: 'REJECTED',
+      reviewedBy: userProfile?.name || currentUser?.email || 'Super Admin',
+      reviewerComment: comment || 'The provided evidence was insufficient to confirm ownership.',
+      updatedAt: now,
+    });
+    await addDoc(collection(db, 'notifications'), {
+      recipientId: claim.requesterId,
+      title: 'Alumni profile claim not approved',
+      message: comment || 'Your claim could not be approved. Please check your details and contact support if needed.',
+      type: 'PROFILE_CLAIM',
+      read: false,
+      actionUrl: '/account',
+      createdAt: now,
+    });
+    await logAudit('PROFILE_CLAIM_REJECTED', 'ALUMNI', claim.targetAlumniId, 'Rejected profile claim for ' + claim.requesterEmail);
   };
 
   // Action: Submit Verification Request
@@ -2074,6 +2209,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         posts,
         changeRequests,
         verificationRequests,
+        profileClaims,
+        canReviewProfileClaims: Boolean(currentUser && isSuperAdmin),
+        submitProfileClaim,
+        approveProfileClaim,
+        rejectProfileClaim,
         notifications,
         auditLogs,
         adminAssignments,

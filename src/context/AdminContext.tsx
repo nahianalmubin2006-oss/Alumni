@@ -13,7 +13,7 @@ interface AdminContextType {
   loading: boolean;
   authChecked: boolean;
   authError: string | null;
-  loginAdmin: (email: string, password: string) => Promise<AdminSessionUser>;
+  loginAdmin: (email: string, password: string, expectedRole?: 'SUPER_ADMIN' | 'CO_ADMIN' | 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN') => Promise<AdminSessionUser>;
   logoutAdmin: () => Promise<void>;
   checkAdminAuth: () => Promise<boolean>;
   sendAdminPasswordReset: (email: string) => Promise<void>;
@@ -172,70 +172,101 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [checkAdminAuth]);
 
   // Login handler
-  const loginAdmin = async (email: string, password: string): Promise<AdminSessionUser> => {
+  const loginAdmin = async (email: string, password: string, expectedRole?: 'SUPER_ADMIN' | 'CO_ADMIN' | 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN'): Promise<AdminSessionUser> => {
     setLoading(true);
     setAuthError(null);
 
     const trimmedEmail = email.trim().toLowerCase();
 
-    // 1. Try server admin login
+    // Central administrators use the server credential store. Institution admins must
+    // authenticate through Firebase first; sending them to the central password endpoint
+    // would incorrectly count their valid login as a failed central-admin attempt.
+    if (expectedRole !== 'UNIVERSITY_ADMIN' && expectedRole !== 'DEPARTMENT_ADMIN' && expectedRole !== 'SUPER_ADMIN') {
+      try {
+        const res = await fetch('/api/admin/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: trimmedEmail, password }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.token && data.user) {
+          sessionStorage.setItem(TOKEN_STORAGE_KEY, data.token);
+          setAdminToken(data.token);
+          setAdminUser(data.user);
+          setAuthError(null);
+          setAuthChecked(true);
+          setLoading(false);
+          return data.user;
+        }
+      } catch (serverErr) {
+        console.warn('Server admin login unavailable; attempting Firebase auth verification.');
+      }
+    }
+
+    // Firebase proves identity; the server exchange verifies active role and institution scope.
+    let exchangeError = '';
     try {
-      const res = await fetch('/api/admin/auth/login', {
+      const fbUserCred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
+      const exchangeRes = await fetch('/api/admin/auth/firebase-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmedEmail, password }),
+        body: JSON.stringify({
+          idToken: await fbUserCred.user.getIdToken(),
+        }),
       });
+      const exchangeData = await exchangeRes.json().catch(() => ({}));
 
-      const data = await res.json();
-
-      if (res.ok && data.token && data.user) {
-        sessionStorage.setItem(TOKEN_STORAGE_KEY, data.token);
-        setAdminToken(data.token);
-        setAdminUser(data.user);
+      if (!exchangeRes.ok) {
+        throw new Error(exchangeData.error || 'This account has no active administrator assignment.');
+      }
+      if (exchangeData.token && exchangeData.user) {
+        sessionStorage.setItem(TOKEN_STORAGE_KEY, exchangeData.token);
+        setAdminToken(exchangeData.token);
+        setAdminUser(exchangeData.user);
         setAuthError(null);
         setAuthChecked(true);
         setLoading(false);
-        return data.user;
+        return exchangeData.user;
       }
-    } catch (serverErr) {
-      console.warn('Server admin login attempt warning, attempting Firebase auth verification...');
-    }
-
-    // 2. If server auth failed, try Firebase Auth
-    try {
-      const fbUserCred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
-      // Firebase sign-in proves identity only; the server decides whether this identity has an admin role.
-      if (fbUserCred.user) {
-        // Exchange with backend to obtain admin session
-        const exchangeRes = await fetch('/api/admin/auth/firebase-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            idToken: await fbUserCred.user.getIdToken(),
-          }),
-        });
-
-        if (exchangeRes.ok) {
-          const exchangeData = await exchangeRes.json();
-          if (exchangeData.token && exchangeData.user) {
-            sessionStorage.setItem(TOKEN_STORAGE_KEY, exchangeData.token);
-            setAdminToken(exchangeData.token);
-            setAdminUser(exchangeData.user);
-            setAuthError(null);
-            setAuthChecked(true);
-            setLoading(false);
-            return exchangeData.user;
-          }
-        }
-
-        throw new Error('Firebase authentication succeeded, but the secure admin session could not be established. Please try again.');
-      }
+      throw new Error('Firebase authentication succeeded, but the secure admin session could not be established. Please try again.');
     } catch (fbErr: any) {
       console.warn('Firebase auth attempt error:', fbErr?.code || fbErr?.message);
+      if (fbErr?.code && String(fbErr.code).startsWith('auth/')) {
+        exchangeError = 'Invalid administrative credentials. Please verify your email and password.';
+      } else if (fbErr?.message) {
+        exchangeError = fbErr.message;
+      }
+    }
+
+    // Super Admins should establish a Firebase session when possible so Firestore-backed
+    // Super Admin features (such as profile-claim review) are authorized as well. Keep the
+    // legacy server credential path as a fallback for existing deployments.
+    if (expectedRole === 'SUPER_ADMIN') {
+      try {
+        const res = await fetch('/api/admin/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: trimmedEmail, password }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.token && data.user) {
+          sessionStorage.setItem(TOKEN_STORAGE_KEY, data.token);
+          setAdminToken(data.token);
+          setAdminUser(data.user);
+          setAuthError(null);
+          setAuthChecked(true);
+          setLoading(false);
+          return data.user;
+        }
+      } catch (serverErr) {
+        console.warn('Fallback server admin login failed.');
+      }
     }
 
     setLoading(false);
-    const msg = 'Invalid administrative credentials. Please verify your email and password.';
+    const msg = exchangeError || 'Invalid administrative credentials. Please verify your email and password.';
     setAuthError(msg);
     throw new Error(msg);
   };
@@ -268,7 +299,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setAuthChecked(true);
   };
 
-  const isAuthenticated = !!adminUser && (adminUser.role === 'ADMIN' || adminUser.role === 'SUPER_ADMIN');
+  const isAuthenticated = !!adminUser && ['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN', 'UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(adminUser.role);
   const isSuperAdmin = isAuthenticated && adminUser?.role === 'SUPER_ADMIN';
   const isAdmin = isAuthenticated;
 

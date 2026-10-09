@@ -1,13 +1,15 @@
-export type AdminAuthRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+export type AdminAuthRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN' | 'CO_ADMIN' | 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN';
 
 export interface AdminSessionUser {
   id: string;
   email: string;
   name: string;
-  role: 'ADMIN' | 'SUPER_ADMIN';
+  role: 'ADMIN' | 'SUPER_ADMIN' | 'CO_ADMIN' | 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN';
   status?: string;
   university?: string;
   department?: string;
+  assignedUniversity?: string;
+  assignedDepartment?: string;
   lastLoginAt?: string;
 }
 
@@ -261,6 +263,25 @@ export interface ChangeRequest {
   updatedAt: string;
 }
 
+export interface ProfileClaimRequest {
+  id: string;
+  requesterId: string;
+  requesterName: string;
+  requesterEmail: string;
+  targetAlumniId: string;
+  university: string;
+  department: string;
+  studentId: string;
+  graduationYear: string;
+  proofUrl: string;
+  notes: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  updatedAt: string;
+  reviewedBy?: string;
+  reviewerComment?: string;
+}
+
 export interface VerificationRequest {
   id: string;
   userId: string;
@@ -285,7 +306,7 @@ export interface AppNotification {
   recipientRole?: Role;
   title: string;
   message: string;
-  type: 'ACCOUNT' | 'VERIFICATION' | 'CHANGE_REQUEST' | 'NEWS' | 'ADMIN_ASSIGNMENT' | 'SYSTEM';
+  type: 'ACCOUNT' | 'VERIFICATION' | 'CHANGE_REQUEST' | 'PROFILE_CLAIM' | 'NEWS' | 'ADMIN_ASSIGNMENT' | 'SYSTEM';
   read: boolean;
   actionUrl?: string;
   createdAt: string;

@@ -12,10 +12,23 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+// Baseline HTTP hardening without changing the existing auth/session flow.
+app.disable('x-powered-by');
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (_req.path.startsWith('/api/')) res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+app.use((req, res, next) => {
+  const bodyLimit = req.path === '/api/user/upload-avatar' ? '15mb' : '1mb';
+  express.json({ limit: bodyLimit })(req, res, next);
+});
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// Ensure public/uploads/avatars directory exists for profile photos
+// Ensure public/uploads/avatars directory exists
 const UPLOADS_DIR = path.resolve(__dirname, 'public/uploads/avatars');
 try {
   if (!fs.existsSync(UPLOADS_DIR)) {
@@ -25,52 +38,76 @@ try {
   console.warn('Notice: Failed to initialize uploads directory:', e);
 }
 
-// Serve public uploads statically
+// Serve public uploads statically.
 app.use('/uploads', express.static(path.resolve(__dirname, 'public/uploads')));
 
-// Profile Avatar Upload & Local Storage API
-app.post('/api/user/upload-avatar', (req, res) => {
+// Avatar uploads must be tied to the verified Firebase identity. A caller cannot
+// write files under another user's ID or anonymously consume server disk space.
+app.post('/api/user/upload-avatar', async (req, res) => {
+  const { image, userId, idToken } = req.body || {};
+  if (typeof image !== 'string' || typeof userId !== 'string' || typeof idToken !== 'string') {
+    return res.status(400).json({ error: 'Image data, user ID, and Firebase ID token are required.' });
+  }
+
+  const firebaseApiKey = process.env.FIREBASE_API_KEY;
+  if (!firebaseApiKey) {
+    return res.status(503).json({ error: 'Firebase server authentication is not configured.' });
+  }
+
+  let verifiedUid = '';
   try {
-    const { image, userId } = req.body || {};
-    if (!image || typeof image !== 'string') {
-      return res.status(400).json({ error: 'Image data payload is required.' });
+    const identityResponse = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(firebaseApiKey)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      }
+    );
+    const identityData = await identityResponse.json();
+    const identity = Array.isArray(identityData.users) ? identityData.users[0] : null;
+    if (!identityResponse.ok || !identity?.localId) {
+      return res.status(401).json({ error: 'Firebase authentication token is invalid or expired.' });
     }
+    if (identity.localId !== userId || identity.emailVerified !== true) {
+      return res.status(403).json({ error: 'You may upload a profile picture only for your own verified account.' });
+    }
+    verifiedUid = String(identity.localId);
+  } catch (error) {
+    console.error('Avatar identity verification failed:', error);
+    return res.status(503).json({ error: 'Unable to verify Firebase authentication at this time.' });
+  }
 
-    const safeUid = (userId && typeof userId === 'string')
-      ? userId.replace(/[^a-zA-Z0-9_-]/g, '')
-      : 'user';
-    const timestamp = Date.now();
-    const filename = `avatar-${safeUid}-${timestamp}.jpg`;
+  const matches = image.match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/);
+  if (!matches) {
+    return res.status(400).json({ error: 'Use a valid JPEG, PNG, or WebP image.' });
+  }
+  const imageBuffer = Buffer.from(matches[2], 'base64');
+  if (imageBuffer.length === 0) {
+    return res.status(400).json({ error: 'The uploaded image is empty or invalid.' });
+  }
+  if (imageBuffer.length > 5 * 1024 * 1024) {
+    return res.status(413).json({ error: 'Profile pictures must be 5 MB or smaller.' });
+  }
+
+  try {
+    const safeUid = verifiedUid.replace(/[^a-zA-Z0-9_-]/g, '');
+    const extension = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+    const filename = `avatar-${safeUid}-${Date.now()}.${extension}`;
     const filePath = path.join(UPLOADS_DIR, filename);
-
-    // Decode base64
-    const matches = image.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
-    if (matches && matches[2]) {
-      const buffer = Buffer.from(matches[2], 'base64');
-      fs.writeFileSync(filePath, buffer);
-    } else {
-      const rawBase64 = image.replace(/^data:image\/\w+;base64,/, '');
-      const buffer = Buffer.from(rawBase64, 'base64');
-      fs.writeFileSync(filePath, buffer);
-    }
-
+    await fs.promises.writeFile(filePath, imageBuffer, { flag: 'wx' });
     const publicUrl = `/uploads/avatars/${filename}`;
 
-    // Update user in adminStore if present
-    const userInAdmin = adminStore.users.find((u) => u.id === safeUid || u.id === userId);
+    const userInAdmin = adminStore.users.find((user) => user.firebaseUid === verifiedUid || user.id === verifiedUid);
     if (userInAdmin) {
       (userInAdmin as any).photoUrl = publicUrl;
       persistAdminStore();
     }
 
-    return res.json({
-      success: true,
-      photoUrl: publicUrl,
-      message: 'Profile picture saved successfully.',
-    });
-  } catch (err: any) {
-    console.error('Failed to save profile picture on server:', err);
-    return res.status(500).json({ error: err.message || 'Failed to save avatar image' });
+    return res.json({ success: true, photoUrl: publicUrl, message: 'Profile picture saved successfully.' });
+  } catch (error: any) {
+    console.error('Failed to save profile picture on server:', error);
+    return res.status(500).json({ error: 'Failed to save avatar image.' });
   }
 });
 
@@ -368,7 +405,7 @@ setInterval(async () => {
 // SECURE ADMIN ROLE-BASED ACCESS CONTROL (RBAC) & SESSION ENGINE
 // ==========================================
 
-export type AdminRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+export type AdminRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN' | 'CO_ADMIN' | 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN';
 
 export interface AdminUser {
   id: string;
@@ -379,6 +416,9 @@ export interface AdminUser {
   status: 'APPROVED' | 'PENDING' | 'REJECTED' | 'SUSPENDED';
   university?: string;
   department?: string;
+  assignedUniversity?: string;
+  assignedDepartment?: string;
+  firebaseUid?: string;
   profileType?: string;
   studentId?: string;
   graduationYear?: string;
@@ -460,12 +500,29 @@ export interface AdminSettings {
   lastUpdated: string;
 }
 
+interface AdminAccessApplication {
+  id: string;
+  type: 'CO_ADMIN' | 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN';
+  name: string;
+  email: string;
+  passwordHash?: string;
+  firebaseUid?: string;
+  university?: string;
+  department?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewerNote?: string;
+}
+
 interface AdminStoreData {
   users: AdminUser[];
   auditLogs: AdminAuditLog[];
   verifications: VerificationItem[];
   changeRequests: ChangeRequestItem[];
   settings: AdminSettings;
+  adminApplications?: AdminAccessApplication[];
 }
 
 // Password hashing with cryptographic salt and scrypt
@@ -557,6 +614,9 @@ let adminStore: AdminStoreData = (() => {
   return defaultData;
 })();
 
+// Backward-compatible schema migration for existing admin-database.json files.
+if (!Array.isArray(adminStore.adminApplications)) adminStore.adminApplications = [];
+
 function persistAdminStore() {
   try {
     fs.writeFileSync(ADMIN_DB_PATH, JSON.stringify(adminStore, null, 2));
@@ -589,7 +649,7 @@ interface CustomUniversityStore {
     id: string;
     name: string;
     shortName?: string;
-    type: 'Public' | 'Private' | 'International';
+    type?: 'Public' | 'Private' | 'International';
     location: string;
     logoUrl?: string;
     website?: string;
@@ -608,6 +668,15 @@ let customUniStore: CustomUniversityStore = (() => {
   } catch (e) {}
   return { logos: {}, departments: {}, customUniversities: [], customDepartments: [] };
 })();
+
+// Normalize older custom catalog files before any scoped route accesses them.
+if (!customUniStore.logos) customUniStore.logos = {};
+if (!customUniStore.departments) customUniStore.departments = {};
+if (!Array.isArray(customUniStore.customUniversities)) customUniStore.customUniversities = [];
+customUniStore.customUniversities.forEach((university) => {
+  if (!Array.isArray(university.departments)) university.departments = [];
+});
+if (!Array.isArray(customUniStore.customDepartments)) customUniStore.customDepartments = [];
 
 function persistCustomUniStore() {
   try {
@@ -699,46 +768,45 @@ function recordAuditLog(log: Omit<AdminAuditLog, 'id' | 'timestamp'>) {
   return item;
 }
 
-// Middleware: Authenticate Admin (Role must be ADMIN or SUPER_ADMIN)
+// Validate any approved admin session. Institution admins use this only for
+// session introspection; central-management APIs use requireAdminAuth.
 interface AdminRequest extends express.Request {
   adminUser?: AdminUser;
   adminSession?: AdminSession;
 }
 
-function requireAdminAuth(req: AdminRequest, res: express.Response, next: express.NextFunction) {
+function requireAnyAdminAuth(req: AdminRequest, res: express.Response, next: express.NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Unauthorized: Admin authentication token required.' });
   }
-
   const token = authHeader.substring(7).trim();
   const session = activeAdminSessions.get(token);
-  if (!session) {
-    return res.status(401).json({ error: 'Unauthorized: Session invalid or expired.' });
-  }
-
+  if (!session) return res.status(401).json({ error: 'Unauthorized: Session invalid or expired.' });
   if (Date.now() > session.expiresAt) {
     activeAdminSessions.delete(token);
     return res.status(401).json({ error: 'Unauthorized: Session has expired. Please log in again.' });
   }
-
   const user = adminStore.users.find((u) => u.id === session.userId);
-  if (!user || user.status === 'SUSPENDED') {
+  if (!user || user.status !== 'APPROVED' || !['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN', 'UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)) {
     activeAdminSessions.delete(token);
-    return res.status(401).json({ error: 'Unauthorized: Admin account is not found or has been suspended.' });
+    return res.status(401).json({ error: 'Unauthorized: Admin assignment is not active.' });
   }
-
-  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
-    activeAdminSessions.delete(token);
-    return res.status(403).json({ error: 'Forbidden: Insufficient administrative privileges.' });
-  }
-
-  // Slide activity and refresh expiry
   session.lastActivityAt = Date.now();
   session.expiresAt = Date.now() + SESSION_TTL_MS;
   req.adminUser = user;
   req.adminSession = session;
   next();
+}
+
+// Institution-scoped roles are intentionally excluded from central management APIs.
+function requireAdminAuth(req: AdminRequest, res: express.Response, next: express.NextFunction) {
+  requireAnyAdminAuth(req, res, () => {
+    if (!['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN'].includes(req.adminUser?.role || '')) {
+      return res.status(403).json({ error: 'Forbidden: Central administrator authorization required.' });
+    }
+    next();
+  });
 }
 
 // Middleware: Require Super Admin Role
@@ -754,6 +822,141 @@ function requireSuperAdmin(req: AdminRequest, res: express.Response, next: expre
 // ------------------------------------------
 // ADMIN AUTHENTICATION ROUTES
 // ------------------------------------------
+
+// ------------------------------------------
+// ADMIN ACCESS APPLICATIONS (Phases 2-4)
+// ------------------------------------------
+
+function publicApplication(application: AdminAccessApplication) {
+  const { passwordHash, firebaseUid, ...safe } = application;
+  return safe;
+}
+
+// Public Co-admin application: PENDING only; it grants no role or session.
+app.post('/api/admin/applications/co-admin', (req, res) => {
+  const { name, email, password } = req.body || {};
+  if (typeof name !== 'string' || name.trim().length < 2 ||
+      typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ||
+      typeof password !== 'string' || password.length < 10) {
+    return res.status(400).json({ error: 'Enter a valid name and email, and choose a password of at least 10 characters.' });
+  }
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail.endsWith('@gmail.com')) {
+    return res.status(400).json({ error: 'Co-admin applications must use a Gmail address.' });
+  }
+  if (adminStore.users.some((user) => user.email.toLowerCase() === normalizedEmail) ||
+      adminStore.adminApplications!.some((item) => item.email === normalizedEmail && item.status === 'PENDING')) {
+    return res.status(409).json({ error: 'An account or pending application already exists for this email.' });
+  }
+  const application: AdminAccessApplication = {
+    id: 'admin-app-' + crypto.randomBytes(12).toString('hex'),
+    type: 'CO_ADMIN', name: name.trim(), email: normalizedEmail,
+    passwordHash: hashPassword(password), status: 'PENDING', createdAt: new Date().toISOString(),
+  };
+  adminStore.adminApplications!.unshift(application);
+  persistAdminStore();
+  recordAuditLog({
+    actorId: 'anonymous', actorEmail: normalizedEmail, actorRole: 'PUBLIC',
+    action: 'CO_ADMIN_APPLICATION_SUBMITTED', targetType: 'ADMIN_APPLICATION',
+    targetId: application.id, details: 'Co-admin application submitted for Super Admin review.',
+    ip: getClientIp(req),
+  });
+  return res.status(202).json({ success: true, status: 'PENDING', message: 'Application submitted. No admin access is granted until approval.' });
+});
+
+// Institution requests are bound to the verified identity of an existing Firebase account.
+app.post('/api/admin/applications/institution', async (req, res) => {
+  const { idToken, requestedRole, university, department } = req.body || {};
+  if (typeof idToken !== 'string' || !['UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(requestedRole) ||
+      typeof university !== 'string' || !university.trim() ||
+      (requestedRole === 'DEPARTMENT_ADMIN' && (typeof department !== 'string' || !department.trim()))) {
+    return res.status(400).json({ error: 'A Firebase ID token, university, and valid institution admin role/scope are required.' });
+  }
+  const firebaseApiKey = process.env.FIREBASE_API_KEY;
+  if (!firebaseApiKey) return res.status(503).json({ error: 'Firebase server authentication is not configured.' });
+  let identity: any;
+  try {
+    const response = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + encodeURIComponent(firebaseApiKey), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }),
+    });
+    const data = await response.json();
+    if (!response.ok || !Array.isArray(data.users) || !data.users[0]?.localId) {
+      return res.status(401).json({ error: 'Please sign in to your existing Alumni account before requesting admin access.' });
+    }
+    identity = data.users[0];
+  } catch {
+    return res.status(503).json({ error: 'Unable to verify Firebase identity right now.' });
+  }
+  const email = String(identity.email || '').trim().toLowerCase();
+  const firebaseUid = String(identity.localId);
+  if (!email || identity.emailVerified !== true) {
+    return res.status(403).json({ error: 'Verify the email on your existing Alumni account before requesting admin access.' });
+  }
+  if (adminStore.adminApplications!.some((item) => item.email === email && item.status === 'PENDING') ||
+      adminStore.users.some((user) => user.email.toLowerCase() === email && ['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN', 'UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role))) {
+    return res.status(409).json({ error: 'An administrator assignment or pending request already exists for this account.' });
+  }
+  const application: AdminAccessApplication = {
+    id: 'admin-app-' + crypto.randomBytes(12).toString('hex'),
+    type: requestedRole, name: String(identity.displayName || email.split('@')[0]), email, firebaseUid,
+    university: university.trim(),
+    department: requestedRole === 'DEPARTMENT_ADMIN' ? String(department).trim() : undefined,
+    status: 'PENDING', createdAt: new Date().toISOString(),
+  };
+  adminStore.adminApplications!.unshift(application);
+  persistAdminStore();
+  recordAuditLog({
+    actorId: firebaseUid, actorEmail: email, actorRole: 'USER',
+    action: 'INSTITUTION_ADMIN_APPLICATION_SUBMITTED', targetType: 'ADMIN_APPLICATION',
+    targetId: application.id,
+    details: 'Requested ' + requestedRole + ' for ' + application.university + (application.department ? ' / ' + application.department : '') + '.',
+    ip: getClientIp(req),
+  });
+  return res.status(202).json({ success: true, status: 'PENDING', message: 'Request submitted for central admin review. Your Alumni account remains unchanged while pending.' });
+});
+
+app.get('/api/admin/applications', requireAdminAuth, (_req: AdminRequest, res) => {
+  return res.json({ success: true, applications: adminStore.adminApplications!.map(publicApplication) });
+});
+
+app.post('/api/admin/applications/:id/review', requireAdminAuth, (req: AdminRequest, res) => {
+  const { decision, reviewerNote } = req.body || {};
+  if (!['APPROVED', 'REJECTED'].includes(decision)) return res.status(400).json({ error: 'Decision must be APPROVED or REJECTED.' });
+  const application = adminStore.adminApplications!.find((item) => item.id === req.params.id);
+  if (!application) return res.status(404).json({ error: 'Admin application not found.' });
+  if (application.status !== 'PENDING') return res.status(409).json({ error: 'This application has already been reviewed.' });
+  if (application.type === 'CO_ADMIN' && req.adminUser?.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Only a Super Admin may approve or reject a Co-admin application.' });
+  }
+  if (decision === 'APPROVED') {
+    if (adminStore.users.some((user) => user.email.toLowerCase() === application.email.toLowerCase())) {
+      return res.status(409).json({ error: 'An account with this email already exists. Resolve the account conflict before approving.' });
+    }
+    const role = application.type;
+    const newUser: AdminUser = {
+      id: 'usr-' + crypto.randomBytes(12).toString('hex'),
+      email: application.email, passwordHash: application.passwordHash || '', name: application.name,
+      role, status: 'APPROVED', university: application.university || '', department: application.department || '',
+      assignedUniversity: application.university, assignedDepartment: application.department, firebaseUid: application.firebaseUid,
+      profileType: role === 'CO_ADMIN' ? 'Co-admin' : role === 'UNIVERSITY_ADMIN' ? 'University admin' : 'Department admin',
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    adminStore.users.push(newUser);
+  }
+  application.passwordHash = undefined;
+  application.status = decision;
+  application.reviewedAt = new Date().toISOString();
+  application.reviewedBy = req.adminUser!.id;
+  application.reviewerNote = typeof reviewerNote === 'string' ? reviewerNote.trim().slice(0, 500) : '';
+  persistAdminStore();
+  recordAuditLog({
+    actorId: req.adminUser!.id, actorEmail: req.adminUser!.email, actorRole: req.adminUser!.role,
+    action: 'ADMIN_APPLICATION_' + decision, targetType: 'ADMIN_APPLICATION', targetId: application.id,
+    details: 'Reviewed ' + application.type + ' request for ' + application.email + ': ' + decision + '.',
+    ip: getClientIp(req),
+  });
+  return res.json({ success: true, application: publicApplication(application), message: 'Application ' + decision.toLowerCase() + '.' });
+});
 
 // Admin Login
 app.post('/api/admin/auth/login', (req, res) => {
@@ -771,13 +974,14 @@ app.post('/api/admin/auth/login', (req, res) => {
     if (fs.existsSync(ADMIN_DB_PATH)) {
       const content = fs.readFileSync(ADMIN_DB_PATH, 'utf-8');
       adminStore = JSON.parse(content) as AdminStoreData;
+      if (!Array.isArray(adminStore.adminApplications)) adminStore.adminApplications = [];
     }
   } catch (e) {}
 
   const user = adminStore.users.find((u) => u.email.toLowerCase() === normalizedEmail);
 
   // If user exists and entered the correct password, clear any rate-limit lockout immediately!
-  if (user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && verifyPassword(password, user.passwordHash)) {
+  if (user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' || user.role === 'CO_ADMIN') && user.status === 'APPROVED' && verifyPassword(password, user.passwordHash)) {
     resetFailedLogin(clientIp, normalizedEmail);
   } else if (isRateLimited(clientIp, normalizedEmail)) {
     return res.status(429).json({
@@ -786,7 +990,7 @@ app.post('/api/admin/auth/login', (req, res) => {
   }
 
   // Generic failure response to avoid account enumeration
-  if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+  if (!user || !['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN'].includes(user.role) || !['APPROVED', 'SUSPENDED'].includes(user.status)) {
     recordFailedLogin(clientIp, normalizedEmail);
     recordAuditLog({
       actorId: 'anonymous',
@@ -863,6 +1067,8 @@ app.post('/api/admin/auth/login', (req, res) => {
       status: user.status,
       university: user.university,
       department: user.department,
+      assignedUniversity: user.assignedUniversity,
+      assignedDepartment: user.assignedDepartment,
     },
   });
 });
@@ -927,7 +1133,8 @@ app.post('/api/admin/auth/firebase-login', async (req, res) => {
 
   try {
     if (fs.existsSync(ADMIN_DB_PATH)) {
-      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8'));
+      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8')) as AdminStoreData;
+      if (!Array.isArray(adminStore.adminApplications)) adminStore.adminApplications = [];
     }
   } catch (e) {}
 
@@ -953,8 +1160,11 @@ app.post('/api/admin/auth/firebase-login', async (req, res) => {
     persistAdminStore();
   }
 
-  if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-    return res.status(403).json({ error: 'Access denied: User is not authorized as an administrator.' });
+  if (!user || !['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN', 'UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role) || !['APPROVED', 'SUSPENDED'].includes(user.status)) {
+    return res.status(403).json({ error: 'Access denied: User has no active administrator assignment.' });
+  }
+  if (user.firebaseUid && user.firebaseUid !== verifiedUid) {
+    return res.status(403).json({ error: 'Access denied: Firebase identity does not match the approved administrator assignment.' });
   }
 
   if (user.status === 'SUSPENDED') {
@@ -1000,12 +1210,14 @@ app.post('/api/admin/auth/firebase-login', async (req, res) => {
       status: user.status,
       university: user.university,
       department: user.department,
+      assignedUniversity: user.assignedUniversity,
+      assignedDepartment: user.assignedDepartment,
     },
   });
 });
 
 // Admin Logout (Session Invalidation)
-app.post('/api/admin/auth/logout', requireAdminAuth, (req: AdminRequest, res) => {
+app.post('/api/admin/auth/logout', requireAnyAdminAuth, (req: AdminRequest, res) => {
   const token = req.adminSession?.token;
   if (token) {
     activeAdminSessions.delete(token);
@@ -1027,7 +1239,7 @@ app.post('/api/admin/auth/logout', requireAdminAuth, (req: AdminRequest, res) =>
 });
 
 // Admin Auth Status / Current User
-app.get('/api/admin/auth/me', requireAdminAuth, (req: AdminRequest, res) => {
+app.get('/api/admin/auth/me', requireAnyAdminAuth, (req: AdminRequest, res) => {
   const user = req.adminUser!;
   return res.json({
     authenticated: true,
@@ -1039,6 +1251,8 @@ app.get('/api/admin/auth/me', requireAdminAuth, (req: AdminRequest, res) => {
       status: user.status,
       university: user.university,
       department: user.department,
+      assignedUniversity: user.assignedUniversity,
+      assignedDepartment: user.assignedDepartment,
       lastLoginAt: user.lastLoginAt,
     },
   });
@@ -1085,7 +1299,8 @@ app.post('/api/admin/auth/forgot-password', (req, res) => {
   // Reload adminStore to make sure we have freshest accounts
   try {
     if (fs.existsSync(ADMIN_DB_PATH)) {
-      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8'));
+      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8')) as AdminStoreData;
+      if (!Array.isArray(adminStore.adminApplications)) adminStore.adminApplications = [];
     }
   } catch (e) {}
 
@@ -1149,7 +1364,8 @@ app.post('/api/admin/auth/reset-password', (req, res) => {
 
   try {
     if (fs.existsSync(ADMIN_DB_PATH)) {
-      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8'));
+      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8')) as AdminStoreData;
+      if (!Array.isArray(adminStore.adminApplications)) adminStore.adminApplications = [];
     }
   } catch (e) {}
 
@@ -1225,7 +1441,6 @@ const handleUniversityLogoUpdate = (req: express.Request, res: express.Response)
     customUniStore.customUniversities.push({
       id: key,
       name: universityName || key,
-      type: 'Public',
       location: '',
       logoUrl: trimmedLogo,
       departments: [],
@@ -1447,6 +1662,294 @@ app.put('/api/admin/departments/:id', requireAdminAuth, (req: AdminRequest, res)
 });
 
 // ------------------------------------------
+// INSTITUTION-SCOPED ADMIN WORKSPACE APIs
+// ------------------------------------------
+function normalizedScope(value: unknown): string {
+  return typeof value === 'string' ? value.trim().toLocaleLowerCase() : '';
+}
+
+function institutionUniversity(admin: AdminUser): string {
+  return String(admin.assignedUniversity || admin.university || '').trim();
+}
+
+function institutionDepartment(admin: AdminUser): string {
+  return String(admin.assignedDepartment || admin.department || '').trim();
+}
+
+function sameInstitution(left: unknown, right: unknown): boolean {
+  return normalizedScope(left) !== '' && normalizedScope(left) === normalizedScope(right);
+}
+
+function isInstitutionAdminRole(role: unknown): role is 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN' {
+  return role === 'UNIVERSITY_ADMIN' || role === 'DEPARTMENT_ADMIN';
+}
+
+function requireInstitutionAdmin(req: AdminRequest, res: express.Response, next: express.NextFunction) {
+  requireAnyAdminAuth(req, res, () => {
+    const admin = req.adminUser;
+    if (!admin || !isInstitutionAdminRole(admin.role)) {
+      return res.status(403).json({ error: 'Institution administrator authorization required.' });
+    }
+    if (!institutionUniversity(admin) ||
+        (admin.role === 'DEPARTMENT_ADMIN' && !institutionDepartment(admin))) {
+      return res.status(403).json({ error: 'This administrator has no complete institution assignment.' });
+    }
+    next();
+  });
+}
+
+function canManageScopedDepartment(admin: AdminUser, department: CustomDepartmentItem): boolean {
+  if (!sameInstitution(department.university, institutionUniversity(admin))) return false;
+  if (admin.role === 'UNIVERSITY_ADMIN') return true;
+  return admin.role === 'DEPARTMENT_ADMIN' && sameInstitution(department.name, institutionDepartment(admin));
+}
+
+function scopedDepartmentNames(admin: AdminUser): string[] {
+  const university = institutionUniversity(admin);
+  const fromRecords = (customUniStore.customDepartments || [])
+    .filter((item) => sameInstitution(item.university, university))
+    .map((item) => item.name);
+  const fromCatalog = (customUniStore.departments || {})[university] ||
+    (customUniStore.departments || {})[university.toLowerCase()] || [];
+  const names = Array.from(new Set([...fromRecords, ...fromCatalog].map((name) => String(name).trim()).filter(Boolean)));
+  if (admin.role === 'DEPARTMENT_ADMIN') {
+    const assigned = institutionDepartment(admin);
+    return assigned ? [names.find((name) => sameInstitution(name, assigned)) || assigned] : [];
+  }
+  return names;
+}
+
+function scopedAdminUser(admin: AdminUser) {
+  const { passwordHash, firebaseUid, ...safe } = admin;
+  return safe;
+}
+
+app.get('/api/institution/dashboard', requireInstitutionAdmin, (req: AdminRequest, res) => {
+  const actor = req.adminUser!;
+  const university = institutionUniversity(actor);
+  const departments = (customUniStore.customDepartments || []).filter((item) =>
+    sameInstitution(item.university, university) &&
+    (actor.role === 'UNIVERSITY_ADMIN' || sameInstitution(item.name, institutionDepartment(actor)))
+  );
+  const scopedUsers = adminStore.users.filter((user) =>
+    isInstitutionAdminRole(user.role) &&
+    sameInstitution(user.assignedUniversity || user.university, university) &&
+    (actor.role === 'UNIVERSITY_ADMIN' ||
+      (user.role === 'DEPARTMENT_ADMIN' && sameInstitution(user.assignedDepartment || user.department, institutionDepartment(actor))))
+  );
+  const applications = (adminStore.adminApplications || []).filter((item) =>
+    item.type !== 'CO_ADMIN' &&
+    sameInstitution(item.university, university) &&
+    (actor.role === 'UNIVERSITY_ADMIN' ||
+      (item.type === 'DEPARTMENT_ADMIN' && sameInstitution(item.department, institutionDepartment(actor))))
+  );
+  return res.json({
+    success: true,
+    scope: { role: actor.role, university, department: actor.role === 'DEPARTMENT_ADMIN' ? institutionDepartment(actor) : null },
+    stats: {
+      departments: actor.role === 'DEPARTMENT_ADMIN' ? 1 : scopedDepartmentNames(actor).length,
+      activeAdmins: scopedUsers.filter((user) => user.status === 'APPROVED').length,
+      pendingApplications: applications.filter((item) => item.status === 'PENDING').length,
+    },
+    departments: departments.filter((item) => canManageScopedDepartment(actor, item)),
+  });
+});
+
+app.get('/api/institution/catalog', requireInstitutionAdmin, (req: AdminRequest, res) => {
+  const actor = req.adminUser!;
+  const universityName = institutionUniversity(actor);
+  const university = (customUniStore.customUniversities || []).find((item) =>
+    sameInstitution(item.name, universityName) || sameInstitution(item.id, universityName)
+  ) || null;
+  const allDepartments = (customUniStore.customDepartments || []).filter((item) =>
+    sameInstitution(item.university, universityName)
+  );
+  const visibleDepartments = actor.role === 'DEPARTMENT_ADMIN'
+    ? allDepartments.filter((item) => sameInstitution(item.name, institutionDepartment(actor)))
+    : allDepartments;
+  return res.json({
+    success: true,
+    scope: { role: actor.role, university: universityName, department: actor.role === 'DEPARTMENT_ADMIN' ? institutionDepartment(actor) : null },
+    university,
+    departments: visibleDepartments,
+    departmentNames: scopedDepartmentNames(actor),
+  });
+});
+
+app.put('/api/institution/university', requireInstitutionAdmin, (req: AdminRequest, res) => {
+  const actor = req.adminUser!;
+  if (actor.role !== 'UNIVERSITY_ADMIN') {
+    return res.status(403).json({ error: 'Only a University Admin can edit university details.' });
+  }
+  const scopeName = institutionUniversity(actor);
+  const body = req.body || {};
+  if (body.name !== undefined && !sameInstitution(body.name, scopeName)) {
+    return res.status(403).json({ error: 'University name and scope cannot be changed from this workspace.' });
+  }
+  const key = String(body.id || 'uni-' + scopeName.toLowerCase().replace(/[^a-z0-9]/g, '-')).trim();
+  let university = (customUniStore.customUniversities || []).find((item) =>
+    sameInstitution(item.name, scopeName) || sameInstitution(item.id, key)
+  );
+  if (!university) {
+    university = {
+      id: key,
+      name: scopeName,
+      type: 'Public',
+      location: '',
+      departments: scopedDepartmentNames(actor),
+      createdAt: new Date().toISOString(),
+    };
+    if (!Array.isArray(customUniStore.customUniversities)) customUniStore.customUniversities = [];
+    customUniStore.customUniversities.push(university);
+  }
+  if (body.shortName !== undefined) university.shortName = String(body.shortName).trim().slice(0, 80);
+  if (body.location !== undefined) university.location = String(body.location).trim().slice(0, 240);
+  if (body.logoUrl !== undefined) university.logoUrl = String(body.logoUrl).trim().slice(0, 1000);
+  if (body.website !== undefined) university.website = String(body.website).trim().slice(0, 1000);
+  if (body.description !== undefined) university.description = String(body.description).trim().slice(0, 4000);
+  if (university.logoUrl) {
+    customUniStore.logos[university.id] = university.logoUrl;
+    customUniStore.logos[university.name] = university.logoUrl;
+  }
+  persistCustomUniStore();
+  recordAuditLog({
+    actorId: actor.id, actorEmail: actor.email, actorRole: actor.role,
+    action: 'INSTITUTION_UNIVERSITY_PROFILE_UPDATED', targetType: 'UNIVERSITY',
+    targetId: university.id, details: 'Updated scoped university profile: ' + university.name,
+  });
+  return res.json({ success: true, university });
+});
+
+app.post('/api/institution/departments', requireInstitutionAdmin, (req: AdminRequest, res) => {
+  const actor = req.adminUser!;
+  if (actor.role !== 'UNIVERSITY_ADMIN') {
+    return res.status(403).json({ error: 'Only a University Admin can create departments.' });
+  }
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  if (!name || name.length > 160) return res.status(400).json({ error: 'A department name of 1–160 characters is required.' });
+  const university = institutionUniversity(actor);
+  if ((customUniStore.customDepartments || []).some((item) =>
+    sameInstitution(item.university, university) && sameInstitution(item.name, name)
+  )) return res.status(409).json({ error: 'This department already exists in your university.' });
+  const id = 'dept-' + encodeURIComponent((university + '-' + name).toLowerCase().replace(/[^a-z0-9]/g, '-'));
+  if (!Array.isArray(customUniStore.customDepartments)) customUniStore.customDepartments = [];
+  const department: CustomDepartmentItem = {
+    id, name, university,
+    group: typeof req.body?.group === 'string' ? req.body.group.trim().slice(0, 120) : 'General',
+    faculty: typeof req.body?.faculty === 'string' ? req.body.faculty.trim().slice(0, 160) : '',
+    status: 'Active',
+    description: typeof req.body?.description === 'string' ? req.body.description.trim().slice(0, 4000) : '',
+    logoUrl: '',
+    updatedAt: new Date().toISOString(),
+  };
+  customUniStore.customDepartments.push(department);
+  const uniRecord = (customUniStore.customUniversities || []).find((item) => sameInstitution(item.name, university));
+  if (uniRecord && !uniRecord.departments.some((item) => sameInstitution(item, name))) uniRecord.departments.push(name);
+  if (!Array.isArray(customUniStore.departments[university])) customUniStore.departments[university] = [];
+  if (!customUniStore.departments[university].some((item) => sameInstitution(item, name))) customUniStore.departments[university].push(name);
+  persistCustomUniStore();
+  recordAuditLog({
+    actorId: actor.id, actorEmail: actor.email, actorRole: actor.role,
+    action: 'INSTITUTION_DEPARTMENT_CREATED', targetType: 'DEPARTMENT', targetId: id,
+    details: 'Created department ' + name + ' under ' + university,
+  });
+  return res.status(201).json({ success: true, department });
+});
+
+app.put('/api/institution/departments/:id', requireInstitutionAdmin, (req: AdminRequest, res) => {
+  const actor = req.adminUser!;
+  const id = String(req.params.id || '').trim();
+  let department = (customUniStore.customDepartments || []).find((item) => item.id === id);
+  if (!department) {
+    const catalogName = scopedDepartmentNames(actor).find((name) =>
+      ('dept-' + encodeURIComponent((institutionUniversity(actor) + '-' + name).toLowerCase().replace(/[^a-z0-9]/g, '-'))) === id
+    );
+    if (catalogName && (actor.role === 'UNIVERSITY_ADMIN' ||
+        (actor.role === 'DEPARTMENT_ADMIN' && sameInstitution(catalogName, institutionDepartment(actor))))) {
+      department = {
+        id, name: catalogName, university: institutionUniversity(actor), group: 'General',
+        status: 'Active', updatedAt: new Date().toISOString(),
+      };
+      if (!Array.isArray(customUniStore.customDepartments)) customUniStore.customDepartments = [];
+      customUniStore.customDepartments.push(department);
+    }
+  }
+  if (!department) return res.status(404).json({ error: 'Department not found in the institution catalogue.' });
+  if (!canManageScopedDepartment(actor, department)) {
+    return res.status(403).json({ error: 'This department is outside your assigned scope.' });
+  }
+  const body = req.body || {};
+  if (body.university !== undefined && !sameInstitution(body.university, institutionUniversity(actor))) {
+    return res.status(403).json({ error: 'Department university cannot be changed from this workspace.' });
+  }
+  if (body.name !== undefined && !sameInstitution(body.name, department.name)) {
+    return res.status(403).json({ error: 'Department identity cannot be renamed from this workspace.' });
+  }
+  if (body.group !== undefined) department.group = String(body.group).trim().slice(0, 120);
+  if (body.faculty !== undefined) department.faculty = String(body.faculty).trim().slice(0, 160);
+  if (body.status !== undefined) department.status = String(body.status).trim().slice(0, 40);
+  if (body.logoUrl !== undefined) department.logoUrl = String(body.logoUrl).trim().slice(0, 1000);
+  if (body.description !== undefined) department.description = String(body.description).trim().slice(0, 4000);
+  department.updatedAt = new Date().toISOString();
+  persistCustomUniStore();
+  recordAuditLog({
+    actorId: actor.id, actorEmail: actor.email, actorRole: actor.role,
+    action: 'INSTITUTION_DEPARTMENT_UPDATED', targetType: 'DEPARTMENT', targetId: id,
+    details: 'Updated scoped department ' + department.name + ' under ' + department.university,
+  });
+  return res.json({ success: true, department });
+});
+
+app.delete('/api/institution/departments/:id', requireInstitutionAdmin, (req: AdminRequest, res) => {
+  const actor = req.adminUser!;
+  if (actor.role !== 'UNIVERSITY_ADMIN') {
+    return res.status(403).json({ error: 'Only a University Admin can remove departments.' });
+  }
+  const id = String(req.params.id || '').trim();
+  let department = (customUniStore.customDepartments || []).find((item) => item.id === id);
+  if (!department) {
+    const catalogName = scopedDepartmentNames(actor).find((name) =>
+      ('dept-' + encodeURIComponent((institutionUniversity(actor) + '-' + name).toLowerCase().replace(/[^a-z0-9]/g, '-'))) === id
+    );
+    if (catalogName) department = { id, name: catalogName, university: institutionUniversity(actor), group: 'General' };
+  }
+  if (!department) return res.status(404).json({ error: 'Department not found in the institution catalogue.' });
+  if (!sameInstitution(department.university, institutionUniversity(actor))) {
+    return res.status(403).json({ error: 'This department is outside your university scope.' });
+  }
+  customUniStore.customDepartments = (customUniStore.customDepartments || []).filter((item) => item.id !== id);
+  customUniStore.departments[institutionUniversity(actor)] =
+    (customUniStore.departments[institutionUniversity(actor)] || []).filter((name) => !sameInstitution(name, department.name));
+  const uniRecord = (customUniStore.customUniversities || []).find((item) => sameInstitution(item.name, institutionUniversity(actor)));
+  if (uniRecord) uniRecord.departments = uniRecord.departments.filter((name) => !sameInstitution(name, department.name));
+  persistCustomUniStore();
+  recordAuditLog({
+    actorId: actor.id, actorEmail: actor.email, actorRole: actor.role,
+    action: 'INSTITUTION_DEPARTMENT_DELETED', targetType: 'DEPARTMENT', targetId: id,
+    details: 'Removed department ' + department.name + ' from ' + department.university,
+  });
+  return res.json({ success: true, departmentId: id });
+});
+
+app.get('/api/institution/admins', requireInstitutionAdmin, (req: AdminRequest, res) => {
+  const actor = req.adminUser!;
+  const university = institutionUniversity(actor);
+  const users = adminStore.users.filter((user) =>
+    isInstitutionAdminRole(user.role) &&
+    sameInstitution(user.assignedUniversity || user.university, university) &&
+    (actor.role === 'UNIVERSITY_ADMIN' ||
+      (user.role === 'DEPARTMENT_ADMIN' && sameInstitution(user.assignedDepartment || user.department, institutionDepartment(actor))))
+  ).map(scopedAdminUser);
+  const applications = (adminStore.adminApplications || []).filter((item) =>
+    item.type !== 'CO_ADMIN' &&
+    sameInstitution(item.university, university) &&
+    (actor.role === 'UNIVERSITY_ADMIN' ||
+      (item.type === 'DEPARTMENT_ADMIN' && sameInstitution(item.department, institutionDepartment(actor))))
+  ).map(publicApplication);
+  return res.json({ success: true, admins: users, applications });
+});
+
+// ------------------------------------------
 // PROTECTED ADMIN USER MANAGEMENT APIS
 // ------------------------------------------
 
@@ -1475,7 +1978,7 @@ app.get('/api/admin/users', requireAdminAuth, (req, res) => {
   }
 
   // Strip password hashes before returning
-  const sanitized = results.map(({ passwordHash, ...rest }) => rest);
+  const sanitized = results.map(({ passwordHash, firebaseUid, ...rest }) => rest);
   return res.json({ success: true, count: sanitized.length, users: sanitized });
 });
 
@@ -1484,6 +1987,12 @@ app.post('/api/admin/users', requireAdminAuth, (req: AdminRequest, res) => {
   const { name, email, role = 'USER', password, university, department, status = 'APPROVED' } = req.body || {};
   if (!name || !email) {
     return res.status(400).json({ error: 'Name and email are required.' });
+  }
+  if (!['USER', 'ADMIN', 'SUPER_ADMIN'].includes(role)) {
+    return res.status(400).json({ error: 'Only ordinary users and legacy central admin roles may be created here. Use the approval workflow for other admin roles.' });
+  }
+  if (role !== 'USER' && req.adminUser?.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Only Super Admin can provision central administrator accounts.' });
   }
   if (typeof password !== 'string' || password.length < 8) {
     return res.status(400).json({ error: 'A password of at least 8 characters is required.' });
@@ -1535,7 +2044,7 @@ app.get('/api/admin/users/:id', requireAdminAuth, (req, res) => {
   if (!user) {
     return res.status(404).json({ error: 'User not found.' });
   }
-  const { passwordHash, ...sanitized } = user;
+  const { passwordHash, firebaseUid, ...sanitized } = user;
   return res.json({ success: true, user: sanitized });
 });
 
@@ -1573,7 +2082,7 @@ app.put('/api/admin/users/:id', requireAdminAuth, (req: AdminRequest, res) => {
     details: `Updated dossier information for ${target.name}.`,
   });
 
-  const { passwordHash, ...sanitized } = target;
+  const { passwordHash, firebaseUid, ...sanitized } = target;
   return res.json({ success: true, user: sanitized });
 });
 
@@ -1599,6 +2108,10 @@ app.post('/api/admin/users/:id/role', requireSuperAdmin, (req: AdminRequest, res
   if (target.email.toLowerCase() === 'nahianalmubin2006@gmail.com' && role !== 'SUPER_ADMIN') {
     return res.status(400).json({ error: 'Root creator account role cannot be changed from SUPER_ADMIN.' });
   }
+  if (target.role === 'SUPER_ADMIN' && role !== 'SUPER_ADMIN') {
+    const activeSuperAdmins = adminStore.users.filter((user) => user.role === 'SUPER_ADMIN' && user.status === 'APPROVED').length;
+    if (activeSuperAdmins <= 1) return res.status(409).json({ error: 'The last active Super Admin cannot be demoted.' });
+  }
 
   const oldRole = target.role;
   const oldProfileType = target.profileType || 'Student';
@@ -1619,7 +2132,7 @@ app.post('/api/admin/users/:id/role', requireSuperAdmin, (req: AdminRequest, res
     details: `Changed account type of ${target.name} from ${oldProfileType}/${oldRole} to ${target.profileType || 'Student'}/${role}.`,
   });
 
-  const { passwordHash, ...sanitized } = target;
+  const { passwordHash, firebaseUid, ...sanitized } = target;
   return res.json({ success: true, user: sanitized });
 });
 
@@ -1638,6 +2151,13 @@ app.post('/api/admin/users/:id/status', requireAdminAuth, (req: AdminRequest, re
   if (target.role === 'SUPER_ADMIN' && req.adminUser?.role !== 'SUPER_ADMIN') {
     return res.status(403).json({ error: 'Cannot modify status of a Super Admin.' });
   }
+  if (['ADMIN', 'CO_ADMIN'].includes(target.role) && req.adminUser?.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Only Super Admin can modify a central administrator account.' });
+  }
+  if (target.role === 'SUPER_ADMIN' && status !== 'APPROVED') {
+    const activeSuperAdmins = adminStore.users.filter((user) => user.role === 'SUPER_ADMIN' && user.status === 'APPROVED').length;
+    if (activeSuperAdmins <= 1) return res.status(409).json({ error: 'The last active Super Admin cannot be suspended or deactivated.' });
+  }
 
   const oldStatus = target.status;
   target.status = status;
@@ -1654,7 +2174,7 @@ app.post('/api/admin/users/:id/status', requireAdminAuth, (req: AdminRequest, re
     details: `Status changed from ${oldStatus} to ${status}. Reason: ${reason || 'Administrative action'}`,
   });
 
-  const { passwordHash, ...sanitized } = target;
+  const { passwordHash, firebaseUid, ...sanitized } = target;
   return res.json({ success: true, user: sanitized });
 });
 
@@ -1672,8 +2192,8 @@ app.delete('/api/admin/users/:id', requireAdminAuth, (req: AdminRequest, res) =>
     return res.status(403).json({ error: 'Super Admin accounts cannot be deleted.' });
   }
 
-  if (target.role === 'ADMIN' && req.adminUser?.role !== 'SUPER_ADMIN') {
-    return res.status(403).json({ error: 'Only Super Admin can delete administrator accounts.' });
+  if (['ADMIN', 'CO_ADMIN'].includes(target.role) && req.adminUser?.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Only Super Admin can delete central administrator accounts.' });
   }
 
   const reason = (req.body && req.body.reason) || req.query.reason || 'Manual deletion by Admin';
@@ -1916,6 +2436,18 @@ setInterval(() => {
     }
   }
 }, 15 * 60 * 1000);
+
+// Return safe JSON errors for malformed or oversized API request bodies.
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (res.headersSent) return next(err);
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Request body is too large.' });
+  }
+  if (err instanceof SyntaxError && 'body' in err) {
+    return res.status(400).json({ error: 'Request body must be valid JSON.' });
+  }
+  return next(err);
+});
 
 // Setup Vite middleware in dev or static files in production
 async function startServer() {
