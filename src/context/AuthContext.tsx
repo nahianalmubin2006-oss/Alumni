@@ -17,6 +17,9 @@ import {
   serverTimestamp,
   collection,
   addDoc,
+  getDocs,
+  query,
+  where,
 } from 'firebase/firestore';
 import { auth, db, googleProvider, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, Role, UserStatus, ProfileType } from '../types';
@@ -337,16 +340,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfileData = async (data: Partial<UserProfile>) => {
     if (!currentUser || !userProfile) return;
+    const now = new Date().toISOString();
     const userDocRef = doc(db, 'users', currentUser.uid);
     const updated = {
       ...userProfile,
       ...data,
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     };
-    await updateDoc(userDocRef, {
-      ...data,
-      updatedAt: new Date().toISOString(),
-    });
+    // Update the canonical account profile first. Firestore rules prevent
+    // owners from changing role, approval, verification, or admin-assignment fields.
+    const safeUpdates = { ...data, updatedAt: now };
+    delete (safeUpdates as Partial<UserProfile>).id;
+    delete (safeUpdates as Partial<UserProfile>).uid;
+    delete (safeUpdates as Partial<UserProfile>).email;
+    delete (safeUpdates as Partial<UserProfile>).role;
+    delete (safeUpdates as Partial<UserProfile>).status;
+    delete (safeUpdates as Partial<UserProfile>).profileType;
+    delete (safeUpdates as Partial<UserProfile>).isVerifiedAlumni;
+    delete (safeUpdates as Partial<UserProfile>).assignedUniversity;
+    delete (safeUpdates as Partial<UserProfile>).assignedDepartment;
+    delete (safeUpdates as Partial<UserProfile>).createdAt;
+    await updateDoc(userDocRef, safeUpdates);
+
+    // Keep the user's linked public directory record in sync with editable profile fields.
+    // Legacy claimed records are located by userId rather than assuming doc ID == UID.
+    const directoryFields = [
+      'name', 'university', 'department', 'studentId', 'educationLevel',
+      'studentYear', 'expectedGraduation', 'graduationYear', 'jobRole',
+      'company', 'country', 'city', 'bio', 'photoUrl', 'linkedin',
+    ] as const;
+    const directoryUpdates: Record<string, unknown> = { updatedAt: now };
+    for (const field of directoryFields) {
+      if (data[field] !== undefined) directoryUpdates[field] = data[field];
+    }
+    try {
+      const [alumniSnap, studentSnap] = await Promise.all([
+        getDocs(query(collection(db, 'alumni'), where('userId', '==', currentUser.uid))),
+        getDocs(query(collection(db, 'students'), where('userId', '==', currentUser.uid))),
+      ]);
+      await Promise.all([
+        ...alumniSnap.docs.map((item) => updateDoc(doc(db, 'alumni', item.id), directoryUpdates).catch((error) => {
+          console.warn('Linked alumni record was not updated:', error);
+        })),
+        ...studentSnap.docs.map((item) => updateDoc(doc(db, 'students', item.id), directoryUpdates).catch((error) => {
+          console.warn('Linked student record was not updated:', error);
+        })),
+      ]);
+    } catch (error) {
+      // The account profile remains saved; a missing/legacy directory record must not undo it.
+      console.warn('Linked directory sync note:', error);
+    }
     setUserProfile(updated);
   };
 
