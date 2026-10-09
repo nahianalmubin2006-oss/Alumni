@@ -822,6 +822,7 @@ app.post('/api/admin/auth/firebase-login', async (req, res) => {
   let verifiedEmail = '';
   let verifiedUid = '';
   let verifiedName = '';
+  let emailVerified = false;
 
   try {
     const lookupResponse = await fetch(
@@ -842,9 +843,13 @@ app.post('/api/admin/auth/firebase-login', async (req, res) => {
     verifiedUid = String(firebaseUser.localId);
     verifiedEmail = String(firebaseUser.email || '').trim().toLowerCase();
     verifiedName = String(firebaseUser.displayName || '').trim();
+    emailVerified = firebaseUser.emailVerified === true;
 
     if (!verifiedEmail) {
       return res.status(403).json({ error: 'The Firebase account does not have an email identity.' });
+    }
+    if (!emailVerified) {
+      return res.status(403).json({ error: 'Verify the Firebase account email before using administrator sign-in.' });
     }
   } catch (error) {
     console.error('Firebase ID token verification failed:', error);
@@ -1189,8 +1194,8 @@ const handleUniversityLogoUpdate = (req: express.Request, res: express.Response)
   });
 };
 
-app.put('/api/admin/universities/:id/logo', handleUniversityLogoUpdate);
-app.put('/api/universities/:id/logo', handleUniversityLogoUpdate);
+app.put('/api/admin/universities/:id/logo', requireAdminAuth, handleUniversityLogoUpdate);
+app.put('/api/universities/:id/logo', requireAdminAuth, handleUniversityLogoUpdate);
 
 // PUT /api/admin/universities/:id and alias /api/universities/:id (Edit university details)
 const handleUniversityDetailsUpdate = (req: express.Request, res: express.Response) => {
@@ -1282,14 +1287,14 @@ const handleUniversityDetailsUpdate = (req: express.Request, res: express.Respon
   });
 };
 
-app.put('/api/admin/universities/:id', handleUniversityDetailsUpdate);
-app.put('/api/universities/:id', handleUniversityDetailsUpdate);
-app.post('/api/admin/universities', (req, res) => {
+app.put('/api/admin/universities/:id', requireAdminAuth, handleUniversityDetailsUpdate);
+app.put('/api/universities/:id', requireAdminAuth, handleUniversityDetailsUpdate);
+app.post('/api/admin/universities', requireAdminAuth, (req: AdminRequest, res) => {
   const uniId = req.body?.id || ('uni-' + encodeURIComponent(String(req.body?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '-')));
   req.params = { id: uniId };
   return handleUniversityDetailsUpdate(req, res);
 });
-app.post('/api/universities', (req, res) => {
+app.post('/api/universities', requireAdminAuth, (req: AdminRequest, res) => {
   const uniId = req.body?.id || ('uni-' + encodeURIComponent(String(req.body?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '-')));
   req.params = { id: uniId };
   return handleUniversityDetailsUpdate(req, res);
