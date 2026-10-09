@@ -834,6 +834,7 @@ app.post('/api/admin/applications/:id/review', requireAdminAuth, (req: AdminRequ
     };
     adminStore.users.push(newUser);
   }
+  application.passwordHash = undefined;
   application.status = decision;
   application.reviewedAt = new Date().toISOString();
   application.reviewedBy = req.adminUser!.id;
@@ -1105,7 +1106,7 @@ app.post('/api/admin/auth/firebase-login', async (req, res) => {
 });
 
 // Admin Logout (Session Invalidation)
-app.post('/api/admin/auth/logout', requireAdminAuth, (req: AdminRequest, res) => {
+app.post('/api/admin/auth/logout', requireAnyAdminAuth, (req: AdminRequest, res) => {
   const token = req.adminSession?.token;
   if (token) {
     activeAdminSessions.delete(token);
@@ -1587,6 +1588,12 @@ app.post('/api/admin/users', requireAdminAuth, (req: AdminRequest, res) => {
   if (!name || !email) {
     return res.status(400).json({ error: 'Name and email are required.' });
   }
+  if (!['USER', 'ADMIN', 'SUPER_ADMIN'].includes(role)) {
+    return res.status(400).json({ error: 'Only ordinary users and legacy central admin roles may be created here. Use the approval workflow for other admin roles.' });
+  }
+  if (role !== 'USER' && req.adminUser?.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Only Super Admin can provision central administrator accounts.' });
+  }
   if (typeof password !== 'string' || password.length < 8) {
     return res.status(400).json({ error: 'A password of at least 8 characters is required.' });
   }
@@ -1701,6 +1708,10 @@ app.post('/api/admin/users/:id/role', requireSuperAdmin, (req: AdminRequest, res
   if (target.email.toLowerCase() === 'nahianalmubin2006@gmail.com' && role !== 'SUPER_ADMIN') {
     return res.status(400).json({ error: 'Root creator account role cannot be changed from SUPER_ADMIN.' });
   }
+  if (target.role === 'SUPER_ADMIN' && role !== 'SUPER_ADMIN') {
+    const activeSuperAdmins = adminStore.users.filter((user) => user.role === 'SUPER_ADMIN' && user.status === 'APPROVED').length;
+    if (activeSuperAdmins <= 1) return res.status(409).json({ error: 'The last active Super Admin cannot be demoted.' });
+  }
 
   const oldRole = target.role;
   const oldProfileType = target.profileType || 'Student';
@@ -1740,6 +1751,13 @@ app.post('/api/admin/users/:id/status', requireAdminAuth, (req: AdminRequest, re
   if (target.role === 'SUPER_ADMIN' && req.adminUser?.role !== 'SUPER_ADMIN') {
     return res.status(403).json({ error: 'Cannot modify status of a Super Admin.' });
   }
+  if (['ADMIN', 'CO_ADMIN'].includes(target.role) && req.adminUser?.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Only Super Admin can modify a central administrator account.' });
+  }
+  if (target.role === 'SUPER_ADMIN' && status !== 'APPROVED') {
+    const activeSuperAdmins = adminStore.users.filter((user) => user.role === 'SUPER_ADMIN' && user.status === 'APPROVED').length;
+    if (activeSuperAdmins <= 1) return res.status(409).json({ error: 'The last active Super Admin cannot be suspended or deactivated.' });
+  }
 
   const oldStatus = target.status;
   target.status = status;
@@ -1774,8 +1792,8 @@ app.delete('/api/admin/users/:id', requireAdminAuth, (req: AdminRequest, res) =>
     return res.status(403).json({ error: 'Super Admin accounts cannot be deleted.' });
   }
 
-  if (target.role === 'ADMIN' && req.adminUser?.role !== 'SUPER_ADMIN') {
-    return res.status(403).json({ error: 'Only Super Admin can delete administrator accounts.' });
+  if (['ADMIN', 'CO_ADMIN'].includes(target.role) && req.adminUser?.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Only Super Admin can delete central administrator accounts.' });
   }
 
   const reason = (req.body && req.body.reason) || req.query.reason || 'Manual deletion by Admin';
