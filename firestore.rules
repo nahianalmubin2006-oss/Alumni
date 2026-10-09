@@ -306,13 +306,28 @@ service cloud.firestore {
           'proofUrl', 'notes', 'status', 'createdAt', 'updatedAt'
         ])
         && request.resource.data.requesterId == request.auth.uid
+        && request.resource.data.requesterEmail == request.auth.token.email
         && request.resource.data.status == 'PENDING'
         && request.resource.data.targetAlumniId is string
         && request.resource.data.targetAlumniId.size() > 0
         && request.resource.data.proofUrl is string
+        && request.resource.data.proofUrl.matches('https://.*')
         && request.resource.data.proofUrl.size() <= 2000
         && request.resource.data.notes is string
-        && request.resource.data.notes.size() <= 1000;
+        && request.resource.data.notes.size() <= 1000
+        && exists(/databases/$(database)/documents/alumni/$(request.resource.data.targetAlumniId))
+        && get(/databases/$(database)/documents/alumni/$(request.resource.data.targetAlumniId)).data.get('userId', '') == ''
+        && (
+          get(/databases/$(database)/documents/alumni/$(request.resource.data.targetAlumniId)).data.get('email', '') == request.auth.token.email
+          || (
+            request.resource.data.studentId is string
+            && request.resource.data.studentId.size() > 0
+            && get(/databases/$(database)/documents/alumni/$(request.resource.data.targetAlumniId)).data.get('studentId', '') == request.resource.data.studentId
+          )
+        )
+        && request.resource.data.university == get(/databases/$(database)/documents/alumni/$(request.resource.data.targetAlumniId)).data.university
+        && request.resource.data.department == get(/databases/$(database)/documents/alumni/$(request.resource.data.targetAlumniId)).data.department
+        && request.resource.data.studentId == get(/databases/$(database)/documents/alumni/$(request.resource.data.targetAlumniId)).data.get('studentId', '');
       allow update: if isSuperAdmin()
         && resource.data.status == 'PENDING'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
