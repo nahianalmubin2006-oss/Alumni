@@ -868,6 +868,7 @@ app.post('/api/admin/auth/login', (req, res) => {
     if (fs.existsSync(ADMIN_DB_PATH)) {
       const content = fs.readFileSync(ADMIN_DB_PATH, 'utf-8');
       adminStore = JSON.parse(content) as AdminStoreData;
+      if (!Array.isArray(adminStore.adminApplications)) adminStore.adminApplications = [];
     }
   } catch (e) {}
 
@@ -1026,7 +1027,8 @@ app.post('/api/admin/auth/firebase-login', async (req, res) => {
 
   try {
     if (fs.existsSync(ADMIN_DB_PATH)) {
-      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8'));
+      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8')) as AdminStoreData;
+      if (!Array.isArray(adminStore.adminApplications)) adminStore.adminApplications = [];
     }
   } catch (e) {}
 
@@ -1191,7 +1193,8 @@ app.post('/api/admin/auth/forgot-password', (req, res) => {
   // Reload adminStore to make sure we have freshest accounts
   try {
     if (fs.existsSync(ADMIN_DB_PATH)) {
-      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8'));
+      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8')) as AdminStoreData;
+      if (!Array.isArray(adminStore.adminApplications)) adminStore.adminApplications = [];
     }
   } catch (e) {}
 
@@ -1255,7 +1258,8 @@ app.post('/api/admin/auth/reset-password', (req, res) => {
 
   try {
     if (fs.existsSync(ADMIN_DB_PATH)) {
-      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8'));
+      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8')) as AdminStoreData;
+      if (!Array.isArray(adminStore.adminApplications)) adminStore.adminApplications = [];
     }
   } catch (e) {}
 
