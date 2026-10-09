@@ -149,7 +149,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
   // Role modification modal
   const [roleModalUser, setRoleModalUser] = useState<ServerUser | null>(null);
-  const [newSelectedRole, setNewSelectedRole] = useState<'USER' | 'ADMIN' | 'SUPER_ADMIN'>('USER');
+  const [newSelectedAccountType, setNewSelectedAccountType] = useState<'Student' | 'Alumni' | 'Admin' | 'Super Admin'>('Student');
 
   // Delete modal
   const [userToDelete, setUserToDelete] = useState<ServerUser | null>(null);
@@ -304,14 +304,16 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const handleUpdateRole = async () => {
     if (!roleModalUser) return;
     try {
+      const role = newSelectedAccountType === 'Admin' ? 'ADMIN' : newSelectedAccountType === 'Super Admin' ? 'SUPER_ADMIN' : 'USER';
+      const profileType = newSelectedAccountType === 'Super Admin' ? 'Admin' : newSelectedAccountType;
       const res = await apiFetch(`/api/admin/users/${roleModalUser.id}/role`, {
         method: 'POST',
-        body: JSON.stringify({ role: newSelectedRole }),
+        body: JSON.stringify({ role, profileType }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      showToast(`Role for ${roleModalUser.name} updated to ${newSelectedRole}`, 'success');
+      showToast(`${roleModalUser.name} is now ${newSelectedAccountType}`, 'success');
       setRoleModalUser(null);
       loadUsers();
       loadStats();
@@ -925,6 +927,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               >
                                 {u.role}
                               </span>
+                              <div className="text-[10px] text-slate-400 mt-1">{u.profileType || (u.role === 'USER' ? 'Student' : 'Admin')} profile</div>
                             </td>
                             <td className="py-3 px-4">
                               <span
@@ -985,7 +988,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 <button
                                   onClick={() => {
                                     setRoleModalUser(u);
-                                    setNewSelectedRole(u.role);
+                                    setNewSelectedAccountType(
+                                      u.role === 'SUPER_ADMIN' ? 'Super Admin' :
+                                      u.role === 'ADMIN' ? 'Admin' :
+                                      u.profileType === 'Alumni' ? 'Alumni' : 'Student'
+                                    );
                                   }}
                                   className="px-2 py-1 rounded bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-[11px] font-semibold transition"
                                 >
@@ -1516,26 +1523,26 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <h3 className="font-black text-white text-base">
-              Change Role: {roleModalUser.name}
+              Change Account Type: {roleModalUser.name}
             </h3>
             <p className="text-xs text-slate-400">
-              Select the new server-side role to grant this account.
+              Convert between Student and Alumni, or grant an administrative account type. Admin options are restricted to Super Admins.
             </p>
 
             <div className="space-y-2">
-              {(['USER', 'ADMIN', 'SUPER_ADMIN'] as const).map((r) => (
+              {(['Student', 'Alumni', 'Admin', 'Super Admin'] as const).map((accountType) => (
                 <button
-                  key={r}
+                  key={accountType}
                   type="button"
-                  onClick={() => setNewSelectedRole(r)}
+                  onClick={() => setNewSelectedAccountType(accountType)}
                   className={`w-full text-left p-3 rounded-xl border text-xs font-bold transition flex items-center justify-between ${
-                    newSelectedRole === r
+                    newSelectedAccountType === accountType
                       ? 'bg-blue-600/20 border-blue-500 text-blue-300'
                       : 'bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800'
                   }`}
                 >
-                  <span>{r}</span>
-                  {newSelectedRole === r && <span>✓</span>}
+                  <span>{accountType === 'Super Admin' ? 'Super Admin — full platform access' : accountType}</span>
+                  {newSelectedAccountType === accountType && <span>✓</span>}
                 </button>
               ))}
             </div>
@@ -1551,7 +1558,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 onClick={handleUpdateRole}
                 className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold"
               >
-                Save Role
+                Save Account Type
               </button>
             </div>
           </div>

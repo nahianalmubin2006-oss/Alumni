@@ -1517,9 +1517,15 @@ app.put('/api/admin/users/:id', requireAdminAuth, (req: AdminRequest, res) => {
 
 // POST /api/admin/users/:id/role - Role change (Super Admin only)
 app.post('/api/admin/users/:id/role', requireSuperAdmin, (req: AdminRequest, res) => {
-  const { role } = req.body || {};
+  const { role, profileType } = req.body || {};
   if (!role || !['USER', 'ADMIN', 'SUPER_ADMIN'].includes(role)) {
     return res.status(400).json({ error: 'Valid role (USER, ADMIN, SUPER_ADMIN) is required.' });
+  }
+  if (profileType !== undefined && !['Student', 'Alumni', 'Admin'].includes(profileType)) {
+    return res.status(400).json({ error: 'Profile type must be Student, Alumni, or Admin.' });
+  }
+  if (profileType && ((role === 'USER' && !['Student', 'Alumni'].includes(profileType)) || (role !== 'USER' && profileType !== 'Admin'))) {
+    return res.status(400).json({ error: 'Account type and permission role do not match.' });
   }
 
   const target = adminStore.users.find((u) => u.id === req.params.id);
@@ -1533,7 +1539,11 @@ app.post('/api/admin/users/:id/role', requireSuperAdmin, (req: AdminRequest, res
   }
 
   const oldRole = target.role;
+  const oldProfileType = target.profileType || 'Student';
   target.role = role as AdminRole;
+  if (profileType) target.profileType = profileType;
+  else if (role === 'USER' && !['Student', 'Alumni'].includes(target.profileType || '')) target.profileType = 'Student';
+  else if (role !== 'USER') target.profileType = 'Admin';
   target.updatedAt = new Date().toISOString();
   persistAdminStore();
 
@@ -1544,7 +1554,7 @@ app.post('/api/admin/users/:id/role', requireSuperAdmin, (req: AdminRequest, res
     action: 'ROLE_MODIFIED',
     targetType: 'USER',
     targetId: target.id,
-    details: `Changed role of ${target.name} from ${oldRole} to ${role}.`,
+    details: `Changed account type of ${target.name} from ${oldProfileType}/${oldRole} to ${target.profileType || 'Student'}/${role}.`,
   });
 
   const { passwordHash, ...sanitized } = target;
