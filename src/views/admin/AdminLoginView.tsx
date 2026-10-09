@@ -191,6 +191,9 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
           {auth.currentUser ? <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">Signed in as {auth.currentUser.email}</div> : <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Sign in to your normal Alumni account first, then return here.</div>}
           {successMessage && <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">{successMessage}</div>}
           {errorMessage && <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">{errorMessage}</div>}
+          <button type="button" onClick={() => { setPortalMode('central-login'); setMode('login'); }} className="mt-4 text-xs font-bold text-blue-300 hover:text-blue-200">
+            Already approved? Sign in with your existing Alumni account →
+          </button>
           <form onSubmit={handleInstitutionApplication} className="mt-5 space-y-4">
             <div><label className="block text-xs font-bold mb-1.5">Requested role</label><select value={institutionRole} onChange={e => setInstitutionRole(e.target.value as 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN')} className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm"><option value="UNIVERSITY_ADMIN">University Admin</option><option value="DEPARTMENT_ADMIN">Department Admin</option></select></div>
             <div><label className="block text-xs font-bold mb-1.5">University (exact name)</label><input value={institutionUniversity} onChange={e => setInstitutionUniversity(e.target.value)} required placeholder="e.g. University of Dhaka" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm" /></div>
