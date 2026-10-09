@@ -722,7 +722,7 @@ function requireSuperAdmin(req: AdminRequest, res: express.Response, next: expre
 // ------------------------------------------
 
 function publicApplication(application: AdminAccessApplication) {
-  const { passwordHash, ...safe } = application;
+  const { passwordHash, firebaseUid, ...safe } = application;
   return safe;
 }
 
