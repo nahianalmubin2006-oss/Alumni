@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { storage } from '../firebase';
 import { useAuth, SUPER_ADMIN_EMAIL } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { ALL_DIRECTORY_UNIVERSITIES, RAW_DEPARTMENT_CATALOG, getUniversityLogo, universityInitials } from '../data/initialData';
@@ -58,6 +60,22 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
   // Mode: 'signedOut', 'login', 'signupChoice', 'signupStudent', 'signupAlumni', 'edit', 'forgot'
   const [viewState, setViewState] = useState<'default' | 'login' | 'choice' | 'form' | 'edit' | 'forgot'>('default');
   const [profileType, setProfileType] = useState<ProfileType>('Student');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [defaultProfilePictures, setDefaultProfilePictures] = useState<Array<{ id: string; name: string; url: string }>>([]);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/profile-picture-defaults')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!cancelled && Array.isArray(data?.pictures)) {
+          setDefaultProfilePictures(data.pictures.filter((picture: any) => picture?.url));
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   // Profile sub-tabs: 'posts' | 'followed' | 'dossier'
   const [profileTab, setProfileTab] = useState<'posts' | 'followed' | 'dossier'>('posts');
@@ -120,6 +138,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
   const enterEditMode = () => {
     if (!userProfile) return;
     setName(userProfile.name || '');
+    setPhotoUrl(userProfile.photoUrl || '');
     const currentUni = userProfile.university || '';
     const currentDept = userProfile.department || '';
 
@@ -267,6 +286,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
     try {
       await updateProfileData({
         name,
+        photoUrl,
         university: finalUniversity,
         department: finalDepartment,
         studentId,
@@ -373,9 +393,9 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                 <div className="flex items-end gap-4">
                   <div className="relative">
                     <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white p-1 shadow-xl ring-4 ring-white border border-slate-200 overflow-hidden flex items-center justify-center font-black text-3xl text-blue-700 bg-gradient-to-tr from-blue-50 to-indigo-50">
-                      {userProfile.photoUrl ? (
+                      {(userProfile.photoUrl || defaultProfilePictures[0]?.url) ? (
                         <img
-                          src={userProfile.photoUrl}
+                          src={userProfile.photoUrl || defaultProfilePictures[0]?.url || ''}
                           alt={userProfile.name}
                           className="w-full h-full object-cover rounded-xl"
                         />
@@ -1605,6 +1625,66 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
             </div>
 
             <form onSubmit={handleSaveEdit} className="mt-6 grid sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white flex items-center justify-center text-xl font-black text-blue-700">
+                    {photoUrl || defaultProfilePictures[0]?.url ? <img src={photoUrl || defaultProfilePictures[0]?.url || ''} alt="Profile preview" className="h-full w-full object-cover" /> : (name.split(' ').map((part) => part[0]).join('').slice(0, 2) || 'U')}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-black text-slate-800">Profile picture</h3>
+                    <p className="text-xs text-slate-500 mt-1">Upload a JPG, PNG, WebP, or GIF up to 5 MB, or choose a platform default.</p>
+                    <label className="inline-flex mt-3 items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 cursor-pointer">
+                      <Camera className="w-3.5 h-3.5" /> {isUploadingPhoto ? 'Uploading…' : 'Upload picture'}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        disabled={isUploadingPhoto}
+                        onChange={async (event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = '';
+                          if (!file || !currentUser) return;
+                          if (!file.type.startsWith('image/')) { setErrorMsg('Please select an image file.'); return; }
+                          if (file.size > 5 * 1024 * 1024) { setErrorMsg('Profile pictures must be 5 MB or smaller.'); return; }
+                          setErrorMsg('');
+                          setIsUploadingPhoto(true);
+                          try {
+                            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                            const imageRef = ref(storage, `profile-photos/${currentUser.uid}/${Date.now()}-${safeName}`);
+                            await uploadBytes(imageRef, file, { contentType: file.type });
+                            setPhotoUrl(await getDownloadURL(imageRef));
+                            setSuccessMsg('Picture uploaded. Save your profile to apply it.');
+                          } catch (error: any) {
+                            setErrorMsg(error?.message || 'Could not upload the picture. Check Firebase Storage setup and rules.');
+                          } finally {
+                            setIsUploadingPhoto(false);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+                {defaultProfilePictures.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-xs font-bold text-slate-600 mb-2">Or choose a default picture</p>
+                    <div className="flex flex-wrap gap-3">
+                      {defaultProfilePictures.map((picture) => (
+                        <button
+                          key={picture.id}
+                          type="button"
+                          onClick={() => { setPhotoUrl(picture.url); setErrorMsg(''); }}
+                          className={`w-20 rounded-xl p-1.5 border text-center transition ${photoUrl === picture.url ? 'border-blue-500 bg-white ring-2 ring-blue-200' : 'border-slate-200 bg-white hover:border-blue-300'}`}
+                          title={`Use ${picture.name}`}
+                        >
+                          <img src={picture.url} alt={picture.name} className="w-16 h-16 object-cover rounded-lg mx-auto" />
+                          <span className="block text-[10px] font-bold text-slate-600 truncate mt-1">{picture.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {photoUrl && <button type="button" onClick={() => setPhotoUrl('')} className="mt-3 text-xs font-bold text-rose-600 hover:text-rose-700">Remove selected picture</button>}
+              </div>
               <div>
                 <label className="text-xs font-bold text-slate-600">Full Name *</label>
                 <input
