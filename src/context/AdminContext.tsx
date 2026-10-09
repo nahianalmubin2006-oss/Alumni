@@ -268,7 +268,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setAuthChecked(true);
   };
 
-  const isAuthenticated = !!adminUser && (adminUser.role === 'ADMIN' || adminUser.role === 'SUPER_ADMIN');
+  const isAuthenticated = !!adminUser && ['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN', 'UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(adminUser.role);
   const isSuperAdmin = isAuthenticated && adminUser?.role === 'SUPER_ADMIN';
   const isAdmin = isAuthenticated;
 
