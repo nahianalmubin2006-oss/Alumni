@@ -395,6 +395,7 @@ export interface AdminSettings {
   allowRegistrations: boolean;
   requireVerificationReview: boolean;
   allowAlumniBadges: boolean;
+  defaultProfilePictures?: Array<{ id: string; name: string; url: string }>;
   systemVersion: string;
   lastUpdated: string;
 }
@@ -467,6 +468,7 @@ function initDefaultAdminStore(): AdminStoreData {
       allowRegistrations: true,
       requireVerificationReview: true,
       allowAlumniBadges: true,
+      defaultProfilePictures: [],
       systemVersion: '2.5.0',
       lastUpdated: new Date().toISOString(),
     },
@@ -1747,6 +1749,14 @@ app.post('/api/admin/change-requests/:id/reject', requireAdminAuth, (req: AdminR
 // PROTECTED SETTINGS & AUDIT LOG APIS
 // ------------------------------------------
 
+// Public profile defaults contain only image labels and HTTPS URLs; no admin settings are exposed.
+app.get('/api/profile-picture-defaults', (_req, res) => {
+  const pictures = Array.isArray(adminStore.settings.defaultProfilePictures)
+    ? adminStore.settings.defaultProfilePictures
+    : [];
+  return res.json({ success: true, pictures });
+});
+
 // GET /api/admin/settings
 app.get('/api/admin/settings', requireAdminAuth, (_req, res) => {
   return res.json({ success: true, settings: adminStore.settings });
@@ -1755,9 +1765,34 @@ app.get('/api/admin/settings', requireAdminAuth, (_req, res) => {
 // POST /api/admin/settings (Super Admin only)
 app.post('/api/admin/settings', requireSuperAdmin, (req: AdminRequest, res) => {
   const updates = req.body || {};
+  const safeUpdates: Partial<AdminSettings> = { ...updates };
+
+  if (updates.defaultProfilePictures !== undefined) {
+    if (!Array.isArray(updates.defaultProfilePictures) || updates.defaultProfilePictures.length > 12) {
+      return res.status(400).json({ error: 'Default profile pictures must be a list of at most 12 images.' });
+    }
+
+    const validatedPictures: Array<{ id: string; name: string; url: string }> = [];
+    for (const picture of updates.defaultProfilePictures) {
+      if (!picture || typeof picture.id !== 'string' || picture.id.length > 100 ||
+          typeof picture.name !== 'string' || !picture.name.trim() || picture.name.trim().length > 50 ||
+          typeof picture.url !== 'string' || picture.url.length > 2048) {
+        return res.status(400).json({ error: 'Each default picture needs a name and a valid HTTPS image URL.' });
+      }
+      try {
+        const parsedUrl = new URL(picture.url);
+        if (parsedUrl.protocol !== 'https:') throw new Error('HTTPS required');
+      } catch {
+        return res.status(400).json({ error: 'Default picture URLs must use HTTPS.' });
+      }
+      validatedPictures.push({ id: picture.id, name: picture.name.trim(), url: picture.url });
+    }
+    safeUpdates.defaultProfilePictures = validatedPictures;
+  }
+
   adminStore.settings = {
     ...adminStore.settings,
-    ...updates,
+    ...safeUpdates,
     lastUpdated: new Date().toISOString(),
   };
   persistAdminStore();
