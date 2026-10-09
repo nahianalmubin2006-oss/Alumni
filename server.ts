@@ -552,7 +552,7 @@ interface CustomUniversityStore {
     id: string;
     name: string;
     shortName?: string;
-    type: 'Public' | 'Private' | 'International';
+    type?: 'Public' | 'Private' | 'International';
     location: string;
     logoUrl?: string;
     website?: string;
@@ -571,6 +571,15 @@ let customUniStore: CustomUniversityStore = (() => {
   } catch (e) {}
   return { logos: {}, departments: {}, customUniversities: [], customDepartments: [] };
 })();
+
+// Normalize older custom catalog files before any scoped route accesses them.
+if (!customUniStore.logos) customUniStore.logos = {};
+if (!customUniStore.departments) customUniStore.departments = {};
+if (!Array.isArray(customUniStore.customUniversities)) customUniStore.customUniversities = [];
+customUniStore.customUniversities.forEach((university) => {
+  if (!Array.isArray(university.departments)) university.departments = [];
+});
+if (!Array.isArray(customUniStore.customDepartments)) customUniStore.customDepartments = [];
 
 function persistCustomUniStore() {
   try {
@@ -1335,7 +1344,6 @@ const handleUniversityLogoUpdate = (req: express.Request, res: express.Response)
     customUniStore.customUniversities.push({
       id: key,
       name: universityName || key,
-      type: 'Public',
       location: '',
       logoUrl: trimmedLogo,
       departments: [],
@@ -1554,6 +1562,294 @@ app.put('/api/admin/departments/:id', requireAdminAuth, (req: AdminRequest, res)
     department: existing,
     message: 'Department details updated successfully.',
   });
+});
+
+// ------------------------------------------
+// INSTITUTION-SCOPED ADMIN WORKSPACE APIs
+// ------------------------------------------
+function normalizedScope(value: unknown): string {
+  return typeof value === 'string' ? value.trim().toLocaleLowerCase() : '';
+}
+
+function institutionUniversity(admin: AdminUser): string {
+  return String(admin.assignedUniversity || admin.university || '').trim();
+}
+
+function institutionDepartment(admin: AdminUser): string {
+  return String(admin.assignedDepartment || admin.department || '').trim();
+}
+
+function sameInstitution(left: unknown, right: unknown): boolean {
+  return normalizedScope(left) !== '' && normalizedScope(left) === normalizedScope(right);
+}
+
+function isInstitutionAdminRole(role: unknown): role is 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN' {
+  return role === 'UNIVERSITY_ADMIN' || role === 'DEPARTMENT_ADMIN';
+}
+
+function requireInstitutionAdmin(req: AdminRequest, res: express.Response, next: express.NextFunction) {
+  requireAnyAdminAuth(req, res, () => {
+    const admin = req.adminUser;
+    if (!admin || !isInstitutionAdminRole(admin.role)) {
+      return res.status(403).json({ error: 'Institution administrator authorization required.' });
+    }
+    if (!institutionUniversity(admin) ||
+        (admin.role === 'DEPARTMENT_ADMIN' && !institutionDepartment(admin))) {
+      return res.status(403).json({ error: 'This administrator has no complete institution assignment.' });
+    }
+    next();
+  });
+}
+
+function canManageScopedDepartment(admin: AdminUser, department: CustomDepartmentItem): boolean {
+  if (!sameInstitution(department.university, institutionUniversity(admin))) return false;
+  if (admin.role === 'UNIVERSITY_ADMIN') return true;
+  return admin.role === 'DEPARTMENT_ADMIN' && sameInstitution(department.name, institutionDepartment(admin));
+}
+
+function scopedDepartmentNames(admin: AdminUser): string[] {
+  const university = institutionUniversity(admin);
+  const fromRecords = (customUniStore.customDepartments || [])
+    .filter((item) => sameInstitution(item.university, university))
+    .map((item) => item.name);
+  const fromCatalog = (customUniStore.departments || {})[university] ||
+    (customUniStore.departments || {})[university.toLowerCase()] || [];
+  const names = Array.from(new Set([...fromRecords, ...fromCatalog].map((name) => String(name).trim()).filter(Boolean)));
+  if (admin.role === 'DEPARTMENT_ADMIN') {
+    const assigned = institutionDepartment(admin);
+    return assigned ? [names.find((name) => sameInstitution(name, assigned)) || assigned] : [];
+  }
+  return names;
+}
+
+function scopedAdminUser(admin: AdminUser) {
+  const { passwordHash, firebaseUid, ...safe } = admin;
+  return safe;
+}
+
+app.get('/api/institution/dashboard', requireInstitutionAdmin, (req: AdminRequest, res) => {
+  const actor = req.adminUser!;
+  const university = institutionUniversity(actor);
+  const departments = (customUniStore.customDepartments || []).filter((item) =>
+    sameInstitution(item.university, university) &&
+    (actor.role === 'UNIVERSITY_ADMIN' || sameInstitution(item.name, institutionDepartment(actor)))
+  );
+  const scopedUsers = adminStore.users.filter((user) =>
+    isInstitutionAdminRole(user.role) &&
+    sameInstitution(user.assignedUniversity || user.university, university) &&
+    (actor.role === 'UNIVERSITY_ADMIN' ||
+      (user.role === 'DEPARTMENT_ADMIN' && sameInstitution(user.assignedDepartment || user.department, institutionDepartment(actor))))
+  );
+  const applications = (adminStore.adminApplications || []).filter((item) =>
+    item.type !== 'CO_ADMIN' &&
+    sameInstitution(item.university, university) &&
+    (actor.role === 'UNIVERSITY_ADMIN' ||
+      (item.type === 'DEPARTMENT_ADMIN' && sameInstitution(item.department, institutionDepartment(actor))))
+  );
+  return res.json({
+    success: true,
+    scope: { role: actor.role, university, department: actor.role === 'DEPARTMENT_ADMIN' ? institutionDepartment(actor) : null },
+    stats: {
+      departments: actor.role === 'DEPARTMENT_ADMIN' ? 1 : scopedDepartmentNames(actor).length,
+      activeAdmins: scopedUsers.filter((user) => user.status === 'APPROVED').length,
+      pendingApplications: applications.filter((item) => item.status === 'PENDING').length,
+    },
+    departments: departments.filter((item) => canManageScopedDepartment(actor, item)),
+  });
+});
+
+app.get('/api/institution/catalog', requireInstitutionAdmin, (req: AdminRequest, res) => {
+  const actor = req.adminUser!;
+  const universityName = institutionUniversity(actor);
+  const university = (customUniStore.customUniversities || []).find((item) =>
+    sameInstitution(item.name, universityName) || sameInstitution(item.id, universityName)
+  ) || null;
+  const allDepartments = (customUniStore.customDepartments || []).filter((item) =>
+    sameInstitution(item.university, universityName)
+  );
+  const visibleDepartments = actor.role === 'DEPARTMENT_ADMIN'
+    ? allDepartments.filter((item) => sameInstitution(item.name, institutionDepartment(actor)))
+    : allDepartments;
+  return res.json({
+    success: true,
+    scope: { role: actor.role, university: universityName, department: actor.role === 'DEPARTMENT_ADMIN' ? institutionDepartment(actor) : null },
+    university,
+    departments: visibleDepartments,
+    departmentNames: scopedDepartmentNames(actor),
+  });
+});
+
+app.put('/api/institution/university', requireInstitutionAdmin, (req: AdminRequest, res) => {
+  const actor = req.adminUser!;
+  if (actor.role !== 'UNIVERSITY_ADMIN') {
+    return res.status(403).json({ error: 'Only a University Admin can edit university details.' });
+  }
+  const scopeName = institutionUniversity(actor);
+  const body = req.body || {};
+  if (body.name !== undefined && !sameInstitution(body.name, scopeName)) {
+    return res.status(403).json({ error: 'University name and scope cannot be changed from this workspace.' });
+  }
+  const key = String(body.id || 'uni-' + scopeName.toLowerCase().replace(/[^a-z0-9]/g, '-')).trim();
+  let university = (customUniStore.customUniversities || []).find((item) =>
+    sameInstitution(item.name, scopeName) || sameInstitution(item.id, key)
+  );
+  if (!university) {
+    university = {
+      id: key,
+      name: scopeName,
+      type: 'Public',
+      location: '',
+      departments: scopedDepartmentNames(actor),
+      createdAt: new Date().toISOString(),
+    };
+    if (!Array.isArray(customUniStore.customUniversities)) customUniStore.customUniversities = [];
+    customUniStore.customUniversities.push(university);
+  }
+  if (body.shortName !== undefined) university.shortName = String(body.shortName).trim().slice(0, 80);
+  if (body.location !== undefined) university.location = String(body.location).trim().slice(0, 240);
+  if (body.logoUrl !== undefined) university.logoUrl = String(body.logoUrl).trim().slice(0, 1000);
+  if (body.website !== undefined) university.website = String(body.website).trim().slice(0, 1000);
+  if (body.description !== undefined) university.description = String(body.description).trim().slice(0, 4000);
+  if (university.logoUrl) {
+    customUniStore.logos[university.id] = university.logoUrl;
+    customUniStore.logos[university.name] = university.logoUrl;
+  }
+  persistCustomUniStore();
+  recordAuditLog({
+    actorId: actor.id, actorEmail: actor.email, actorRole: actor.role,
+    action: 'INSTITUTION_UNIVERSITY_PROFILE_UPDATED', targetType: 'UNIVERSITY',
+    targetId: university.id, details: 'Updated scoped university profile: ' + university.name,
+  });
+  return res.json({ success: true, university });
+});
+
+app.post('/api/institution/departments', requireInstitutionAdmin, (req: AdminRequest, res) => {
+  const actor = req.adminUser!;
+  if (actor.role !== 'UNIVERSITY_ADMIN') {
+    return res.status(403).json({ error: 'Only a University Admin can create departments.' });
+  }
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  if (!name || name.length > 160) return res.status(400).json({ error: 'A department name of 1–160 characters is required.' });
+  const university = institutionUniversity(actor);
+  if ((customUniStore.customDepartments || []).some((item) =>
+    sameInstitution(item.university, university) && sameInstitution(item.name, name)
+  )) return res.status(409).json({ error: 'This department already exists in your university.' });
+  const id = 'dept-' + encodeURIComponent((university + '-' + name).toLowerCase().replace(/[^a-z0-9]/g, '-'));
+  if (!Array.isArray(customUniStore.customDepartments)) customUniStore.customDepartments = [];
+  const department: CustomDepartmentItem = {
+    id, name, university,
+    group: typeof req.body?.group === 'string' ? req.body.group.trim().slice(0, 120) : 'General',
+    faculty: typeof req.body?.faculty === 'string' ? req.body.faculty.trim().slice(0, 160) : '',
+    status: 'Active',
+    description: typeof req.body?.description === 'string' ? req.body.description.trim().slice(0, 4000) : '',
+    logoUrl: '',
+    updatedAt: new Date().toISOString(),
+  };
+  customUniStore.customDepartments.push(department);
+  const uniRecord = (customUniStore.customUniversities || []).find((item) => sameInstitution(item.name, university));
+  if (uniRecord && !uniRecord.departments.some((item) => sameInstitution(item, name))) uniRecord.departments.push(name);
+  if (!Array.isArray(customUniStore.departments[university])) customUniStore.departments[university] = [];
+  if (!customUniStore.departments[university].some((item) => sameInstitution(item, name))) customUniStore.departments[university].push(name);
+  persistCustomUniStore();
+  recordAuditLog({
+    actorId: actor.id, actorEmail: actor.email, actorRole: actor.role,
+    action: 'INSTITUTION_DEPARTMENT_CREATED', targetType: 'DEPARTMENT', targetId: id,
+    details: 'Created department ' + name + ' under ' + university,
+  });
+  return res.status(201).json({ success: true, department });
+});
+
+app.put('/api/institution/departments/:id', requireInstitutionAdmin, (req: AdminRequest, res) => {
+  const actor = req.adminUser!;
+  const id = String(req.params.id || '').trim();
+  let department = (customUniStore.customDepartments || []).find((item) => item.id === id);
+  if (!department) {
+    const catalogName = scopedDepartmentNames(actor).find((name) =>
+      ('dept-' + encodeURIComponent((institutionUniversity(actor) + '-' + name).toLowerCase().replace(/[^a-z0-9]/g, '-'))) === id
+    );
+    if (catalogName && (actor.role === 'UNIVERSITY_ADMIN' ||
+        (actor.role === 'DEPARTMENT_ADMIN' && sameInstitution(catalogName, institutionDepartment(actor))))) {
+      department = {
+        id, name: catalogName, university: institutionUniversity(actor), group: 'General',
+        status: 'Active', updatedAt: new Date().toISOString(),
+      };
+      if (!Array.isArray(customUniStore.customDepartments)) customUniStore.customDepartments = [];
+      customUniStore.customDepartments.push(department);
+    }
+  }
+  if (!department) return res.status(404).json({ error: 'Department not found in the institution catalogue.' });
+  if (!canManageScopedDepartment(actor, department)) {
+    return res.status(403).json({ error: 'This department is outside your assigned scope.' });
+  }
+  const body = req.body || {};
+  if (body.university !== undefined && !sameInstitution(body.university, institutionUniversity(actor))) {
+    return res.status(403).json({ error: 'Department university cannot be changed from this workspace.' });
+  }
+  if (body.name !== undefined && !sameInstitution(body.name, department.name)) {
+    return res.status(403).json({ error: 'Department identity cannot be renamed from this workspace.' });
+  }
+  if (body.group !== undefined) department.group = String(body.group).trim().slice(0, 120);
+  if (body.faculty !== undefined) department.faculty = String(body.faculty).trim().slice(0, 160);
+  if (body.status !== undefined) department.status = String(body.status).trim().slice(0, 40);
+  if (body.logoUrl !== undefined) department.logoUrl = String(body.logoUrl).trim().slice(0, 1000);
+  if (body.description !== undefined) department.description = String(body.description).trim().slice(0, 4000);
+  department.updatedAt = new Date().toISOString();
+  persistCustomUniStore();
+  recordAuditLog({
+    actorId: actor.id, actorEmail: actor.email, actorRole: actor.role,
+    action: 'INSTITUTION_DEPARTMENT_UPDATED', targetType: 'DEPARTMENT', targetId: id,
+    details: 'Updated scoped department ' + department.name + ' under ' + department.university,
+  });
+  return res.json({ success: true, department });
+});
+
+app.delete('/api/institution/departments/:id', requireInstitutionAdmin, (req: AdminRequest, res) => {
+  const actor = req.adminUser!;
+  if (actor.role !== 'UNIVERSITY_ADMIN') {
+    return res.status(403).json({ error: 'Only a University Admin can remove departments.' });
+  }
+  const id = String(req.params.id || '').trim();
+  let department = (customUniStore.customDepartments || []).find((item) => item.id === id);
+  if (!department) {
+    const catalogName = scopedDepartmentNames(actor).find((name) =>
+      ('dept-' + encodeURIComponent((institutionUniversity(actor) + '-' + name).toLowerCase().replace(/[^a-z0-9]/g, '-'))) === id
+    );
+    if (catalogName) department = { id, name: catalogName, university: institutionUniversity(actor), group: 'General' };
+  }
+  if (!department) return res.status(404).json({ error: 'Department not found in the institution catalogue.' });
+  if (!sameInstitution(department.university, institutionUniversity(actor))) {
+    return res.status(403).json({ error: 'This department is outside your university scope.' });
+  }
+  customUniStore.customDepartments = (customUniStore.customDepartments || []).filter((item) => item.id !== id);
+  customUniStore.departments[institutionUniversity(actor)] =
+    (customUniStore.departments[institutionUniversity(actor)] || []).filter((name) => !sameInstitution(name, department.name));
+  const uniRecord = (customUniStore.customUniversities || []).find((item) => sameInstitution(item.name, institutionUniversity(actor)));
+  if (uniRecord) uniRecord.departments = uniRecord.departments.filter((name) => !sameInstitution(name, department.name));
+  persistCustomUniStore();
+  recordAuditLog({
+    actorId: actor.id, actorEmail: actor.email, actorRole: actor.role,
+    action: 'INSTITUTION_DEPARTMENT_DELETED', targetType: 'DEPARTMENT', targetId: id,
+    details: 'Removed department ' + department.name + ' from ' + department.university,
+  });
+  return res.json({ success: true, departmentId: id });
+});
+
+app.get('/api/institution/admins', requireInstitutionAdmin, (req: AdminRequest, res) => {
+  const actor = req.adminUser!;
+  const university = institutionUniversity(actor);
+  const users = adminStore.users.filter((user) =>
+    isInstitutionAdminRole(user.role) &&
+    sameInstitution(user.assignedUniversity || user.university, university) &&
+    (actor.role === 'UNIVERSITY_ADMIN' ||
+      (user.role === 'DEPARTMENT_ADMIN' && sameInstitution(user.assignedDepartment || user.department, institutionDepartment(actor))))
+  ).map(scopedAdminUser);
+  const applications = (adminStore.adminApplications || []).filter((item) =>
+    item.type !== 'CO_ADMIN' &&
+    sameInstitution(item.university, university) &&
+    (actor.role === 'UNIVERSITY_ADMIN' ||
+      (item.type === 'DEPARTMENT_ADMIN' && sameInstitution(item.department, institutionDepartment(actor))))
+  ).map(publicApplication);
+  return res.json({ success: true, admins: users, applications });
 });
 
 // ------------------------------------------
