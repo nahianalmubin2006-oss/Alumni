@@ -90,6 +90,8 @@ test('institution admin requests are validated against the server catalog and de
   assert.match(server, /Selected university does not exist in the database/);
   assert.match(server, /Selected department does not exist or does not belong to the selected university/);
   assert.match(server, /A pending request for this role and institution scope already exists/);
+  assert.match(server, /catalog\.universities\.find\(\(u\) => u\.id === normalizedUniversityId\)/);
+  assert.match(server, /catalog\.departments\.find\(\(d\) => d\.id === normalizedDepartmentId && d\.universityId === validUni\.id\)/);
 });
 
 test('institution admin request history is bound to the authenticated Firebase identity', () => {
