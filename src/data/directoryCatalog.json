@@ -1,0 +1,2828 @@
+{
+  "universities": [
+    {
+      "id": "uni-university-of-dhaka",
+      "name": "University of Dhaka",
+      "type": "Public"
+    },
+    {
+      "id": "uni-university-of-rajshahi",
+      "name": "University of Rajshahi",
+      "type": "Public"
+    },
+    {
+      "id": "uni-bangladesh-agricultural-university",
+      "name": "Bangladesh Agricultural University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-bangladesh-university-of-engineering---technology",
+      "name": "Bangladesh University of Engineering & Technology",
+      "type": "Public"
+    },
+    {
+      "id": "uni-university-of-chittagong",
+      "name": "University of Chittagong",
+      "type": "Public"
+    },
+    {
+      "id": "uni-jahangirnagar-university",
+      "name": "Jahangirnagar University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-islamic-university--bangladesh",
+      "name": "Islamic University, Bangladesh",
+      "type": "Public"
+    },
+    {
+      "id": "uni-shahjalal-university-of-science---technology",
+      "name": "Shahjalal University of Science & Technology",
+      "type": "Public"
+    },
+    {
+      "id": "uni-khulna-university",
+      "name": "Khulna University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-national-university",
+      "name": "National University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-bangladesh-open-university",
+      "name": "Bangladesh Open University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-bangladesh-medical-university",
+      "name": "Bangladesh Medical University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-gazipur-agricultural-university",
+      "name": "Gazipur Agricultural University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-hajee-mohammad-danesh-science---technology-university",
+      "name": "Hajee Mohammad Danesh Science & Technology University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-mawlana-bhashani-science---technology-university",
+      "name": "Mawlana Bhashani Science & Technology University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-patuakhali-science-and-technology-university",
+      "name": "Patuakhali Science And Technology University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-sher-e-bangla-agricultural-university",
+      "name": "Sher-e-Bangla Agricultural University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-chittagong-university-of-engineering---technology",
+      "name": "Chittagong University of Engineering & Technology",
+      "type": "Public"
+    },
+    {
+      "id": "uni-rajshahi-university-of-engineering---technology",
+      "name": "Rajshahi University of Engineering & Technology",
+      "type": "Public"
+    },
+    {
+      "id": "uni-khulna-university-of-engineering---technology",
+      "name": "Khulna University of Engineering & Technology",
+      "type": "Public"
+    },
+    {
+      "id": "uni-dhaka-university-of-engineering---technology",
+      "name": "Dhaka University of Engineering & Technology",
+      "type": "Public"
+    },
+    {
+      "id": "uni-noakhali-science---technology-university",
+      "name": "Noakhali Science & Technology University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-jagannath-university",
+      "name": "Jagannath University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-comilla-university",
+      "name": "Comilla University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-jatiya-kabi-kazi-nazrul-islam-university",
+      "name": "Jatiya Kabi Kazi Nazrul Islam University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-chittagong-veterinary-and-animal-sciences-university",
+      "name": "Chittagong Veterinary and Animal Sciences University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-sylhet-agricultural-university",
+      "name": "Sylhet Agricultural University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-jashore-university-of-science---technology",
+      "name": "Jashore University of Science & Technology",
+      "type": "Public"
+    },
+    {
+      "id": "uni-pabna-university-of-science-and-technology",
+      "name": "Pabna University of Science and Technology",
+      "type": "Public"
+    },
+    {
+      "id": "uni-begum-rokeya-university--rangpur",
+      "name": "Begum Rokeya University, Rangpur",
+      "type": "Public"
+    },
+    {
+      "id": "uni-bangladesh-university-of-professionals",
+      "name": "Bangladesh University of Professionals",
+      "type": "Public"
+    },
+    {
+      "id": "uni-gopalganj-science---technology-university",
+      "name": "Gopalganj Science & Technology University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-bangladesh-university-of-textiles",
+      "name": "Bangladesh University of Textiles",
+      "type": "Public"
+    },
+    {
+      "id": "uni-university-of-barishal",
+      "name": "University of Barishal",
+      "type": "Public"
+    },
+    {
+      "id": "uni-rangamati-science-and-technology-university",
+      "name": "Rangamati Science and Technology University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-bangladesh-maritime-university",
+      "name": "Bangladesh Maritime University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-islamic-arabic-university",
+      "name": "Islamic Arabic University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-chittagong-medical-university",
+      "name": "Chittagong Medical University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-rajshahi-medical-university",
+      "name": "Rajshahi Medical University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-rabindra-university--bangladesh",
+      "name": "Rabindra University, Bangladesh",
+      "type": "Public"
+    },
+    {
+      "id": "uni-university-of-frontier-technology--bangladesh",
+      "name": "University of Frontier Technology, Bangladesh",
+      "type": "Public"
+    },
+    {
+      "id": "uni-netrokona-university",
+      "name": "Netrokona University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-khulna-agricultural-university",
+      "name": "Khulna Agricultural University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-jamalpur-science-and-technology-university",
+      "name": "Jamalpur Science and Technology University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-sylhet-medical-university",
+      "name": "Sylhet Medical University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-aviation-and-aerospace-university--bangladesh",
+      "name": "Aviation And Aerospace University, Bangladesh",
+      "type": "Public"
+    },
+    {
+      "id": "uni-chandpur-science-and-technology-university",
+      "name": "Chandpur Science and Technology University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-kishoreganj-university",
+      "name": "Kishoreganj University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-hobiganj-agricultural-university",
+      "name": "Hobiganj Agricultural University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-khulna-medical-university",
+      "name": "Khulna Medical University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-kurigram-agricultural-university",
+      "name": "Kurigram Agricultural University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-sunamganj-science-and-technology-university",
+      "name": "Sunamganj Science and Technology University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-pirojpur-science---technology-university",
+      "name": "Pirojpur Science & Technology University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-naogaon-university",
+      "name": "Naogaon University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-meherpur-university",
+      "name": "Meherpur University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-bogra-science-and-technology-university",
+      "name": "Bogra Science and Technology University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-dhaka-central-university",
+      "name": "Dhaka Central University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-thakurgaon-university",
+      "name": "Thakurgaon University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-shariatpur-agricultural-university",
+      "name": "Shariatpur Agricultural University",
+      "type": "Public"
+    },
+    {
+      "id": "uni-north-south-university",
+      "name": "North South University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-university-of-science---technology-chittagong",
+      "name": "University of Science & Technology Chittagong",
+      "type": "Private"
+    },
+    {
+      "id": "uni-independent-university--bangladesh",
+      "name": "Independent University, Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-central-women-s-university",
+      "name": "Central Women's University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-international-university-of-business-agriculture---technology",
+      "name": "International University of Business Agriculture & Technology",
+      "type": "Private"
+    },
+    {
+      "id": "uni-international-islamic-university-chittagong",
+      "name": "International Islamic University Chittagong",
+      "type": "Private"
+    },
+    {
+      "id": "uni-ahsanullah-university-of-science-and-technology",
+      "name": "Ahsanullah University of Science and Technology",
+      "type": "Private"
+    },
+    {
+      "id": "uni-american-international-university-bangladesh",
+      "name": "American International University-Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-east-west-university",
+      "name": "East West University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-university-of-asia-pacific",
+      "name": "University of Asia Pacific",
+      "type": "Private"
+    },
+    {
+      "id": "uni-gono-bishwabidyalay",
+      "name": "Gono Bishwabidyalay",
+      "type": "Private"
+    },
+    {
+      "id": "uni-the-people-s-university-of-bangladesh",
+      "name": "The People's University of Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-asian-university-of-bangladesh",
+      "name": "Asian University of Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-dhaka-international-university",
+      "name": "Dhaka International University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-manarat-international-university",
+      "name": "Manarat International University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-brac-university",
+      "name": "BRAC University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-bangladesh-university",
+      "name": "Bangladesh University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-leading-university",
+      "name": "Leading University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-bgc-trust-university-bangladesh",
+      "name": "BGC Trust University Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-sylhet-international-university",
+      "name": "Sylhet International University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-university-of-development-alternative",
+      "name": "University of Development Alternative",
+      "type": "Private"
+    },
+    {
+      "id": "uni-premier-university",
+      "name": "Premier University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-southeast-university",
+      "name": "Southeast University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-daffodil-international-university",
+      "name": "Daffodil International University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-stamford-university-bangladesh",
+      "name": "Stamford University Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-state-university-of-bangladesh",
+      "name": "State University of Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-city-university",
+      "name": "City University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-prime-university",
+      "name": "Prime University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-northern-university-bangladesh",
+      "name": "Northern University Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-southern-university-bangladesh",
+      "name": "Southern University Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-green-university-of-bangladesh",
+      "name": "Green University of Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-pundra-university-of-science---technology",
+      "name": "Pundra University of Science & Technology",
+      "type": "Private"
+    },
+    {
+      "id": "uni-world-university-of-bangladesh",
+      "name": "World University of Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-shanto-mariam-university-of-creative-technology",
+      "name": "Shanto-Mariam University of Creative Technology",
+      "type": "Private"
+    },
+    {
+      "id": "uni-the-millennium-university",
+      "name": "The Millennium University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-eastern-university",
+      "name": "Eastern University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-metropolitan-university",
+      "name": "Metropolitan University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-uttara-university",
+      "name": "Uttara University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-united-international-university",
+      "name": "United International University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-university-of-south-asia",
+      "name": "University of South Asia",
+      "type": "Private"
+    },
+    {
+      "id": "uni-victoria-university-of-bangladesh",
+      "name": "Victoria University of Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-bangladesh-university-of-business---technology",
+      "name": "Bangladesh University of Business & Technology",
+      "type": "Private"
+    },
+    {
+      "id": "uni-presidency-university",
+      "name": "Presidency University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-university-of-information-technology---sciences",
+      "name": "University of Information Technology & Sciences",
+      "type": "Private"
+    },
+    {
+      "id": "uni-primeasia-university",
+      "name": "Primeasia University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-royal-university-of-dhaka",
+      "name": "Royal University of Dhaka",
+      "type": "Private"
+    },
+    {
+      "id": "uni-university-of-liberal-arts-bangladesh",
+      "name": "University of Liberal Arts Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-atish-dipankar-university-of-science---technology",
+      "name": "Atish Dipankar University of Science & Technology",
+      "type": "Private"
+    },
+    {
+      "id": "uni-bangladesh-islami-university",
+      "name": "Bangladesh Islami University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-asa-university-bangladesh",
+      "name": "ASA University Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-east-delta-university",
+      "name": "East Delta University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-european-university-of-bangladesh",
+      "name": "European University of Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-varendra-university",
+      "name": "Varendra University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-hamdard-university-bangladesh",
+      "name": "Hamdard University Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-bgmea-university-of-fashion---technology",
+      "name": "BGMEA University of Fashion & Technology",
+      "type": "Private"
+    },
+    {
+      "id": "uni-north-east-university-bangladesh",
+      "name": "North East University Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-first-capital-university-of-bangladesh",
+      "name": "First Capital University of Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-ishakha-international-university--bangladesh",
+      "name": "Ishakha International University, Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-z-h-sikder-university-of-science---technology",
+      "name": "Z.H Sikder University of Science & Technology",
+      "type": "Private"
+    },
+    {
+      "id": "uni-exim-bank-agricultural-university--bangladesh",
+      "name": "Exim Bank Agricultural University, Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-north-western-university",
+      "name": "North Western University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-khwaja-yunus-ali-university",
+      "name": "Khwaja Yunus Ali University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-sonargaon-university",
+      "name": "Sonargaon University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-feni-university",
+      "name": "Feni University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-britannia-university",
+      "name": "Britannia University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-port-city-international-university",
+      "name": "Port City International University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-bangladesh-university-of-health-sciences",
+      "name": "Bangladesh University of Health Sciences",
+      "type": "Private"
+    },
+    {
+      "id": "uni-chittagong-independent-university",
+      "name": "Chittagong Independent University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-notre-dame-university-bangladesh",
+      "name": "Notre Dame University Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-times-university--bangladesh",
+      "name": "Times University, Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-north-bengal-international-university",
+      "name": "North Bengal International University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-fareast-international-university",
+      "name": "Fareast International University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-rajshahi-science---technology-university--natore",
+      "name": "Rajshahi Science & Technology University, Natore",
+      "type": "Private"
+    },
+    {
+      "id": "uni-brahmaputra-international-university",
+      "name": "Brahmaputra International University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-cox-s-bazar-international-university",
+      "name": "Cox's Bazar International University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-r--p--shaha-university",
+      "name": "R. P. Shaha University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-german-university-bangladesh",
+      "name": "German University Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-global-university-bangladesh",
+      "name": "Global University Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-ccn-university-of-science---technology",
+      "name": "CCN University of Science & Technology",
+      "type": "Private"
+    },
+    {
+      "id": "uni-bangladesh-army-university-of-science-and-technology--saidpur",
+      "name": "Bangladesh Army University of Science and Technology, Saidpur",
+      "type": "Private"
+    },
+    {
+      "id": "uni-bangladesh-army-university-of-engineering-and-technology--qadirabad",
+      "name": "Bangladesh Army University of Engineering and Technology, Qadirabad",
+      "type": "Private"
+    },
+    {
+      "id": "uni-bangladesh-army-international-university-of-science---technology--comilla",
+      "name": "Bangladesh Army International University of Science & Technology, Comilla",
+      "type": "Private"
+    },
+    {
+      "id": "uni-university-of-scholars",
+      "name": "University of Scholars",
+      "type": "Private"
+    },
+    {
+      "id": "uni-canadian-university-of-bangladesh",
+      "name": "Canadian University of Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-n-p-i-university-of-bangladesh",
+      "name": "N.P.I University of Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-northern-university-of-business---technology--khulna",
+      "name": "Northern University of Business & Technology, Khulna",
+      "type": "Private"
+    },
+    {
+      "id": "uni-rabindra-maitree-university--kushtia",
+      "name": "Rabindra Maitree University, Kushtia",
+      "type": "Private"
+    },
+    {
+      "id": "uni-university-of-creative-technology--chittagong",
+      "name": "University of Creative Technology, Chittagong",
+      "type": "Private"
+    },
+    {
+      "id": "uni-central-university-of-science-and-technology",
+      "name": "Central University of Science and Technology",
+      "type": "Private"
+    },
+    {
+      "id": "uni-tagore-university-of-creative-arts",
+      "name": "Tagore University of Creative Arts",
+      "type": "Private"
+    },
+    {
+      "id": "uni-university-of-global-village",
+      "name": "University of Global Village",
+      "type": "Private"
+    },
+    {
+      "id": "uni-rupayan-a-k-m-shamsuzzoha-university",
+      "name": "Rupayan A.K.M Shamsuzzoha University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-anwer-khan-modern-university",
+      "name": "Anwer Khan Modern University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-znrf-university-of-management-sciences",
+      "name": "ZNRF University of Management Sciences",
+      "type": "Private"
+    },
+    {
+      "id": "uni-ahsania-mission-university-of-science-and-technology",
+      "name": "Ahsania Mission University of Science and Technology",
+      "type": "Private"
+    },
+    {
+      "id": "uni-khulna-khan-bahadur-ahsanullah-university",
+      "name": "Khulna Khan Bahadur Ahsanullah University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-bandarban-university",
+      "name": "Bandarban University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-shah-makhdum-management-university--rajshahi",
+      "name": "Shah Makhdum Management University, Rajshahi",
+      "type": "Private"
+    },
+    {
+      "id": "uni-trust-university--barishal",
+      "name": "Trust University, Barishal",
+      "type": "Private"
+    },
+    {
+      "id": "uni-international-standard-university",
+      "name": "International Standard University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-university-of-brahmanbaria",
+      "name": "University of Brahmanbaria",
+      "type": "Private"
+    },
+    {
+      "id": "uni-university-of-skill-enrichment-and-technology",
+      "name": "University of Skill Enrichment and Technology",
+      "type": "Private"
+    },
+    {
+      "id": "uni-microland-university-of-science-and-technology",
+      "name": "Microland University of Science and Technology",
+      "type": "Private"
+    },
+    {
+      "id": "uni-r-t-m-al-kabir-technical-university",
+      "name": "R.T.M Al-Kabir Technical University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-dr--momtaz-begum-university-of-science-and-technology",
+      "name": "Dr. Momtaz Begum University of Science and Technology",
+      "type": "Private"
+    },
+    {
+      "id": "uni-chattogram-bgmea-university-of-fashion-and-technology",
+      "name": "Chattogram BGMEA University of Fashion and Technology",
+      "type": "Private"
+    },
+    {
+      "id": "uni-bangladesh-army-university-of-science-and-technology--khulna",
+      "name": "Bangladesh Army University of Science and Technology, Khulna",
+      "type": "Private"
+    },
+    {
+      "id": "uni-teesta-university--rangpur",
+      "name": "Teesta University, Rangpur",
+      "type": "Private"
+    },
+    {
+      "id": "uni-international-islami-university-of-science-and-technology-bangladesh",
+      "name": "International Islami University of Science and Technology Bangladesh",
+      "type": "Private"
+    },
+    {
+      "id": "uni-lalon-university-of-science-and-arts",
+      "name": "Lalon University of Science and Arts",
+      "type": "Private"
+    },
+    {
+      "id": "uni-justice-abu-zafar-siddiquie-science-and-technology-university--kushtia",
+      "name": "Justice Abu Zafar Siddiquie Science and Technology University, Kushtia",
+      "type": "Private"
+    },
+    {
+      "id": "uni-grameen-university",
+      "name": "Grameen University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-ibais-university",
+      "name": "IBAIS University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-the-university-of-comilla",
+      "name": "The University of Comilla",
+      "type": "Private"
+    },
+    {
+      "id": "uni-queens-university",
+      "name": "Queens University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-america-bangladesh-university",
+      "name": "America Bangladesh University",
+      "type": "Private"
+    },
+    {
+      "id": "uni-islamic-university-of-technology--iut---gazipur",
+      "name": "Islamic University of Technology (IUT), Gazipur",
+      "type": "International"
+    },
+    {
+      "id": "uni-asian-university-for-women",
+      "name": "Asian University for Women",
+      "type": "International"
+    },
+    {
+      "id": "uni-south-asian-university",
+      "name": "South Asian University",
+      "type": "International"
+    }
+  ],
+  "departments": [
+    {
+      "id": "dept-university-of-dhaka-bangla",
+      "name": "Bangla",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-english",
+      "name": "English",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-arabic",
+      "name": "Arabic",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-persian-language-and-literature",
+      "name": "Persian Language and Literature",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-urdu",
+      "name": "Urdu",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-sanskrit",
+      "name": "Sanskrit",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-pali-and-buddhist-studies",
+      "name": "Pali and Buddhist Studies",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-history",
+      "name": "History",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-philosophy",
+      "name": "Philosophy",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-islamic-studies",
+      "name": "Islamic Studies",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-islamic-history---culture",
+      "name": "Islamic History & Culture",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-information-science-and-library-management",
+      "name": "Information Science and Library Management",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-theatre-and-performance-studies",
+      "name": "Theatre and Performance Studies",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-linguistics",
+      "name": "Linguistics",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-music",
+      "name": "Music",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-world-religions-and-culture",
+      "name": "World Religions and Culture",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-dance",
+      "name": "Dance",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-physics",
+      "name": "Physics",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-mathematics",
+      "name": "Mathematics",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-chemistry",
+      "name": "Chemistry",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-statistics",
+      "name": "Statistics",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-theoretical-physics",
+      "name": "Theoretical Physics",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-biomedical-physics---technology",
+      "name": "Biomedical Physics & Technology",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-applied-mathematics",
+      "name": "Applied Mathematics",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-theoretical-and-computational-chemistry",
+      "name": "Theoretical and Computational Chemistry",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-law",
+      "name": "Law",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Law"
+    },
+    {
+      "id": "dept-university-of-dhaka-management",
+      "name": "Management",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Business"
+    },
+    {
+      "id": "dept-university-of-dhaka-accounting",
+      "name": "Accounting",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Business"
+    },
+    {
+      "id": "dept-university-of-dhaka-marketing",
+      "name": "Marketing",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Business"
+    },
+    {
+      "id": "dept-university-of-dhaka-finance",
+      "name": "Finance",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Business"
+    },
+    {
+      "id": "dept-university-of-dhaka-banking-and-insurance",
+      "name": "Banking and Insurance",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Business"
+    },
+    {
+      "id": "dept-university-of-dhaka-management-information-systems--mis-",
+      "name": "Management Information Systems (MIS)",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Business"
+    },
+    {
+      "id": "dept-university-of-dhaka-international-business",
+      "name": "International Business",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Business"
+    },
+    {
+      "id": "dept-university-of-dhaka-tourism-and-hospitality-management",
+      "name": "Tourism and Hospitality Management",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Business"
+    },
+    {
+      "id": "dept-university-of-dhaka-organization-strategy-and-leadership",
+      "name": "Organization Strategy and Leadership",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Business"
+    },
+    {
+      "id": "dept-university-of-dhaka-economics",
+      "name": "Economics",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-political-science",
+      "name": "Political Science",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-international-relations",
+      "name": "International Relations",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-sociology",
+      "name": "Sociology",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-mass-communication---journalism",
+      "name": "Mass Communication & Journalism",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-public-administration",
+      "name": "Public Administration",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-anthropology",
+      "name": "Anthropology",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-population-sciences",
+      "name": "Population Sciences",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-peace-and-conflict-studies",
+      "name": "Peace and Conflict Studies",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-women-and-gender-studies",
+      "name": "Women and Gender Studies",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-development-studies",
+      "name": "Development Studies",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-television--film-and-photography",
+      "name": "Television, Film and Photography",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-criminology",
+      "name": "Criminology",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-communication-disorders",
+      "name": "Communication Disorders",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-printing-and-publication-studies",
+      "name": "Printing and Publication Studies",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-japanese-studies",
+      "name": "Japanese Studies",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-soil--water---environment",
+      "name": "Soil, Water & Environment",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-botany",
+      "name": "Botany",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-public-health",
+      "name": "Public Health",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-zoology",
+      "name": "Zoology",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-biochemistry-and-molecular-biology",
+      "name": "Biochemistry and Molecular Biology",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-psychology",
+      "name": "Psychology",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-microbiology",
+      "name": "Microbiology",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-fisheries",
+      "name": "Fisheries",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-clinical-psychology",
+      "name": "Clinical Psychology",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-genetic-engineering-and-biotechnology",
+      "name": "Genetic Engineering and Biotechnology",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-educational-and-counselling-psychology",
+      "name": "Educational and Counselling Psychology",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-pharmaceutical-chemistry",
+      "name": "Pharmaceutical Chemistry",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Health"
+    },
+    {
+      "id": "dept-university-of-dhaka-clinical-pharmacy-and-pharmacology",
+      "name": "Clinical Pharmacy and Pharmacology",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Health"
+    },
+    {
+      "id": "dept-university-of-dhaka-pharmaceutical-technology",
+      "name": "Pharmaceutical Technology",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Health"
+    },
+    {
+      "id": "dept-university-of-dhaka-pharmacy",
+      "name": "Pharmacy",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Health"
+    },
+    {
+      "id": "dept-university-of-dhaka-geography---environment",
+      "name": "Geography & Environment",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-geology",
+      "name": "Geology",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-oceanography",
+      "name": "Oceanography",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-disaster-science-and-climate-resilience",
+      "name": "Disaster Science and Climate Resilience",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-meteorology",
+      "name": "Meteorology",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-dhaka-electrical-and-electronic-engineering",
+      "name": "Electrical and Electronic Engineering",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-university-of-dhaka-applied-chemistry---chemical-engineering",
+      "name": "Applied Chemistry & Chemical Engineering",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-university-of-dhaka-computer-science-and-engineering",
+      "name": "Computer Science and Engineering",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-university-of-dhaka-nuclear-engineering",
+      "name": "Nuclear Engineering",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-university-of-dhaka-robotics-and-mechatronics-engineering",
+      "name": "Robotics and Mechatronics Engineering",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-university-of-dhaka-drawing-and-painting",
+      "name": "Drawing and Painting",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-graphic-design",
+      "name": "Graphic Design",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-printmaking",
+      "name": "Printmaking",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-oriental-art",
+      "name": "Oriental Art",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-ceramic",
+      "name": "Ceramic",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-sculpture",
+      "name": "Sculpture",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-craft",
+      "name": "Craft",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-dhaka-art-history",
+      "name": "Art History",
+      "universityId": "uni-university-of-dhaka",
+      "universityName": "University of Dhaka",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-architecture",
+      "name": "Architecture",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-biomedical-engineering",
+      "name": "Biomedical Engineering",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-chemical-engineering",
+      "name": "Chemical Engineering",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-civil-engineering",
+      "name": "Civil Engineering",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-computer-science-and-engineering",
+      "name": "Computer Science and Engineering",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-electrical-and-electronic-engineering",
+      "name": "Electrical and Electronic Engineering",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-industrial-and-production-engineering",
+      "name": "Industrial and Production Engineering",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-materials-and-metallurgical-engineering",
+      "name": "Materials and Metallurgical Engineering",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-mechanical-engineering",
+      "name": "Mechanical Engineering",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-nanomaterials-and-ceramic-engineering",
+      "name": "Nanomaterials and Ceramic Engineering",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-naval-architecture-and-marine-engineering",
+      "name": "Naval Architecture and Marine Engineering",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-petroleum-and-mineral-resources-engineering",
+      "name": "Petroleum and Mineral Resources Engineering",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-urban-and-regional-planning",
+      "name": "Urban and Regional Planning",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-water-resources-engineering",
+      "name": "Water Resources Engineering",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-chemistry",
+      "name": "Chemistry",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Science"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-mathematics",
+      "name": "Mathematics",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Science"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-physics",
+      "name": "Physics",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Science"
+    },
+    {
+      "id": "dept-bangladesh-university-of-engineering---technology-humanities",
+      "name": "Humanities",
+      "universityId": "uni-bangladesh-university-of-engineering---technology",
+      "universityName": "Bangladesh University of Engineering & Technology",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-chemistry",
+      "name": "Chemistry",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Science"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-geography-and-environment",
+      "name": "Geography and Environment",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Science"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-mathematics",
+      "name": "Mathematics",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Science"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-physics",
+      "name": "Physics",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Science"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-statistics",
+      "name": "Statistics",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Science"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-oceanography",
+      "name": "Oceanography",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Science"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-biochemistry---molecular-biology",
+      "name": "Biochemistry & Molecular Biology",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Science"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-genetic-engineering---biotechnology",
+      "name": "Genetic Engineering & Biotechnology",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Science"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-forestry---environmental-sciences",
+      "name": "Forestry & Environmental Sciences",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Agriculture"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-architecture",
+      "name": "Architecture",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-chemical-engineering---polymer-sciences",
+      "name": "Chemical Engineering & Polymer Sciences",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-civil---environmental-engineering",
+      "name": "Civil & Environmental Engineering",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-computer-science---engineering",
+      "name": "Computer Science & Engineering",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-electrical---electronic-engineering",
+      "name": "Electrical & Electronic Engineering",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-industrial---production-engineering",
+      "name": "Industrial & Production Engineering",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-mechanical-engineering",
+      "name": "Mechanical Engineering",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-petroleum-and-mining-engineering",
+      "name": "Petroleum and Mining Engineering",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-software-engineering",
+      "name": "Software Engineering",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-food-engineering---tea-technology",
+      "name": "Food Engineering & Tea Technology",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-business-administration",
+      "name": "Business Administration",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Business"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-anthropology",
+      "name": "Anthropology",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-bangla",
+      "name": "Bangla",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-english",
+      "name": "English",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-political-studies",
+      "name": "Political Studies",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-public-administration",
+      "name": "Public Administration",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-social-work",
+      "name": "Social Work",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-sociology",
+      "name": "Sociology",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-iict-mit",
+      "name": "IICT-MIT",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-shahjalal-university-of-science---technology-iict-software-engineering",
+      "name": "IICT-Software Engineering",
+      "universityId": "uni-shahjalal-university-of-science---technology",
+      "universityName": "Shahjalal University of Science & Technology",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-jahangirnagar-university-international-relations",
+      "name": "International Relations",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-jahangirnagar-university-english",
+      "name": "English",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-jahangirnagar-university-history",
+      "name": "History",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-jahangirnagar-university-philosophy",
+      "name": "Philosophy",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-jahangirnagar-university-drama-and-dramatics",
+      "name": "Drama and Dramatics",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-jahangirnagar-university-archaeology",
+      "name": "Archaeology",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-jahangirnagar-university-bangla",
+      "name": "Bangla",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-jahangirnagar-university-journalism-and-media-studies",
+      "name": "Journalism and Media Studies",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-jahangirnagar-university-fine-art",
+      "name": "Fine Art",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-jahangirnagar-university-computer-science-and-engineering",
+      "name": "Computer Science and Engineering",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Science"
+    },
+    {
+      "id": "dept-jahangirnagar-university-mathematics",
+      "name": "Mathematics",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Science"
+    },
+    {
+      "id": "dept-jahangirnagar-university-physics",
+      "name": "Physics",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Science"
+    },
+    {
+      "id": "dept-jahangirnagar-university-environmental-sciences",
+      "name": "Environmental Sciences",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Science"
+    },
+    {
+      "id": "dept-jahangirnagar-university-statistics-and-data-science",
+      "name": "Statistics and Data Science",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Science"
+    },
+    {
+      "id": "dept-jahangirnagar-university-geological-sciences",
+      "name": "Geological Sciences",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Science"
+    },
+    {
+      "id": "dept-jahangirnagar-university-chemistry",
+      "name": "Chemistry",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Science"
+    },
+    {
+      "id": "dept-jahangirnagar-university-economics",
+      "name": "Economics",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-jahangirnagar-university-urban---regional-planning",
+      "name": "Urban & Regional Planning",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-jahangirnagar-university-anthropology",
+      "name": "Anthropology",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-jahangirnagar-university-geography---environment",
+      "name": "Geography & Environment",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-jahangirnagar-university-government---politics",
+      "name": "Government & Politics",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-jahangirnagar-university-public-administration",
+      "name": "Public Administration",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-jahangirnagar-university-botany",
+      "name": "Botany",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Science"
+    },
+    {
+      "id": "dept-jahangirnagar-university-biochemistry---molecular-biology",
+      "name": "Biochemistry & Molecular Biology",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Science"
+    },
+    {
+      "id": "dept-jahangirnagar-university-zoology",
+      "name": "Zoology",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Science"
+    },
+    {
+      "id": "dept-jahangirnagar-university-pharmacy",
+      "name": "Pharmacy",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Science"
+    },
+    {
+      "id": "dept-jahangirnagar-university-microbiology",
+      "name": "Microbiology",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Science"
+    },
+    {
+      "id": "dept-jahangirnagar-university-biotechnology---genetic-engineering",
+      "name": "Biotechnology & Genetic Engineering",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Science"
+    },
+    {
+      "id": "dept-jahangirnagar-university-public-health-and-informatics",
+      "name": "Public Health and Informatics",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Science"
+    },
+    {
+      "id": "dept-jahangirnagar-university-finance---banking",
+      "name": "Finance & Banking",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Business"
+    },
+    {
+      "id": "dept-jahangirnagar-university-marketing",
+      "name": "Marketing",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Business"
+    },
+    {
+      "id": "dept-jahangirnagar-university-accounting-and-information-systems",
+      "name": "Accounting and Information Systems",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Business"
+    },
+    {
+      "id": "dept-jahangirnagar-university-management-studies",
+      "name": "Management Studies",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Business"
+    },
+    {
+      "id": "dept-jahangirnagar-university-law---justice",
+      "name": "Law & Justice",
+      "universityId": "uni-jahangirnagar-university",
+      "universityName": "Jahangirnagar University",
+      "group": "Law"
+    },
+    {
+      "id": "dept-university-of-rajshahi-philosophy",
+      "name": "Philosophy",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-history",
+      "name": "History",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-english",
+      "name": "English",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-bangla",
+      "name": "Bangla",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-islamic-history---culture",
+      "name": "Islamic History & Culture",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-arabic",
+      "name": "Arabic",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-islamic-studies",
+      "name": "Islamic Studies",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-theatre",
+      "name": "Theatre",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-music",
+      "name": "Music",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-persian-language-and-literature",
+      "name": "Persian language and literature",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-sanskrit",
+      "name": "Sanskrit",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-urdu",
+      "name": "Urdu",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-law",
+      "name": "Law",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Law"
+    },
+    {
+      "id": "dept-university-of-rajshahi-law-and-land-administration",
+      "name": "Law and Land Administration",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Law"
+    },
+    {
+      "id": "dept-university-of-rajshahi-mathematics",
+      "name": "Mathematics",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-physics",
+      "name": "Physics",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-chemistry",
+      "name": "Chemistry",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-statistics-and-data-science",
+      "name": "Statistics and Data Science",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-biochemistry---molecular-biology",
+      "name": "Biochemistry & Molecular Biology",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-pharmacy",
+      "name": "Pharmacy",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-population-science---human-resource-development",
+      "name": "Population Science & Human Resource Development",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-applied-mathematics",
+      "name": "Applied Mathematics",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-physical-education-and-sports-sciences",
+      "name": "Physical Education and Sports Sciences",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-accounting-and-information-systems",
+      "name": "Accounting and Information Systems",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Business"
+    },
+    {
+      "id": "dept-university-of-rajshahi-management-studies",
+      "name": "Management Studies",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Business"
+    },
+    {
+      "id": "dept-university-of-rajshahi-marketing",
+      "name": "Marketing",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Business"
+    },
+    {
+      "id": "dept-university-of-rajshahi-finance",
+      "name": "Finance",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Business"
+    },
+    {
+      "id": "dept-university-of-rajshahi-banking-and-insurance",
+      "name": "Banking and Insurance",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Business"
+    },
+    {
+      "id": "dept-university-of-rajshahi-tourism-and-hospitality-management",
+      "name": "Tourism and Hospitality Management",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Business"
+    },
+    {
+      "id": "dept-university-of-rajshahi-economics",
+      "name": "Economics",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-political-science",
+      "name": "Political Science",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-social-work",
+      "name": "Social Work",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-sociology",
+      "name": "Sociology",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-mass-communication-and-journalism",
+      "name": "Mass Communication and Journalism",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-information-science---library-management",
+      "name": "Information Science & Library Management",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-public-administration",
+      "name": "Public Administration",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-anthropology",
+      "name": "Anthropology",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-folklore---social-development-studies",
+      "name": "Folklore & Social Development studies",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-international-relations",
+      "name": "International Relations",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-agronomy-and-agricultural-extension",
+      "name": "Agronomy and Agricultural Extension",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Agriculture"
+    },
+    {
+      "id": "dept-university-of-rajshahi-crop-science-and-technology",
+      "name": "Crop Science and Technology",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Agriculture"
+    },
+    {
+      "id": "dept-university-of-rajshahi-applied-chemistry---chemical-engineering",
+      "name": "Applied Chemistry & Chemical Engineering",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-university-of-rajshahi-computer-science---engineering",
+      "name": "Computer Science & Engineering",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-university-of-rajshahi-information---communication-engineering",
+      "name": "Information & Communication Engineering",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-university-of-rajshahi-materials-science-and-engineering",
+      "name": "Materials Science and Engineering",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-university-of-rajshahi-electrical-and-electronic-engineering",
+      "name": "Electrical and Electronic Engineering",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Engineering"
+    },
+    {
+      "id": "dept-university-of-rajshahi-painting--oriental-art---printmaking",
+      "name": "Painting, Oriental Art & Printmaking",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-ceramics-and-sculpture",
+      "name": "Ceramics and Sculpture",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-graphic-design--crafts-and-history-of-art",
+      "name": "Graphic Design, Crafts and History of Art",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-rajshahi-psychology",
+      "name": "Psychology",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-botany",
+      "name": "Botany",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-zoology",
+      "name": "Zoology",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-genetic-engineering---biotechnology",
+      "name": "Genetic Engineering & Biotechnology",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-clinical-psychology",
+      "name": "Clinical Psychology",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-microbiology",
+      "name": "Microbiology",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-geography---environmental-studies",
+      "name": "Geography & Environmental Studies",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-geology---mining",
+      "name": "Geology & Mining",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-rajshahi-fisheries",
+      "name": "Fisheries",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Agriculture"
+    },
+    {
+      "id": "dept-university-of-rajshahi-veterinary---animal-sciences",
+      "name": "Veterinary & Animal Sciences",
+      "universityId": "uni-university-of-rajshahi",
+      "universityName": "University of Rajshahi",
+      "group": "Agriculture"
+    },
+    {
+      "id": "dept-university-of-chittagong-arabic",
+      "name": "Arabic",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-chittagong-bangladesh-studies",
+      "name": "Bangladesh Studies",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-chittagong-bengali",
+      "name": "Bengali",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-chittagong-dramatics",
+      "name": "Dramatics",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-chittagong-english",
+      "name": "English",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-university-of-chittagong-pharmacy",
+      "name": "Pharmacy",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Health"
+    },
+    {
+      "id": "dept-university-of-chittagong-psychology",
+      "name": "Psychology",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Health"
+    },
+    {
+      "id": "dept-university-of-chittagong-soil-science",
+      "name": "Soil Science",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-zoology",
+      "name": "Zoology",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-accounting",
+      "name": "Accounting",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-banking---insurance",
+      "name": "Banking & Insurance",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-finance",
+      "name": "Finance",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-human-resource-management",
+      "name": "Human Resource Management",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-management",
+      "name": "Management",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-marketing",
+      "name": "Marketing",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-physical-education-and-sports-science",
+      "name": "Physical Education and Sports Science",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-computer-science---engineering",
+      "name": "Computer Science & Engineering",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-electrical-and-electronic-engineering",
+      "name": "Electrical and Electronic Engineering",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-applied-chemistry-and-chemical-engineering",
+      "name": "Applied Chemistry and Chemical Engineering",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-chemistry",
+      "name": "Chemistry",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-mathematics",
+      "name": "Mathematics",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-physics",
+      "name": "Physics",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-statistics",
+      "name": "Statistics",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-anthropology",
+      "name": "Anthropology",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-communication-and-journalism",
+      "name": "Communication and Journalism",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-criminology-and-police-science",
+      "name": "Criminology and Police Science",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-development-studies",
+      "name": "Development Studies",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-economics",
+      "name": "Economics",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-international-relations",
+      "name": "International Relations",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-political-science",
+      "name": "Political Science",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-public-administration",
+      "name": "Public Administration",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-sociology",
+      "name": "Sociology",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-law",
+      "name": "Law",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-botany",
+      "name": "Botany",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-geography-and-environmental-studies",
+      "name": "Geography and Environmental Studies",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-biochemistry-and-molecular-biology",
+      "name": "Biochemistry and Molecular Biology",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-microbiology",
+      "name": "Microbiology",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-genetic-engineering-and-biotechnology",
+      "name": "Genetic Engineering and Biotechnology",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-marine-sciences",
+      "name": "Marine Sciences",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-oceanography",
+      "name": "Oceanography",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-fisheries",
+      "name": "Fisheries",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-paediatrics",
+      "name": "Paediatrics",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-university-of-chittagong-community-ophthalmology",
+      "name": "Community Ophthalmology",
+      "universityId": "uni-university-of-chittagong",
+      "universityName": "University of Chittagong",
+      "group": "Science"
+    },
+    {
+      "id": "dept-brac-university-architecture",
+      "name": "Architecture",
+      "universityId": "uni-brac-university",
+      "universityName": "BRAC University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-brac-university-computer-science-and-engineering",
+      "name": "Computer Science and Engineering",
+      "universityId": "uni-brac-university",
+      "universityName": "BRAC University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-brac-university-economics-and-social-sciences",
+      "name": "Economics and Social Sciences",
+      "universityId": "uni-brac-university",
+      "universityName": "BRAC University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-brac-university-electrical-and-electronic-engineering",
+      "name": "Electrical and Electronic Engineering",
+      "universityId": "uni-brac-university",
+      "universityName": "BRAC University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-brac-university-english-and-humanities",
+      "name": "English and Humanities",
+      "universityId": "uni-brac-university",
+      "universityName": "BRAC University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-brac-university-mathematics---physical-sciences",
+      "name": "Mathematics & Physical Sciences",
+      "universityId": "uni-brac-university",
+      "universityName": "BRAC University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-brac-university-pharmacy",
+      "name": "Pharmacy",
+      "universityId": "uni-brac-university",
+      "universityName": "BRAC University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-brac-university-biotechnology",
+      "name": "Biotechnology",
+      "universityId": "uni-brac-university",
+      "universityName": "BRAC University",
+      "group": "Arts"
+    },
+    {
+      "id": "dept-brac-university-microbiology",
+      "name": "Microbiology",
+      "universityId": "uni-brac-university",
+      "universityName": "BRAC University",
+      "group": "Arts"
+    }
+  ]
+}

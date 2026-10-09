@@ -503,11 +503,15 @@ export interface AdminSettings {
 interface AdminAccessApplication {
   id: string;
   type: 'CO_ADMIN' | 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN';
+  requestedRole?: 'CO_ADMIN' | 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN';
   name: string;
   email: string;
   passwordHash?: string;
   firebaseUid?: string;
+  userId?: string;
+  universityId?: string;
   university?: string;
+  departmentId?: string | null;
   department?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt: string;
@@ -827,10 +831,190 @@ function requireSuperAdmin(req: AdminRequest, res: express.Response, next: expre
 // ADMIN ACCESS APPLICATIONS (Phases 2-4)
 // ------------------------------------------
 
+function normalizedScope(value: unknown): string {
+  return typeof value === 'string' ? value.trim().toLocaleLowerCase() : '';
+}
+
+function institutionUniversity(admin: AdminUser): string {
+  return String(admin.assignedUniversity || admin.university || '').trim();
+}
+
+function institutionDepartment(admin: AdminUser): string {
+  return String(admin.assignedDepartment || admin.department || '').trim();
+}
+
+function sameInstitution(left: unknown, right: unknown): boolean {
+  return normalizedScope(left) !== '' && normalizedScope(left) === normalizedScope(right);
+}
+
+function isInstitutionAdminRole(role: unknown): role is 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN' {
+  return role === 'UNIVERSITY_ADMIN' || role === 'DEPARTMENT_ADMIN';
+}
+
+function getFirebaseApiKey(): string {
+  if (process.env.FIREBASE_API_KEY && process.env.FIREBASE_API_KEY.trim()) {
+    return process.env.FIREBASE_API_KEY.trim();
+  }
+  try {
+    const configPath = path.resolve(__dirname, 'firebase-applet-config.json');
+    if (fs.existsSync(configPath)) {
+      const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      if (cfg.apiKey && typeof cfg.apiKey === 'string') {
+        return cfg.apiKey.trim();
+      }
+    }
+  } catch (e) {}
+  return '';
+}
+
+interface AuthoritativeUniversity {
+  id: string;
+  name: string;
+  type: string;
+  shortName?: string;
+}
+
+interface AuthoritativeDepartment {
+  id: string;
+  name: string;
+  universityId: string;
+  universityName: string;
+  group?: string;
+}
+
+function getAuthoritativeCatalog(): { universities: AuthoritativeUniversity[]; departments: AuthoritativeDepartment[] } {
+  let baseUnis: AuthoritativeUniversity[] = [];
+  let baseDepts: AuthoritativeDepartment[] = [];
+
+  try {
+    const catalogPath = path.resolve(__dirname, 'src/data/directoryCatalog.json');
+    if (fs.existsSync(catalogPath)) {
+      const raw = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+      baseUnis = raw.universities || [];
+      baseDepts = raw.departments || [];
+    }
+  } catch (e) {}
+
+  const uniMap = new Map<string, AuthoritativeUniversity>();
+  for (const u of baseUnis) {
+    uniMap.set(u.id, u);
+    uniMap.set(u.name.toLowerCase(), u);
+  }
+
+  // Merge custom universities
+  for (const cu of customUniStore.customUniversities || []) {
+    const uni: AuthoritativeUniversity = {
+      id: cu.id,
+      name: cu.name,
+      type: cu.type || 'Public',
+      shortName: cu.shortName || '',
+    };
+    uniMap.set(cu.id, uni);
+    uniMap.set(cu.name.toLowerCase(), uni);
+  }
+
+  const deptMap = new Map<string, AuthoritativeDepartment>();
+  for (const d of baseDepts) {
+    deptMap.set(d.id, d);
+  }
+
+  // Merge custom departments
+  for (const cd of customUniStore.customDepartments || []) {
+    const matchedUni = uniMap.get(cd.university.toLowerCase()) || Array.from(uniMap.values()).find((u) => sameInstitution(u.name, cd.university));
+    const uniId = matchedUni?.id || ('uni-' + encodeURIComponent(cd.university.toLowerCase().replace(/[^a-z0-9]/g, '-')));
+    const dept: AuthoritativeDepartment = {
+      id: cd.id,
+      name: cd.name,
+      universityId: uniId,
+      universityName: matchedUni?.name || cd.university,
+      group: cd.group || 'General',
+    };
+    deptMap.set(cd.id, dept);
+  }
+
+  // Merge custom departments from customUniStore.departments dictionary
+  if (customUniStore.departments) {
+    for (const [uniName, deptNames] of Object.entries(customUniStore.departments)) {
+      if (Array.isArray(deptNames)) {
+        const matchedUni = Array.from(uniMap.values()).find((u) => sameInstitution(u.name, uniName));
+        const uniId = matchedUni?.id || ('uni-' + encodeURIComponent(uniName.toLowerCase().replace(/[^a-z0-9]/g, '-')));
+        for (const name of deptNames) {
+          const deptId = 'dept-' + encodeURIComponent((uniName + '-' + name).toLowerCase().replace(/[^a-z0-9]/g, '-'));
+          if (!deptMap.has(deptId)) {
+            deptMap.set(deptId, {
+              id: deptId,
+              name,
+              universityId: uniId,
+              universityName: matchedUni?.name || uniName,
+              group: 'General',
+            });
+          }
+        }
+      }
+    }
+  }
+
+  const distinctUnis = Array.from(new Set(Array.from(uniMap.values()).map((u) => u.id)))
+    .map((id) => Array.from(uniMap.values()).find((u) => u.id === id)!)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const distinctDepts = Array.from(deptMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+  return {
+    universities: distinctUnis,
+    departments: distinctDepts,
+  };
+}
+
 function publicApplication(application: AdminAccessApplication) {
-  const { passwordHash, firebaseUid, ...safe } = application;
+  const { passwordHash, ...safe } = application;
   return safe;
 }
+
+// GET /api/admin/request-options - Dynamic database options for University & Department requests
+app.get('/api/admin/request-options', (_req, res) => {
+  const catalog = getAuthoritativeCatalog();
+  return res.json({
+    success: true,
+    universities: catalog.universities,
+    departments: catalog.departments,
+  });
+});
+
+// GET /api/admin/applications/my-requests - Returns the authenticated user's submitted requests
+app.get('/api/admin/applications/my-requests', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const idToken = (typeof req.query.idToken === 'string' ? req.query.idToken : null) ||
+    (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null);
+  if (!idToken) {
+    return res.status(401).json({ error: 'Authentication token required.' });
+  }
+
+  const firebaseApiKey = process.env.FIREBASE_API_KEY || getFirebaseApiKey();
+  if (!firebaseApiKey) return res.status(503).json({ error: 'Firebase authentication not configured.' });
+
+  try {
+    const resp = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(firebaseApiKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || !Array.isArray(data.users) || !data.users[0]?.localId) {
+      return res.status(401).json({ error: 'Invalid or expired authentication token.' });
+    }
+    const uid = data.users[0].localId;
+    const email = String(data.users[0].email || '').toLowerCase().trim();
+
+    const userRequests = (adminStore.adminApplications || []).filter(
+      (app) => app.userId === uid || app.firebaseUid === uid || app.email.toLowerCase() === email
+    ).map(publicApplication);
+
+    return res.json({ success: true, requests: userRequests });
+  } catch (err) {
+    return res.status(503).json({ error: 'Could not verify authentication.' });
+  }
+});
 
 // Public Co-admin application: PENDING only; it grants no role or session.
 app.post('/api/admin/applications/co-admin', (req, res) => {
@@ -850,8 +1034,13 @@ app.post('/api/admin/applications/co-admin', (req, res) => {
   }
   const application: AdminAccessApplication = {
     id: 'admin-app-' + crypto.randomBytes(12).toString('hex'),
-    type: 'CO_ADMIN', name: name.trim(), email: normalizedEmail,
-    passwordHash: hashPassword(password), status: 'PENDING', createdAt: new Date().toISOString(),
+    type: 'CO_ADMIN',
+    requestedRole: 'CO_ADMIN',
+    name: name.trim(),
+    email: normalizedEmail,
+    passwordHash: hashPassword(password),
+    status: 'PENDING',
+    createdAt: new Date().toISOString(),
   };
   adminStore.adminApplications!.unshift(application);
   persistAdminStore();
@@ -866,14 +1055,14 @@ app.post('/api/admin/applications/co-admin', (req, res) => {
 
 // Institution requests are bound to the verified identity of an existing Firebase account.
 app.post('/api/admin/applications/institution', async (req, res) => {
-  const { idToken, requestedRole, university, department } = req.body || {};
-  if (typeof idToken !== 'string' || !['UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(requestedRole) ||
-      typeof university !== 'string' || !university.trim() ||
-      (requestedRole === 'DEPARTMENT_ADMIN' && (typeof department !== 'string' || !department.trim()))) {
-    return res.status(400).json({ error: 'A Firebase ID token, university, and valid institution admin role/scope are required.' });
+  const { idToken, requestedRole, universityId, university, departmentId, department } = req.body || {};
+  if (typeof idToken !== 'string' || !['UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(requestedRole)) {
+    return res.status(400).json({ error: 'A valid Firebase ID token and institution admin role (UNIVERSITY_ADMIN or DEPARTMENT_ADMIN) are required.' });
   }
-  const firebaseApiKey = process.env.FIREBASE_API_KEY;
+
+  const firebaseApiKey = process.env.FIREBASE_API_KEY || getFirebaseApiKey();
   if (!firebaseApiKey) return res.status(503).json({ error: 'Firebase server authentication is not configured.' });
+
   let identity: any;
   try {
     const response = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + encodeURIComponent(firebaseApiKey), {
@@ -887,75 +1076,230 @@ app.post('/api/admin/applications/institution', async (req, res) => {
   } catch {
     return res.status(503).json({ error: 'Unable to verify Firebase identity right now.' });
   }
+
   const email = String(identity.email || '').trim().toLowerCase();
   const firebaseUid = String(identity.localId);
   if (!email || identity.emailVerified !== true) {
     return res.status(403).json({ error: 'Verify the email on your existing Alumni account before requesting admin access.' });
   }
-  if (adminStore.adminApplications!.some((item) => item.email === email && item.status === 'PENDING') ||
-      adminStore.users.some((user) => user.email.toLowerCase() === email && ['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN', 'UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role))) {
-    return res.status(409).json({ error: 'An administrator assignment or pending request already exists for this account.' });
+
+  // Validate University from actual database
+  const catalog = getAuthoritativeCatalog();
+  const validUni = catalog.universities.find((u) =>
+    (universityId && u.id === String(universityId).trim()) ||
+    (university && sameInstitution(u.name, university))
+  );
+
+  if (!validUni) {
+    return res.status(400).json({ error: 'Selected university does not exist in the database.' });
   }
+
+  // Validate Department if DEPARTMENT_ADMIN
+  let validDept: AuthoritativeDepartment | undefined;
+  if (requestedRole === 'DEPARTMENT_ADMIN') {
+    if (!departmentId && !department) {
+      return res.status(400).json({ error: 'Department selection is required for Department Admin requests.' });
+    }
+    validDept = catalog.departments.find((d) =>
+      ((departmentId && d.id === String(departmentId).trim()) || (department && sameInstitution(d.name, department))) &&
+      (d.universityId === validUni.id || sameInstitution(d.universityName, validUni.name))
+    );
+
+    if (!validDept) {
+      return res.status(400).json({ error: 'Selected department does not exist or does not belong to the selected university.' });
+    }
+  }
+
+  // Duplicate pending request check for same role and scope
+  const isDuplicatePending = (adminStore.adminApplications || []).some((item) => {
+    if (item.status !== 'PENDING') return false;
+    if (item.userId !== firebaseUid && item.email.toLowerCase() !== email) return false;
+    if (item.type !== requestedRole) return false;
+    if (item.universityId !== validUni.id && !sameInstitution(item.university, validUni.name)) return false;
+    if (requestedRole === 'DEPARTMENT_ADMIN') {
+      return (item.departmentId && item.departmentId === validDept?.id) || sameInstitution(item.department, validDept?.name);
+    }
+    return true;
+  });
+
+  if (isDuplicatePending) {
+    return res.status(409).json({ error: 'A pending request for this role and institution scope already exists.' });
+  }
+
+  // Check if user already holds this admin role and scope
+  const hasActiveAssignment = adminStore.users.some((user) => {
+    if (user.email.toLowerCase() !== email && user.firebaseUid !== firebaseUid) return false;
+    if (!['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN', 'UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)) return false;
+    if (user.status !== 'APPROVED') return false;
+    if (user.role === requestedRole && sameInstitution(user.assignedUniversity || user.university, validUni.name)) {
+      if (requestedRole === 'DEPARTMENT_ADMIN') {
+        return sameInstitution(user.assignedDepartment || user.department, validDept?.name);
+      }
+      return true;
+    }
+    return false;
+  });
+
+  if (hasActiveAssignment) {
+    return res.status(409).json({ error: 'An administrator assignment already exists for this scope on your account.' });
+  }
+
   const application: AdminAccessApplication = {
     id: 'admin-app-' + crypto.randomBytes(12).toString('hex'),
-    type: requestedRole, name: String(identity.displayName || email.split('@')[0]), email, firebaseUid,
-    university: university.trim(),
-    department: requestedRole === 'DEPARTMENT_ADMIN' ? String(department).trim() : undefined,
-    status: 'PENDING', createdAt: new Date().toISOString(),
+    userId: firebaseUid,
+    firebaseUid,
+    name: String(identity.displayName || email.split('@')[0]),
+    email,
+    type: requestedRole,
+    requestedRole,
+    universityId: validUni.id,
+    university: validUni.name,
+    departmentId: validDept ? validDept.id : null,
+    department: validDept ? validDept.name : undefined,
+    status: 'PENDING',
+    createdAt: new Date().toISOString(),
   };
+
   adminStore.adminApplications!.unshift(application);
   persistAdminStore();
+
   recordAuditLog({
-    actorId: firebaseUid, actorEmail: email, actorRole: 'USER',
-    action: 'INSTITUTION_ADMIN_APPLICATION_SUBMITTED', targetType: 'ADMIN_APPLICATION',
+    actorId: firebaseUid,
+    actorEmail: email,
+    actorRole: 'USER',
+    action: 'INSTITUTION_ADMIN_APPLICATION_SUBMITTED',
+    targetType: 'ADMIN_APPLICATION',
     targetId: application.id,
-    details: 'Requested ' + requestedRole + ' for ' + application.university + (application.department ? ' / ' + application.department : '') + '.',
+    details: `Requested ${requestedRole} for ${application.university} (${application.universityId})${application.department ? ' / ' + application.department + ' (' + application.departmentId + ')' : ''}.`,
     ip: getClientIp(req),
   });
-  return res.status(202).json({ success: true, status: 'PENDING', message: 'Request submitted for central admin review. Your Alumni account remains unchanged while pending.' });
+
+  return res.status(202).json({
+    success: true,
+    status: 'PENDING',
+    application: publicApplication(application),
+    message: 'Request submitted for administrator review. Your account remains unchanged while pending.',
+  });
 });
 
 app.get('/api/admin/applications', requireAdminAuth, (_req: AdminRequest, res) => {
   return res.json({ success: true, applications: adminStore.adminApplications!.map(publicApplication) });
 });
 
-app.post('/api/admin/applications/:id/review', requireAdminAuth, (req: AdminRequest, res) => {
+app.post('/api/admin/applications/:id/review', requireAnyAdminAuth, (req: AdminRequest, res) => {
   const { decision, reviewerNote } = req.body || {};
   if (!['APPROVED', 'REJECTED'].includes(decision)) return res.status(400).json({ error: 'Decision must be APPROVED or REJECTED.' });
   const application = adminStore.adminApplications!.find((item) => item.id === req.params.id);
   if (!application) return res.status(404).json({ error: 'Admin application not found.' });
   if (application.status !== 'PENDING') return res.status(409).json({ error: 'This application has already been reviewed.' });
-  if (application.type === 'CO_ADMIN' && req.adminUser?.role !== 'SUPER_ADMIN') {
-    return res.status(403).json({ error: 'Only a Super Admin may approve or reject a Co-admin application.' });
+
+  const reviewer = req.adminUser!;
+
+  // Reviewers cannot approve or reject their own requests
+  if (application.userId === reviewer.id || application.userId === reviewer.firebaseUid || application.email.toLowerCase() === reviewer.email.toLowerCase()) {
+    return res.status(403).json({ error: 'You cannot review your own administrator request.' });
   }
-  if (decision === 'APPROVED') {
-    if (adminStore.users.some((user) => user.email.toLowerCase() === application.email.toLowerCase())) {
-      return res.status(409).json({ error: 'An account with this email already exists. Resolve the account conflict before approving.' });
+
+  // Authorization checks per role
+  if (application.type === 'CO_ADMIN') {
+    if (reviewer.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Only a Super Admin may review Co-admin applications.' });
     }
-    const role = application.type;
-    const newUser: AdminUser = {
-      id: 'usr-' + crypto.randomBytes(12).toString('hex'),
-      email: application.email, passwordHash: application.passwordHash || '', name: application.name,
-      role, status: 'APPROVED', university: application.university || '', department: application.department || '',
-      assignedUniversity: application.university, assignedDepartment: application.department, firebaseUid: application.firebaseUid,
-      profileType: role === 'CO_ADMIN' ? 'Co-admin' : role === 'UNIVERSITY_ADMIN' ? 'University admin' : 'Department admin',
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    adminStore.users.push(newUser);
+  } else if (application.type === 'UNIVERSITY_ADMIN') {
+    if (reviewer.role !== 'SUPER_ADMIN' && reviewer.role !== 'CO_ADMIN') {
+      return res.status(403).json({ error: 'Only central administrators (Super Admin or Co-admin) may approve University Admin requests.' });
+    }
+  } else if (application.type === 'DEPARTMENT_ADMIN') {
+    if (reviewer.role === 'DEPARTMENT_ADMIN') {
+      return res.status(403).json({ error: 'Department Admins cannot approve administrator requests.' });
+    }
+    if (reviewer.role === 'UNIVERSITY_ADMIN') {
+      if (!sameInstitution(institutionUniversity(reviewer), application.university)) {
+        return res.status(403).json({ error: 'University Admins may only review requests for their assigned university.' });
+      }
+    }
   }
+
+  if (decision === 'APPROVED') {
+    const catalog = getAuthoritativeCatalog();
+    const validUni = catalog.universities.find((u) => u.id === application.universityId || sameInstitution(u.name, application.university));
+    if (!validUni) {
+      return res.status(404).json({ error: 'The requested university no longer exists.' });
+    }
+    let validDept: AuthoritativeDepartment | undefined;
+    if (application.type === 'DEPARTMENT_ADMIN') {
+      validDept = catalog.departments.find((d) =>
+        (d.id === application.departmentId || sameInstitution(d.name, application.department)) &&
+        (d.universityId === validUni.id || sameInstitution(d.universityName, validUni.name))
+      );
+      if (!validDept) {
+        return res.status(404).json({ error: 'The requested department no longer exists or does not belong to this university.' });
+      }
+    }
+
+    const role = application.type;
+    let existingUser = adminStore.users.find((user) =>
+      (application.userId && user.firebaseUid === application.userId) ||
+      user.email.toLowerCase() === application.email.toLowerCase()
+    );
+
+    if (existingUser) {
+      existingUser.role = role;
+      existingUser.status = 'APPROVED';
+      existingUser.university = validUni.name;
+      existingUser.assignedUniversity = validUni.name;
+      (existingUser as any).universityId = validUni.id;
+      existingUser.department = validDept ? validDept.name : '';
+      existingUser.assignedDepartment = validDept ? validDept.name : '';
+      (existingUser as any).departmentId = validDept ? validDept.id : '';
+      existingUser.profileType = role === 'CO_ADMIN' ? 'Co-admin' : role === 'UNIVERSITY_ADMIN' ? 'University admin' : 'Department admin';
+      existingUser.updatedAt = new Date().toISOString();
+    } else {
+      const newUser: AdminUser = {
+        id: 'usr-' + crypto.randomBytes(12).toString('hex'),
+        email: application.email,
+        passwordHash: application.passwordHash || '',
+        name: application.name,
+        role,
+        status: 'APPROVED',
+        university: validUni.name,
+        department: validDept ? validDept.name : '',
+        assignedUniversity: validUni.name,
+        assignedDepartment: validDept ? validDept.name : '',
+        firebaseUid: application.userId || application.firebaseUid,
+        profileType: role === 'CO_ADMIN' ? 'Co-admin' : role === 'UNIVERSITY_ADMIN' ? 'University admin' : 'Department admin',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      (newUser as any).universityId = validUni.id;
+      (newUser as any).departmentId = validDept ? validDept.id : '';
+      adminStore.users.push(newUser);
+    }
+  }
+
   application.passwordHash = undefined;
   application.status = decision;
   application.reviewedAt = new Date().toISOString();
-  application.reviewedBy = req.adminUser!.id;
+  application.reviewedBy = reviewer.id;
   application.reviewerNote = typeof reviewerNote === 'string' ? reviewerNote.trim().slice(0, 500) : '';
   persistAdminStore();
+
   recordAuditLog({
-    actorId: req.adminUser!.id, actorEmail: req.adminUser!.email, actorRole: req.adminUser!.role,
-    action: 'ADMIN_APPLICATION_' + decision, targetType: 'ADMIN_APPLICATION', targetId: application.id,
-    details: 'Reviewed ' + application.type + ' request for ' + application.email + ': ' + decision + '.',
+    actorId: reviewer.id,
+    actorEmail: reviewer.email,
+    actorRole: reviewer.role,
+    action: 'ADMIN_APPLICATION_' + decision,
+    targetType: 'ADMIN_APPLICATION',
+    targetId: application.id,
+    details: `Reviewed ${application.type} request for ${application.email} (${application.university || 'Platform'}${application.department ? ' / ' + application.department : ''}): ${decision}.${application.reviewerNote ? ' Reason: ' + application.reviewerNote : ''}`,
     ip: getClientIp(req),
   });
-  return res.json({ success: true, application: publicApplication(application), message: 'Application ' + decision.toLowerCase() + '.' });
+
+  return res.json({
+    success: true,
+    application: publicApplication(application),
+    message: 'Application ' + decision.toLowerCase() + '.',
+  });
 });
 
 // Admin Login
