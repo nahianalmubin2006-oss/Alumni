@@ -572,6 +572,12 @@ let customUniStore: CustomUniversityStore = (() => {
   return { logos: {}, departments: {}, customUniversities: [], customDepartments: [] };
 })();
 
+// Normalize older custom catalog files before any scoped route accesses them.
+if (!customUniStore.logos) customUniStore.logos = {};
+if (!customUniStore.departments) customUniStore.departments = {};
+if (!Array.isArray(customUniStore.customUniversities)) customUniStore.customUniversities = [];
+if (!Array.isArray(customUniStore.customDepartments)) customUniStore.customDepartments = [];
+
 function persistCustomUniStore() {
   try {
     fs.writeFileSync(CUSTOM_UNI_PATH, JSON.stringify(customUniStore, null, 2));
@@ -1752,7 +1758,21 @@ app.post('/api/institution/departments', requireInstitutionAdmin, (req: AdminReq
 app.put('/api/institution/departments/:id', requireInstitutionAdmin, (req: AdminRequest, res) => {
   const actor = req.adminUser!;
   const id = String(req.params.id || '').trim();
-  const department = (customUniStore.customDepartments || []).find((item) => item.id === id);
+  let department = (customUniStore.customDepartments || []).find((item) => item.id === id);
+  if (!department) {
+    const catalogName = scopedDepartmentNames(actor).find((name) =>
+      ('dept-' + encodeURIComponent((institutionUniversity(actor) + '-' + name).toLowerCase().replace(/[^a-z0-9]/g, '-'))) === id
+    );
+    if (catalogName && (actor.role === 'UNIVERSITY_ADMIN' ||
+        (actor.role === 'DEPARTMENT_ADMIN' && sameInstitution(catalogName, institutionDepartment(actor))))) {
+      department = {
+        id, name: catalogName, university: institutionUniversity(actor), group: 'General',
+        status: 'Active', updatedAt: new Date().toISOString(),
+      };
+      if (!Array.isArray(customUniStore.customDepartments)) customUniStore.customDepartments = [];
+      customUniStore.customDepartments.push(department);
+    }
+  }
   if (!department) return res.status(404).json({ error: 'Department not found in the institution catalogue.' });
   if (!canManageScopedDepartment(actor, department)) {
     return res.status(403).json({ error: 'This department is outside your assigned scope.' });
@@ -1785,7 +1805,13 @@ app.delete('/api/institution/departments/:id', requireInstitutionAdmin, (req: Ad
     return res.status(403).json({ error: 'Only a University Admin can remove departments.' });
   }
   const id = String(req.params.id || '').trim();
-  const department = (customUniStore.customDepartments || []).find((item) => item.id === id);
+  let department = (customUniStore.customDepartments || []).find((item) => item.id === id);
+  if (!department) {
+    const catalogName = scopedDepartmentNames(actor).find((name) =>
+      ('dept-' + encodeURIComponent((institutionUniversity(actor) + '-' + name).toLowerCase().replace(/[^a-z0-9]/g, '-'))) === id
+    );
+    if (catalogName) department = { id, name: catalogName, university: institutionUniversity(actor), group: 'General' };
+  }
   if (!department) return res.status(404).json({ error: 'Department not found in the institution catalogue.' });
   if (!sameInstitution(department.university, institutionUniversity(actor))) {
     return res.status(403).json({ error: 'This department is outside your university scope.' });
