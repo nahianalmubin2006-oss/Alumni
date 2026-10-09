@@ -211,31 +211,28 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     let exchangeError = '';
     try {
       const fbUserCred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
-      // Firebase sign-in proves identity only; the server decides whether this identity has an admin role.
-      if (fbUserCred.user) {
-        // Exchange with backend to obtain admin session
-        const exchangeRes = await fetch('/api/admin/auth/firebase-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            idToken: await fbUserCred.user.getIdToken(),
-          }),
-        });
+      const exchangeRes = await fetch('/api/admin/auth/firebase-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken: await fbUserCred.user.getIdToken(),
+        }),
+      });
+      const exchangeData = await exchangeRes.json().catch(() => ({}));
 
-        if (exchangeRes.ok) {
-          const exchangeData = await exchangeRes.json();
-          if (exchangeData.token && exchangeData.user) {
-            sessionStorage.setItem(TOKEN_STORAGE_KEY, exchangeData.token);
-            setAdminToken(exchangeData.token);
-            setAdminUser(exchangeData.user);
-            setAuthError(null);
-            setAuthChecked(true);
-            setLoading(false);
-          return exchangeData.user;
-        }
-
-        throw new Error('Firebase authentication succeeded, but the secure admin session could not be established. Please try again.');
+      if (!exchangeRes.ok) {
+        throw new Error(exchangeData.error || 'This account has no active administrator assignment.');
       }
+      if (exchangeData.token && exchangeData.user) {
+        sessionStorage.setItem(TOKEN_STORAGE_KEY, exchangeData.token);
+        setAdminToken(exchangeData.token);
+        setAdminUser(exchangeData.user);
+        setAuthError(null);
+        setAuthChecked(true);
+        setLoading(false);
+        return exchangeData.user;
+      }
+      throw new Error('Firebase authentication succeeded, but the secure admin session could not be established. Please try again.');
     } catch (fbErr: any) {
       console.warn('Firebase auth attempt error:', fbErr?.code || fbErr?.message);
       if (fbErr?.code && String(fbErr.code).startsWith('auth/')) {
