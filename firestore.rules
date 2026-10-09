@@ -362,6 +362,7 @@ service cloud.firestore {
           'university', 'department', 'studentId', 'graduationYear',
           'proofUrl', 'notes', 'status', 'createdAt', 'updatedAt'
         ])
+        && hasUserProfile()
         && request.resource.data.requesterId == request.auth.uid
         && request.resource.data.requesterEmail == request.auth.token.email
         && request.resource.data.status == 'PENDING'
@@ -377,9 +378,9 @@ service cloud.firestore {
         && (
           get(/databases/$(database)/documents/alumni/$(request.resource.data.targetAlumniId)).data.get('email', '') == request.auth.token.email
           || (
-            request.resource.data.studentId is string
-            && request.resource.data.studentId.size() > 0
-            && get(/databases/$(database)/documents/alumni/$(request.resource.data.targetAlumniId)).data.get('studentId', '') == request.resource.data.studentId
+            getUserData().get('studentId', '') is string
+            && getUserData().get('studentId', '') != ''
+            && getUserData().get('studentId', '') == get(/databases/$(database)/documents/alumni/$(request.resource.data.targetAlumniId)).data.get('studentId', '')
           )
         )
         && request.resource.data.university == get(/databases/$(database)/documents/alumni/$(request.resource.data.targetAlumniId)).data.university
