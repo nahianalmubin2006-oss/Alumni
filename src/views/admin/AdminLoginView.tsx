@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAdmin } from '../../context/AdminContext';
-import { Shield, Lock, Mail, ArrowLeft, AlertCircle, KeyRound, Building2, Users, GraduationCap } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowLeft, AlertCircle, KeyRound, Building2, Users } from 'lucide-react';
 import { auth } from '../../firebase';
 
 interface AdminLoginViewProps {
