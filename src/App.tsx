@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
-import { AdminProvider } from './context/AdminContext';
+import { AdminProvider, useAdmin } from './context/AdminContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 
@@ -25,6 +25,7 @@ import { CreatorView } from './views/CreatorView';
 // Dedicated Isolated Admin Views
 import { AdminLoginView } from './views/admin/AdminLoginView';
 import { AdminDashboardView } from './views/admin/AdminDashboardView';
+import { InstitutionAdminDashboardView } from './views/admin/InstitutionAdminDashboardView';
 
 function getInitialPageFromPath(): { page: string; params: Record<string, string> } {
   if (typeof window === 'undefined') return { page: 'home', params: {} };
@@ -46,6 +47,18 @@ function getInitialPageFromPath(): { page: string; params: Record<string, string
 
   return { page: 'home', params: {} };
 }
+
+const AdminDashboardRouter: React.FC<{
+  onNavigatePublic: () => void;
+  onLogoutSuccess: () => void;
+  onBack?: () => void;
+}> = (props) => {
+  const { adminUser } = useAdmin();
+  if (adminUser?.role === 'UNIVERSITY_ADMIN' || adminUser?.role === 'DEPARTMENT_ADMIN') {
+    return <InstitutionAdminDashboardView onNavigatePublic={props.onNavigatePublic} onLogoutSuccess={props.onLogoutSuccess} />;
+  }
+  return <AdminDashboardView {...props} />;
+};
 
 export default function App() {
   const initial = getInitialPageFromPath();
@@ -232,7 +245,7 @@ export default function App() {
       <AuthProvider>
         <DataProvider>
           <AdminProvider>
-            <AdminDashboardView
+            <AdminDashboardRouter
               onNavigatePublic={() => handleNavigate('home')}
               onLogoutSuccess={() => handleNavigate('admin-login')}
               onBack={handleBack}
