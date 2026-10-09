@@ -14,8 +14,10 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
   onLoginSuccess,
   onBack,
 }) => {
-  const { loginAdmin, sendAdminPasswordReset } = useAdmin();
+  const { loginAdmin, logoutAdmin, sendAdminPasswordReset } = useAdmin();
   const [portalMode, setPortalMode] = useState<'choice' | 'central-login' | 'co-admin-signup' | 'institution-request'>('choice');
+  const [selectedLoginRole, setSelectedLoginRole] = useState<'SUPER_ADMIN' | 'CO_ADMIN' | 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN'>('SUPER_ADMIN');
+  const roleLabels = { SUPER_ADMIN: 'Super Admin', CO_ADMIN: 'Co-admin', UNIVERSITY_ADMIN: 'University Admin', DEPARTMENT_ADMIN: 'Department Admin' };
   const [applicantName, setApplicantName] = useState('');
   const [institutionRole, setInstitutionRole] = useState<'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN'>('UNIVERSITY_ADMIN');
   const [institutionUniversity, setInstitutionUniversity] = useState('');
@@ -66,7 +68,11 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
     setLoading(true);
 
     try {
-      await loginAdmin(email.trim(), password);
+      const authenticatedUser = await loginAdmin(email.trim(), password);
+      if (authenticatedUser.role !== selectedLoginRole) {
+        await logoutAdmin();
+        throw new Error(`This account is assigned to ${roleLabels[authenticatedUser.role as keyof typeof roleLabels] || authenticatedUser.role}, not ${roleLabels[selectedLoginRole]}. Choose the matching admin login option.`);
+      }
       onLoginSuccess();
     } catch (err: any) {
       setErrorMessage(err.message || 'Authentication failed. Please verify credentials.');
@@ -138,21 +144,26 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
             <h1 className="text-3xl font-black">AlumniSphere Admin Portal</h1>
             <p className="text-sm text-slate-400 mt-2">Choose the administration path for your approved role.</p>
           </div>
-          <div className="grid md:grid-cols-2 gap-4">
-            <button onClick={() => { setPortalMode('central-login'); setMode('login'); }} className="text-left rounded-3xl border border-blue-500/30 bg-slate-900 p-6 hover:border-blue-400 transition">
-              <div className="w-11 h-11 rounded-xl bg-blue-500/15 text-blue-300 flex items-center justify-center mb-4"><Shield className="w-5 h-5" /></div>
-              <h2 className="text-lg font-extrabold">Central Admin</h2>
-              <p className="text-xs text-slate-400 mt-2 leading-relaxed">For Super Admin and approved Co-admin accounts. Co-admin applications require Super Admin approval.</p>
-              <span className="inline-block mt-5 text-xs font-bold text-blue-300">Continue to central login →</span>
-            </button>
-            <button onClick={() => setPortalMode('institution-request')} className="text-left rounded-3xl border border-slate-700 bg-slate-900 p-6 hover:border-blue-400 transition">
-              <div className="w-11 h-11 rounded-xl bg-emerald-500/15 text-emerald-300 flex items-center justify-center mb-4"><Building2 className="w-5 h-5" /></div>
-              <h2 className="text-lg font-extrabold">University & Department Admin</h2>
-              <p className="text-xs text-slate-400 mt-2 leading-relaxed">Request a scoped role using your existing, verified Alumni account. No duplicate account is created.</p>
-              <span className="inline-block mt-5 text-xs font-bold text-emerald-300">Request institution access →</span>
-            </button>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {([
+              { role: 'SUPER_ADMIN', title: 'Super Admin Login', detail: 'Full platform governance for trusted Super Admin accounts.', color: 'blue' },
+              { role: 'CO_ADMIN', title: 'Co-admin Login', detail: 'Central management access for accounts already approved by a Super Admin.', color: 'amber' },
+              { role: 'UNIVERSITY_ADMIN', title: 'University Admin Login', detail: 'Manage only your assigned university after approval.', color: 'emerald' },
+              { role: 'DEPARTMENT_ADMIN', title: 'Department Admin Login', detail: 'Manage only your assigned university department after approval.', color: 'violet' },
+            ] as const).map((item) => (
+              <button key={item.role} onClick={() => { setSelectedLoginRole(item.role); setPortalMode('central-login'); setMode('login'); setErrorMessage(''); setSuccessMessage(''); }} className="text-left rounded-3xl border border-slate-700 bg-slate-900 p-6 hover:border-blue-400 transition">
+                <div className="w-11 h-11 rounded-xl bg-blue-500/15 text-blue-300 flex items-center justify-center mb-4">{item.role === 'UNIVERSITY_ADMIN' || item.role === 'DEPARTMENT_ADMIN' ? <Building2 className="w-5 h-5" /> : item.role === 'CO_ADMIN' ? <Users className="w-5 h-5" /> : <Shield className="w-5 h-5" />}</div>
+                <h2 className="text-lg font-extrabold">{item.title}</h2>
+                <p className="text-xs text-slate-400 mt-2 leading-relaxed">{item.detail}</p>
+                <span className="inline-block mt-5 text-xs font-bold text-blue-300">Continue →</span>
+              </button>
+            ))}
           </div>
-          <button onClick={() => setPortalMode('co-admin-signup')} className="mt-4 w-full rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-left hover:border-blue-400 transition flex items-center gap-3">
+          <button onClick={() => setPortalMode('institution-request')} className="mt-4 w-full rounded-2xl border border-emerald-500/20 bg-slate-900/60 p-4 text-left hover:border-emerald-400 transition flex items-center gap-3">
+            <Building2 className="w-5 h-5 text-emerald-300" />
+            <span><strong className="block text-sm">Request University / Department Admin access</strong><span className="text-xs text-slate-400">New requests stay pending until an authorized administrator approves them.</span></span>
+          </button>
+          <button onClick={() => setPortalMode('co-admin-signup')} className="mt-3 w-full rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-left hover:border-blue-400 transition flex items-center gap-3">
             <Users className="w-5 h-5 text-amber-300" />
             <span><strong className="block text-sm">Apply to become a Co-admin</strong><span className="text-xs text-slate-400">Application only — access remains disabled until a Super Admin approves it.</span></span>
           </button>
@@ -191,7 +202,7 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
           {auth.currentUser ? <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">Signed in as {auth.currentUser.email}</div> : <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Sign in to your normal Alumni account first, then return here.</div>}
           {successMessage && <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">{successMessage}</div>}
           {errorMessage && <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">{errorMessage}</div>}
-          <button type="button" onClick={() => { setPortalMode('central-login'); setMode('login'); }} className="mt-4 text-xs font-bold text-blue-300 hover:text-blue-200">
+          <button type="button" onClick={() => { setSelectedLoginRole(institutionRole); setPortalMode('central-login'); setMode('login'); }} className="mt-4 text-xs font-bold text-blue-300 hover:text-blue-200">
             Already approved? Sign in with your existing Alumni account →
           </button>
           <form onSubmit={handleInstitutionApplication} className="mt-5 space-y-4">
@@ -210,12 +221,12 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
       <div className="max-w-md w-full mx-auto">
         {/* Top return link */}
         <button
-          onClick={() => (onBack ? onBack() : onNavigatePublic())}
+          onClick={() => setPortalMode('choice')}
           className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition mb-6 group cursor-pointer shadow-sm"
           title="Back to previous / upper page"
         >
           <ArrowLeft className="w-4 h-4 text-blue-400 group-hover:-translate-x-1 transition-transform" />
-          <span>← Back to Public Website</span>
+          <span>← Back to admin role options</span>
         </button>
 
         {/* Card */}
@@ -229,11 +240,11 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
               Security Access Control
             </div>
             <h1 className="text-2xl font-black tracking-tight text-white mt-1">
-              {mode === 'login' ? 'Admin Portal' : 'Admin Password Recovery'}
+              {mode === 'login' ? `${roleLabels[selectedLoginRole]} Login` : `${roleLabels[selectedLoginRole]} Password Recovery`}
             </h1>
             <p className="text-xs text-slate-400 mt-2 leading-relaxed">
               {mode === 'login'
-                ? 'Restricted management console. All access requests are cryptographically verified and recorded to the security audit trail.'
+                ? `Sign in with the account approved for the ${roleLabels[selectedLoginRole]} role. The server verifies your actual role and scope before granting access.`
                 : 'Enter your registered administrator email address to receive an official password recovery link.'}
             </p>
           </div>
