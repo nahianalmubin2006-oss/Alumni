@@ -39,6 +39,7 @@ service cloud.firestore {
     function isUniversityAdmin(uni) {
       return isSuperAdmin() || (
         hasUserProfile()
+        && request.auth.token.email_verified == true
         && getUserData().role == 'UNIVERSITY_ADMIN'
         && getUserData().assignedUniversity == uni
       );
@@ -47,6 +48,7 @@ service cloud.firestore {
     function isDepartmentAdmin(uni, dept) {
       return isSuperAdmin() || isUniversityAdmin(uni) || (
         hasUserProfile()
+        && request.auth.token.email_verified == true
         && getUserData().role == 'DEPARTMENT_ADMIN'
         && getUserData().assignedUniversity == uni
         && getUserData().assignedDepartment == dept
