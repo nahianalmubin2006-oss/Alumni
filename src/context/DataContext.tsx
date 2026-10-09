@@ -57,6 +57,7 @@ interface DataContextType {
   changeRequests: ChangeRequest[];
   verificationRequests: VerificationRequest[];
   profileClaims: ProfileClaimRequest[];
+  canReviewProfileClaims: boolean;
   submitProfileClaim: (claim: Omit<ProfileClaimRequest, 'id' | 'requesterId' | 'requesterName' | 'requesterEmail' | 'status' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   approveProfileClaim: (id: string, comment?: string) => Promise<void>;
   rejectProfileClaim: (id: string, comment?: string) => Promise<void>;
@@ -2209,6 +2210,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         changeRequests,
         verificationRequests,
         profileClaims,
+        canReviewProfileClaims: Boolean(currentUser && isSuperAdmin),
         submitProfileClaim,
         approveProfileClaim,
         rejectProfileClaim,
