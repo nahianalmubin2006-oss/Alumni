@@ -345,7 +345,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
     ? alumni.filter((record) => {
         const matchesEmail = Boolean(record.email && record.email.toLowerCase() === (currentUser.email || '').toLowerCase());
         const matchesStudentId = Boolean(record.studentId && userProfile.studentId && record.studentId.trim().toLowerCase() === userProfile.studentId.trim().toLowerCase());
-        return (matchesEmail || matchesStudentId) && (!record.userId || record.userId === currentUser.uid) && record.userId !== currentUser.uid;
+        return (matchesEmail || matchesStudentId) && (!record.userId || record.userId === currentUser.uid) && record.userId !== currentUser.uid && record.id !== currentUser.uid;
       })
     : [];
 
@@ -1139,7 +1139,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                     })}
                   </div>
                   <div className="grid sm:grid-cols-2 gap-3">
-                    <label className="text-xs font-bold text-slate-600">Evidence link (HTTPS)<input type="url" value={claimProofUrl} onChange={(e) => setClaimProofUrl(e.target.value)} placeholder="https://..." className="account-input mt-1" /></label>
+                    <label className="text-xs font-bold text-slate-600">Evidence link (HTTPS) *<input type="url" value={claimProofUrl} onChange={(e) => setClaimProofUrl(e.target.value)} placeholder="https://..." className="account-input mt-1" /></label>
                     <label className="text-xs font-bold text-slate-600">Notes for reviewer<textarea value={claimNotes} onChange={(e) => setClaimNotes(e.target.value)} maxLength={1000} rows={2} placeholder="Explain how this record belongs to you" className="account-input mt-1" /></label>
                   </div>
                   <p className="text-[11px] text-slate-500">Evidence and notes are shared with authorized reviewers. Never enter your password or sensitive financial information.</p>
