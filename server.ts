@@ -418,6 +418,8 @@ export interface AdminUser {
   department?: string;
   assignedUniversity?: string;
   assignedDepartment?: string;
+  universityId?: string;
+  departmentId?: string;
   firebaseUid?: string;
   profileType?: string;
   studentId?: string;
@@ -1085,10 +1087,10 @@ app.post('/api/admin/applications/institution', async (req, res) => {
 
   // Validate University from actual database
   const catalog = getAuthoritativeCatalog();
-  const validUni = catalog.universities.find((u) =>
-    (universityId && u.id === String(universityId).trim()) ||
-    (university && sameInstitution(u.name, university))
-  );
+  const normalizedUniversityId = typeof universityId === 'string' ? universityId.trim() : '';
+  const validUni = normalizedUniversityId
+    ? catalog.universities.find((u) => u.id === normalizedUniversityId)
+    : catalog.universities.find((u) => typeof university === 'string' && sameInstitution(u.name, university));
 
   if (!validUni) {
     return res.status(400).json({ error: 'Selected university does not exist in the database.' });
@@ -1100,10 +1102,13 @@ app.post('/api/admin/applications/institution', async (req, res) => {
     if (!departmentId && !department) {
       return res.status(400).json({ error: 'Department selection is required for Department Admin requests.' });
     }
-    validDept = catalog.departments.find((d) =>
-      ((departmentId && d.id === String(departmentId).trim()) || (department && sameInstitution(d.name, department))) &&
-      (d.universityId === validUni.id || sameInstitution(d.universityName, validUni.name))
-    );
+    const normalizedDepartmentId = typeof departmentId === 'string' ? departmentId.trim() : '';
+    validDept = normalizedDepartmentId
+      ? catalog.departments.find((d) => d.id === normalizedDepartmentId && d.universityId === validUni.id)
+      : catalog.departments.find((d) =>
+          typeof department === 'string' && sameInstitution(d.name, department) &&
+          (d.universityId === validUni.id || sameInstitution(d.universityName, validUni.name))
+        );
 
     if (!validDept) {
       return res.status(400).json({ error: 'Selected department does not exist or does not belong to the selected university.' });
@@ -1222,16 +1227,20 @@ app.post('/api/admin/applications/:id/review', requireAnyAdminAuth, (req: AdminR
 
   if (decision === 'APPROVED') {
     const catalog = getAuthoritativeCatalog();
-    const validUni = catalog.universities.find((u) => u.id === application.universityId || sameInstitution(u.name, application.university));
+    const validUni = application.universityId
+      ? catalog.universities.find((u) => u.id === application.universityId)
+      : catalog.universities.find((u) => sameInstitution(u.name, application.university));
     if (!validUni) {
       return res.status(404).json({ error: 'The requested university no longer exists.' });
     }
     let validDept: AuthoritativeDepartment | undefined;
     if (application.type === 'DEPARTMENT_ADMIN') {
-      validDept = catalog.departments.find((d) =>
-        (d.id === application.departmentId || sameInstitution(d.name, application.department)) &&
-        (d.universityId === validUni.id || sameInstitution(d.universityName, validUni.name))
-      );
+      validDept = application.departmentId
+        ? catalog.departments.find((d) => d.id === application.departmentId && d.universityId === validUni.id)
+        : catalog.departments.find((d) =>
+            sameInstitution(d.name, application.department) &&
+            (d.universityId === validUni.id || sameInstitution(d.universityName, validUni.name))
+          );
       if (!validDept) {
         return res.status(404).json({ error: 'The requested department no longer exists or does not belong to this university.' });
       }
@@ -1248,10 +1257,10 @@ app.post('/api/admin/applications/:id/review', requireAnyAdminAuth, (req: AdminR
       existingUser.status = 'APPROVED';
       existingUser.university = validUni.name;
       existingUser.assignedUniversity = validUni.name;
-      (existingUser as any).universityId = validUni.id;
+      existingUser.universityId = validUni.id;
       existingUser.department = validDept ? validDept.name : '';
       existingUser.assignedDepartment = validDept ? validDept.name : '';
-      (existingUser as any).departmentId = validDept ? validDept.id : '';
+      existingUser.departmentId = validDept ? validDept.id : '';
       existingUser.profileType = role === 'CO_ADMIN' ? 'Co-admin' : role === 'UNIVERSITY_ADMIN' ? 'University admin' : 'Department admin';
       existingUser.updatedAt = new Date().toISOString();
     } else {
@@ -1266,6 +1275,8 @@ app.post('/api/admin/applications/:id/review', requireAnyAdminAuth, (req: AdminR
         department: validDept ? validDept.name : '',
         assignedUniversity: validUni.name,
         assignedDepartment: validDept ? validDept.name : '',
+        universityId: validUni.id,
+        departmentId: validDept ? validDept.id : '',
         firebaseUid: application.userId || application.firebaseUid,
         profileType: role === 'CO_ADMIN' ? 'Co-admin' : role === 'UNIVERSITY_ADMIN' ? 'University admin' : 'Department admin',
         createdAt: new Date().toISOString(),
