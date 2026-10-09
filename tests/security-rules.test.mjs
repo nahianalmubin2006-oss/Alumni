@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
 const server = readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const adminLogin = readFileSync(new URL('../src/views/admin/AdminLoginView.tsx', import.meta.url), 'utf8');
 
 test('Firestore rules deny access by default', () => {
   assert.match(rules, /match \/\{document=\*\*\} \{\s*allow read, write: if false;/);
@@ -36,5 +37,19 @@ test('API responses get baseline security headers and JSON body limits', () => {
   assert.match(server, /X-Content-Type-Options/);
   assert.match(server, /X-Frame-Options/);
   assert.match(server, /Cache-Control', 'no-store'/);
-  assert.match(server, /express\.json\(\{ limit: '1mb' \}\)/);
+  assert.match(server, /req\.path === '\/api\/user\/upload-avatar' \? '15mb' : '1mb'/);
+  assert.match(server, /express\.json\(\{ limit: bodyLimit \}\)/);
+});
+
+
+test('admin portal exposes four explicit roles and enforces role matching', () => {
+  assert.match(adminLogin, /Super Admin Login/);
+  assert.match(adminLogin, /Co-admin Login/);
+  assert.match(adminLogin, /University Admin Login/);
+  assert.match(adminLogin, /Department Admin Login/);
+  assert.match(adminLogin, /authenticatedUser\.role !== selectedLoginRole/);
+});
+
+test('Firebase admin session exchange recognizes approved institution roles', () => {
+  assert.match(server, /\['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN', 'UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'\]\.includes\(user\.role\)/);
 });
