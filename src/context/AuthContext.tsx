@@ -17,6 +17,9 @@ import {
   serverTimestamp,
   collection,
   addDoc,
+  getDocs,
+  query,
+  where,
 } from 'firebase/firestore';
 import { auth, db, googleProvider, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, Role, UserStatus, ProfileType } from '../types';
@@ -95,9 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (snap.exists()) {
         const data = snap.data() as UserProfile;
         const localPhoto = typeof window !== 'undefined' ? localStorage.getItem(`alumni_photo_${user.uid}`) : null;
-        if (!data.photoUrl && localPhoto) {
-          data.photoUrl = localPhoto;
-        }
+        if (!data.photoUrl && localPhoto) data.photoUrl = localPhoto;
         if (isTrustedSuperAdmin(user)) {
           const updated = {
             ...data,
@@ -340,47 +341,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateProfileData = async (data: Partial<UserProfile>) => {
-    if (!currentUser) return;
-    const current = userProfile || {
-      id: currentUser.uid,
-      uid: currentUser.uid,
-      email: currentUser.email || '',
-      name: currentUser.displayName || 'Member',
-      role: 'STUDENT' as Role,
-      status: 'APPROVED' as UserStatus,
-      profileType: 'Student' as ProfileType,
-      university: '',
-      department: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+    if (!currentUser || !userProfile) return;
+    const now = new Date().toISOString();
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    // Update the canonical account profile first. Firestore rules prevent
+    // owners from changing role, approval, verification, or admin-assignment fields.
+    const safeUpdates: Partial<UserProfile> = { ...data, updatedAt: now };
+    delete safeUpdates.id;
+    delete safeUpdates.uid;
+    delete safeUpdates.email;
+    delete safeUpdates.role;
+    delete safeUpdates.status;
+    delete safeUpdates.profileType;
+    delete safeUpdates.isVerifiedAlumni;
+    delete safeUpdates.assignedUniversity;
+    delete safeUpdates.assignedDepartment;
+    delete safeUpdates.createdAt;
+    const updated = {
+      ...userProfile,
+      ...safeUpdates,
+      updatedAt: now,
     };
-
-    const updated: UserProfile = {
-      ...current,
-      ...data,
-      updatedAt: new Date().toISOString(),
-    };
-
-    // Immediately cache in localStorage for instant retrieval across sessions
-    if (data.photoUrl) {
-      try {
-        localStorage.setItem(`alumni_photo_${currentUser.uid}`, data.photoUrl);
-      } catch (e) {}
+    if (safeUpdates.photoUrl && typeof window !== 'undefined') {
+      try { localStorage.setItem(`alumni_photo_${currentUser.uid}`, safeUpdates.photoUrl); } catch (e) {}
     }
+    await updateDoc(userDocRef, safeUpdates);
 
-    // Optimistic UI state update
-    setUserProfile(updated);
-
-    // Save to Firestore using setDoc with merge so it works even if document didn't exist
+    // Keep the user's linked public directory record in sync with editable profile fields.
+    // Legacy claimed records are located by userId rather than assuming doc ID == UID.
+    const makeDirectoryUpdates = (fields: readonly (keyof UserProfile)[]) => {
+      const updates: Record<string, unknown> = { updatedAt: now };
+      for (const field of fields) {
+        if (data[field] !== undefined) updates[field] = data[field];
+      }
+      return updates;
+    };
+    const alumniUpdates = makeDirectoryUpdates([
+      'name', 'university', 'department', 'studentId', 'educationLevel',
+      'graduationYear', 'jobRole', 'company', 'country', 'city', 'bio', 'photoUrl', 'linkedin',
+    ]);
+    const studentUpdates = makeDirectoryUpdates([
+      'name', 'university', 'department', 'studentId', 'educationLevel',
+      'studentYear', 'expectedGraduation', 'bio', 'photoUrl',
+    ]);
     try {
-      const userDocRef = doc(db, 'users', currentUser.uid);
-      await setDoc(userDocRef, {
-        ...data,
-        updatedAt: new Date().toISOString(),
-      }, { merge: true });
-    } catch (firestoreErr) {
-      console.warn('Firestore updateProfileData note (local state preserved):', firestoreErr);
+      const [alumniSnap, studentSnap] = await Promise.all([
+        getDocs(query(collection(db, 'alumni'), where('userId', '==', currentUser.uid))),
+        getDocs(query(collection(db, 'students'), where('userId', '==', currentUser.uid))),
+      ]);
+      await Promise.all([
+        ...alumniSnap.docs.map((item) => updateDoc(doc(db, 'alumni', item.id), alumniUpdates).catch((error) => {
+          console.warn('Linked alumni record was not updated:', error);
+        })),
+        ...studentSnap.docs.map((item) => updateDoc(doc(db, 'students', item.id), studentUpdates).catch((error) => {
+          console.warn('Linked student record was not updated:', error);
+        })),
+      ]);
+    } catch (error) {
+      // The account profile remains saved; a missing/legacy directory record must not undo it.
+      console.warn('Linked directory sync note:', error);
     }
+    setUserProfile(updated);
   };
 
   // Public website role: public members operate as regular students or alumni
