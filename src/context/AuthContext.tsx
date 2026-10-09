@@ -97,6 +97,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const snap = await getDoc(userDocRef);
       if (snap.exists()) {
         const data = snap.data() as UserProfile;
+        const localPhoto = typeof window !== 'undefined' ? localStorage.getItem(`alumni_photo_${user.uid}`) : null;
+        if (!data.photoUrl && localPhoto) data.photoUrl = localPhoto;
         if (isTrustedSuperAdmin(user)) {
           const updated = {
             ...data,
@@ -360,6 +362,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...safeUpdates,
       updatedAt: now,
     };
+    if (safeUpdates.photoUrl && typeof window !== 'undefined') {
+      try { localStorage.setItem(`alumni_photo_${currentUser.uid}`, safeUpdates.photoUrl); } catch (e) {}
+    }
     await updateDoc(userDocRef, safeUpdates);
 
     // Keep the user's linked public directory record in sync with editable profile fields.
