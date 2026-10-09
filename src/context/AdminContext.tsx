@@ -76,11 +76,9 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             idToken: await auth.currentUser.getIdToken(),
           }),
         });
-        const exchangeData = await exchangeRes.json().catch(() => ({}));
-        if (!exchangeRes.ok) {
-          throw new Error(exchangeData.error || 'This account has no active administrator assignment.');
-        }
-        if (exchangeData.token && exchangeData.user) {
+        if (exchangeRes.ok) {
+          const exchangeData = await exchangeRes.json();
+          if (exchangeData.token && exchangeData.user) {
             sessionStorage.setItem(TOKEN_STORAGE_KEY, exchangeData.token);
             token = exchangeData.token;
             setAdminToken(exchangeData.token);
