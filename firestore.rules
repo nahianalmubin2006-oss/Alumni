@@ -147,6 +147,7 @@ service cloud.firestore {
       allow create: if isSuperAdmin() || isUniversityAdmin(request.resource.data.university);
       allow update: if isSuperAdmin() || (
         request.resource.data.university == resource.data.university
+        && request.resource.data.name == resource.data.name
         && (
           isUniversityAdmin(resource.data.university)
           || isDepartmentAdmin(resource.data.university, resource.data.name)
@@ -178,8 +179,15 @@ service cloud.firestore {
       allow create: if isSuperAdmin() || (
         isOwner(request.resource.data.userId)
         && alumniId == request.auth.uid
+        && request.resource.data.id == request.auth.uid
         && request.resource.data.status == 'PENDING'
         && request.resource.data.get('isVerified', false) == false
+        && request.resource.data.keys().hasOnly([
+          'id', 'userId', 'name', 'email', 'university', 'department', 'batch',
+          'studentId', 'educationLevel', 'graduationYear', 'jobRole', 'company',
+          'country', 'city', 'bio', 'photoUrl', 'linkedin', 'isVerified',
+          'status', 'createdAt', 'updatedAt'
+        ])
       );
       allow update: if isSuperAdmin()
         || (
@@ -210,7 +218,13 @@ service cloud.firestore {
       allow create: if isSuperAdmin() || (
         isOwner(request.resource.data.userId)
         && studentId == request.auth.uid
+        && request.resource.data.id == request.auth.uid
         && request.resource.data.status == 'PENDING'
+        && request.resource.data.keys().hasOnly([
+          'id', 'userId', 'name', 'email', 'university', 'department', 'studentId',
+          'educationLevel', 'studentYear', 'expectedGraduation', 'bio', 'photoUrl',
+          'status', 'createdAt', 'updatedAt'
+        ])
       );
       allow update: if isSuperAdmin()
         || (
@@ -249,11 +263,19 @@ service cloud.firestore {
         )
       );
       allow update: if isSuperAdmin()
-        || isUniversityAdmin(resource.data.university)
-        || isDepartmentAdmin(resource.data.university, resource.data.department)
+        || (
+          isUniversityAdmin(resource.data.university)
+          && request.resource.data.university == resource.data.university
+        )
+        || (
+          isDepartmentAdmin(resource.data.university, resource.data.department)
+          && request.resource.data.university == resource.data.university
+          && request.resource.data.department == resource.data.department
+        )
         || (
           isSignedIn()
           && resource.data.authorId == request.auth.uid
+          && request.resource.data.authorId == resource.data.authorId
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'title', 'summary', 'content', 'imageUrl', 'sourceUrl', 'updatedAt'
           ])
