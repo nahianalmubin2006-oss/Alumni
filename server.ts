@@ -308,7 +308,7 @@ setInterval(async () => {
 // SECURE ADMIN ROLE-BASED ACCESS CONTROL (RBAC) & SESSION ENGINE
 // ==========================================
 
-export type AdminRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+export type AdminRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN' | 'CO_ADMIN' | 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN';
 
 export interface AdminUser {
   id: string;
@@ -319,6 +319,9 @@ export interface AdminUser {
   status: 'APPROVED' | 'PENDING' | 'REJECTED' | 'SUSPENDED';
   university?: string;
   department?: string;
+  assignedUniversity?: string;
+  assignedDepartment?: string;
+  firebaseUid?: string;
   profileType?: string;
   studentId?: string;
   graduationYear?: string;
@@ -400,12 +403,29 @@ export interface AdminSettings {
   lastUpdated: string;
 }
 
+interface AdminAccessApplication {
+  id: string;
+  type: 'CO_ADMIN' | 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN';
+  name: string;
+  email: string;
+  passwordHash?: string;
+  firebaseUid?: string;
+  university?: string;
+  department?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewerNote?: string;
+}
+
 interface AdminStoreData {
   users: AdminUser[];
   auditLogs: AdminAuditLog[];
   verifications: VerificationItem[];
   changeRequests: ChangeRequestItem[];
   settings: AdminSettings;
+  adminApplications?: AdminAccessApplication[];
 }
 
 // Password hashing with cryptographic salt and scrypt
@@ -496,6 +516,9 @@ let adminStore: AdminStoreData = (() => {
   }
   return defaultData;
 })();
+
+// Backward-compatible schema migration for existing admin-database.json files.
+if (!Array.isArray(adminStore.adminApplications)) adminStore.adminApplications = [];
 
 function persistAdminStore() {
   try {
@@ -639,46 +662,45 @@ function recordAuditLog(log: Omit<AdminAuditLog, 'id' | 'timestamp'>) {
   return item;
 }
 
-// Middleware: Authenticate Admin (Role must be ADMIN or SUPER_ADMIN)
+// Validate any approved admin session. Institution admins use this only for
+// session introspection; central-management APIs use requireAdminAuth.
 interface AdminRequest extends express.Request {
   adminUser?: AdminUser;
   adminSession?: AdminSession;
 }
 
-function requireAdminAuth(req: AdminRequest, res: express.Response, next: express.NextFunction) {
+function requireAnyAdminAuth(req: AdminRequest, res: express.Response, next: express.NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Unauthorized: Admin authentication token required.' });
   }
-
   const token = authHeader.substring(7).trim();
   const session = activeAdminSessions.get(token);
-  if (!session) {
-    return res.status(401).json({ error: 'Unauthorized: Session invalid or expired.' });
-  }
-
+  if (!session) return res.status(401).json({ error: 'Unauthorized: Session invalid or expired.' });
   if (Date.now() > session.expiresAt) {
     activeAdminSessions.delete(token);
     return res.status(401).json({ error: 'Unauthorized: Session has expired. Please log in again.' });
   }
-
   const user = adminStore.users.find((u) => u.id === session.userId);
-  if (!user || user.status === 'SUSPENDED') {
+  if (!user || user.status !== 'APPROVED' || !['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN', 'UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)) {
     activeAdminSessions.delete(token);
-    return res.status(401).json({ error: 'Unauthorized: Admin account is not found or has been suspended.' });
+    return res.status(401).json({ error: 'Unauthorized: Admin assignment is not active.' });
   }
-
-  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
-    activeAdminSessions.delete(token);
-    return res.status(403).json({ error: 'Forbidden: Insufficient administrative privileges.' });
-  }
-
-  // Slide activity and refresh expiry
   session.lastActivityAt = Date.now();
   session.expiresAt = Date.now() + SESSION_TTL_MS;
   req.adminUser = user;
   req.adminSession = session;
   next();
+}
+
+// Institution-scoped roles are intentionally excluded from central management APIs.
+function requireAdminAuth(req: AdminRequest, res: express.Response, next: express.NextFunction) {
+  requireAnyAdminAuth(req, res, () => {
+    if (!['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN'].includes(req.adminUser?.role || '')) {
+      return res.status(403).json({ error: 'Forbidden: Central administrator authorization required.' });
+    }
+    next();
+  });
 }
 
 // Middleware: Require Super Admin Role
@@ -694,6 +716,137 @@ function requireSuperAdmin(req: AdminRequest, res: express.Response, next: expre
 // ------------------------------------------
 // ADMIN AUTHENTICATION ROUTES
 // ------------------------------------------
+
+// ------------------------------------------
+// ADMIN ACCESS APPLICATIONS (Phases 2-4)
+// ------------------------------------------
+
+function publicApplication(application: AdminAccessApplication) {
+  const { passwordHash, ...safe } = application;
+  return safe;
+}
+
+// Public Co-admin application: PENDING only; it grants no role or session.
+app.post('/api/admin/applications/co-admin', (req, res) => {
+  const { name, email, password } = req.body || {};
+  if (typeof name !== 'string' || name.trim().length < 2 ||
+      typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ||
+      typeof password !== 'string' || password.length < 10) {
+    return res.status(400).json({ error: 'Enter a valid name and email, and choose a password of at least 10 characters.' });
+  }
+  const normalizedEmail = email.trim().toLowerCase();
+  if (adminStore.users.some((user) => user.email.toLowerCase() === normalizedEmail) ||
+      adminStore.adminApplications!.some((item) => item.email === normalizedEmail && item.status === 'PENDING')) {
+    return res.status(409).json({ error: 'An account or pending application already exists for this email.' });
+  }
+  const application: AdminAccessApplication = {
+    id: 'admin-app-' + crypto.randomBytes(12).toString('hex'),
+    type: 'CO_ADMIN', name: name.trim(), email: normalizedEmail,
+    passwordHash: hashPassword(password), status: 'PENDING', createdAt: new Date().toISOString(),
+  };
+  adminStore.adminApplications!.unshift(application);
+  persistAdminStore();
+  recordAuditLog({
+    actorId: 'anonymous', actorEmail: normalizedEmail, actorRole: 'PUBLIC',
+    action: 'CO_ADMIN_APPLICATION_SUBMITTED', targetType: 'ADMIN_APPLICATION',
+    targetId: application.id, details: 'Co-admin application submitted for Super Admin review.',
+    ip: getClientIp(req),
+  });
+  return res.status(202).json({ success: true, status: 'PENDING', message: 'Application submitted. No admin access is granted until approval.' });
+});
+
+// Institution requests are bound to the verified identity of an existing Firebase account.
+app.post('/api/admin/applications/institution', async (req, res) => {
+  const { idToken, requestedRole, university, department } = req.body || {};
+  if (typeof idToken !== 'string' || !['UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(requestedRole) ||
+      typeof university !== 'string' || !university.trim() ||
+      (requestedRole === 'DEPARTMENT_ADMIN' && (typeof department !== 'string' || !department.trim()))) {
+    return res.status(400).json({ error: 'A Firebase ID token, university, and valid institution admin role/scope are required.' });
+  }
+  const firebaseApiKey = process.env.FIREBASE_API_KEY;
+  if (!firebaseApiKey) return res.status(503).json({ error: 'Firebase server authentication is not configured.' });
+  let identity: any;
+  try {
+    const response = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + encodeURIComponent(firebaseApiKey), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }),
+    });
+    const data = await response.json();
+    if (!response.ok || !Array.isArray(data.users) || !data.users[0]?.localId) {
+      return res.status(401).json({ error: 'Please sign in to your existing Alumni account before requesting admin access.' });
+    }
+    identity = data.users[0];
+  } catch {
+    return res.status(503).json({ error: 'Unable to verify Firebase identity right now.' });
+  }
+  const email = String(identity.email || '').trim().toLowerCase();
+  const firebaseUid = String(identity.localId);
+  if (!email || identity.emailVerified !== true) {
+    return res.status(403).json({ error: 'Verify the email on your existing Alumni account before requesting admin access.' });
+  }
+  if (adminStore.adminApplications!.some((item) => item.email === email && item.status === 'PENDING') ||
+      adminStore.users.some((user) => user.email.toLowerCase() === email && ['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN', 'UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role))) {
+    return res.status(409).json({ error: 'An administrator assignment or pending request already exists for this account.' });
+  }
+  const application: AdminAccessApplication = {
+    id: 'admin-app-' + crypto.randomBytes(12).toString('hex'),
+    type: requestedRole, name: String(identity.displayName || email.split('@')[0]), email, firebaseUid,
+    university: university.trim(),
+    department: requestedRole === 'DEPARTMENT_ADMIN' ? String(department).trim() : undefined,
+    status: 'PENDING', createdAt: new Date().toISOString(),
+  };
+  adminStore.adminApplications!.unshift(application);
+  persistAdminStore();
+  recordAuditLog({
+    actorId: firebaseUid, actorEmail: email, actorRole: 'USER',
+    action: 'INSTITUTION_ADMIN_APPLICATION_SUBMITTED', targetType: 'ADMIN_APPLICATION',
+    targetId: application.id,
+    details: 'Requested ' + requestedRole + ' for ' + application.university + (application.department ? ' / ' + application.department : '') + '.',
+    ip: getClientIp(req),
+  });
+  return res.status(202).json({ success: true, status: 'PENDING', message: 'Request submitted for central admin review. Your Alumni account remains unchanged while pending.' });
+});
+
+app.get('/api/admin/applications', requireAdminAuth, (_req: AdminRequest, res) => {
+  return res.json({ success: true, applications: adminStore.adminApplications!.map(publicApplication) });
+});
+
+app.post('/api/admin/applications/:id/review', requireAdminAuth, (req: AdminRequest, res) => {
+  const { decision, reviewerNote } = req.body || {};
+  if (!['APPROVED', 'REJECTED'].includes(decision)) return res.status(400).json({ error: 'Decision must be APPROVED or REJECTED.' });
+  const application = adminStore.adminApplications!.find((item) => item.id === req.params.id);
+  if (!application) return res.status(404).json({ error: 'Admin application not found.' });
+  if (application.status !== 'PENDING') return res.status(409).json({ error: 'This application has already been reviewed.' });
+  if (application.type === 'CO_ADMIN' && req.adminUser?.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Only a Super Admin may approve or reject a Co-admin application.' });
+  }
+  if (decision === 'APPROVED') {
+    if (adminStore.users.some((user) => user.email.toLowerCase() === application.email.toLowerCase())) {
+      return res.status(409).json({ error: 'An account with this email already exists. Resolve the account conflict before approving.' });
+    }
+    const role = application.type;
+    const newUser: AdminUser = {
+      id: 'usr-' + crypto.randomBytes(12).toString('hex'),
+      email: application.email, passwordHash: application.passwordHash || '', name: application.name,
+      role, status: 'APPROVED', university: application.university || '', department: application.department || '',
+      assignedUniversity: application.university, assignedDepartment: application.department, firebaseUid: application.firebaseUid,
+      profileType: role === 'CO_ADMIN' ? 'Co-admin' : role === 'UNIVERSITY_ADMIN' ? 'University admin' : 'Department admin',
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    adminStore.users.push(newUser);
+  }
+  application.status = decision;
+  application.reviewedAt = new Date().toISOString();
+  application.reviewedBy = req.adminUser!.id;
+  application.reviewerNote = typeof reviewerNote === 'string' ? reviewerNote.trim().slice(0, 500) : '';
+  persistAdminStore();
+  recordAuditLog({
+    actorId: req.adminUser!.id, actorEmail: req.adminUser!.email, actorRole: req.adminUser!.role,
+    action: 'ADMIN_APPLICATION_' + decision, targetType: 'ADMIN_APPLICATION', targetId: application.id,
+    details: 'Reviewed ' + application.type + ' request for ' + application.email + ': ' + decision + '.',
+    ip: getClientIp(req),
+  });
+  return res.json({ success: true, application: publicApplication(application), message: 'Application ' + decision.toLowerCase() + '.' });
+});
 
 // Admin Login
 app.post('/api/admin/auth/login', (req, res) => {
@@ -717,7 +870,7 @@ app.post('/api/admin/auth/login', (req, res) => {
   const user = adminStore.users.find((u) => u.email.toLowerCase() === normalizedEmail);
 
   // If user exists and entered the correct password, clear any rate-limit lockout immediately!
-  if (user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && verifyPassword(password, user.passwordHash)) {
+  if (user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' || user.role === 'CO_ADMIN') && user.status === 'APPROVED' && verifyPassword(password, user.passwordHash)) {
     resetFailedLogin(clientIp, normalizedEmail);
   } else if (isRateLimited(clientIp, normalizedEmail)) {
     return res.status(429).json({
@@ -726,7 +879,7 @@ app.post('/api/admin/auth/login', (req, res) => {
   }
 
   // Generic failure response to avoid account enumeration
-  if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+  if (!user || !['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN'].includes(user.role) || user.status !== 'APPROVED') {
     recordFailedLogin(clientIp, normalizedEmail);
     recordAuditLog({
       actorId: 'anonymous',
@@ -803,6 +956,8 @@ app.post('/api/admin/auth/login', (req, res) => {
       status: user.status,
       university: user.university,
       department: user.department,
+      assignedUniversity: user.assignedUniversity,
+      assignedDepartment: user.assignedDepartment,
     },
   });
 });
@@ -893,8 +1048,11 @@ app.post('/api/admin/auth/firebase-login', async (req, res) => {
     persistAdminStore();
   }
 
-  if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-    return res.status(403).json({ error: 'Access denied: User is not authorized as an administrator.' });
+  if (!user || !['ADMIN', 'SUPER_ADMIN', 'CO_ADMIN', 'UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role) || user.status !== 'APPROVED') {
+    return res.status(403).json({ error: 'Access denied: User has no active administrator assignment.' });
+  }
+  if (user.firebaseUid && user.firebaseUid !== verifiedUid) {
+    return res.status(403).json({ error: 'Access denied: Firebase identity does not match the approved administrator assignment.' });
   }
 
   if (user.status === 'SUSPENDED') {
@@ -940,6 +1098,8 @@ app.post('/api/admin/auth/firebase-login', async (req, res) => {
       status: user.status,
       university: user.university,
       department: user.department,
+      assignedUniversity: user.assignedUniversity,
+      assignedDepartment: user.assignedDepartment,
     },
   });
 });
@@ -967,7 +1127,7 @@ app.post('/api/admin/auth/logout', requireAdminAuth, (req: AdminRequest, res) =>
 });
 
 // Admin Auth Status / Current User
-app.get('/api/admin/auth/me', requireAdminAuth, (req: AdminRequest, res) => {
+app.get('/api/admin/auth/me', requireAnyAdminAuth, (req: AdminRequest, res) => {
   const user = req.adminUser!;
   return res.json({
     authenticated: true,
@@ -979,6 +1139,8 @@ app.get('/api/admin/auth/me', requireAdminAuth, (req: AdminRequest, res) => {
       status: user.status,
       university: user.university,
       department: user.department,
+      assignedUniversity: user.assignedUniversity,
+      assignedDepartment: user.assignedDepartment,
       lastLoginAt: user.lastLoginAt,
     },
   });
