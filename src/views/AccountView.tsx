@@ -446,12 +446,14 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                 </div>
 
                 {/* Profile Action Buttons */}
-                <div className="flex items-center gap-2 self-start sm:self-auto">
+                <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
                   <button
                     onClick={enterEditMode}
-                    className="border border-soft bg-white hover:bg-slate-50 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 transition shadow-xs cursor-pointer"
+                    className="inline-flex items-center gap-2 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl text-xs font-bold text-blue-700 transition shadow-xs cursor-pointer"
+                    aria-label="Change profile picture or edit profile"
                   >
-                    ✏ Edit Profile
+                    <Camera className="w-4 h-4" />
+                    Change Picture / Edit Profile
                   </button>
                   <button
                     onClick={logout}
