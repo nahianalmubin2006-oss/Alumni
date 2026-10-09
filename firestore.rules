@@ -296,8 +296,29 @@ service cloud.firestore {
       allow read: if isSuperAdmin()
         || (isSignedIn() && resource.data.requesterId == request.auth.uid);
       allow create: if isSignedIn()
+        && hasUserProfile()
+        && request.resource.data.keys().hasOnly([
+          'requesterId', 'requesterName', 'requesterEmail', 'requesterRole',
+          'targetType', 'targetId', 'targetTitle', 'university', 'department',
+          'oldValue', 'newValue', 'reason', 'status', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'requesterId', 'requesterName', 'requesterEmail', 'requesterRole',
+          'targetType', 'targetTitle', 'oldValue', 'newValue', 'status', 'createdAt', 'updatedAt'
+        ])
         && request.resource.data.requesterId == request.auth.uid
-        && request.resource.data.status == 'PENDING';
+        && request.resource.data.requesterEmail == request.auth.token.email
+        && request.resource.data.requesterRole == getUserData().role
+        && request.resource.data.targetType in ['UNIVERSITY', 'DEPARTMENT', 'NEWS', 'BATCH', 'SETTINGS']
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.targetTitle is string
+        && request.resource.data.targetTitle.size() <= 240
+        && request.resource.data.oldValue is string
+        && request.resource.data.oldValue.size() <= 5000
+        && request.resource.data.newValue is string
+        && request.resource.data.newValue.size() <= 5000
+        && request.resource.data.get('reason', '') is string
+        && request.resource.data.get('reason', '').size() <= 1000;
       // Requesters cannot approve, reject, or rewrite an existing request.
       allow update, delete: if isSuperAdmin();
     }
@@ -306,8 +327,22 @@ service cloud.firestore {
       allow read: if isSuperAdmin()
         || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly([
+          'userId', 'userName', 'userEmail', 'university', 'department',
+          'batch', 'studentId', 'proofUrl', 'notes', 'status', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'userId', 'userName', 'userEmail', 'university', 'department',
+          'batch', 'proofUrl', 'notes', 'status', 'createdAt', 'updatedAt'
+        ])
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.status == 'PENDING';
+        && request.resource.data.userEmail == request.auth.token.email
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.proofUrl is string
+        && request.resource.data.proofUrl.matches('https://.*')
+        && request.resource.data.proofUrl.size() <= 2000
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 1000;
       allow update, delete: if isSuperAdmin();
     }
 
