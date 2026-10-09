@@ -306,7 +306,7 @@ export interface AppNotification {
   recipientRole?: Role;
   title: string;
   message: string;
-  type: 'ACCOUNT' | 'VERIFICATION' | 'CHANGE_REQUEST' | 'NEWS' | 'ADMIN_ASSIGNMENT' | 'SYSTEM';
+  type: 'ACCOUNT' | 'VERIFICATION' | 'CHANGE_REQUEST' | 'PROFILE_CLAIM' | 'NEWS' | 'ADMIN_ASSIGNMENT' | 'SYSTEM';
   read: boolean;
   actionUrl?: string;
   createdAt: string;
