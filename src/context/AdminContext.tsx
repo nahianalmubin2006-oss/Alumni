@@ -67,7 +67,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     let token = sessionStorage.getItem(TOKEN_STORAGE_KEY);
 
     // If no session token, check if Firebase Auth has an active super admin user
-    if (!token && auth.currentUser?.email && isSuperAdminEmail(auth.currentUser.email)) {
+    if (!token && auth.currentUser?.emailVerified && auth.currentUser.email && isSuperAdminEmail(auth.currentUser.email)) {
       try {
         const exchangeRes = await fetch('/api/admin/auth/firebase-login', {
           method: 'POST',
@@ -143,7 +143,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     checkAdminAuth();
 
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser?.email && isSuperAdminEmail(fbUser.email)) {
+      if (fbUser?.emailVerified && fbUser.email && isSuperAdminEmail(fbUser.email)) {
         const currentToken = sessionStorage.getItem(TOKEN_STORAGE_KEY);
         if (!currentToken) {
           try {
