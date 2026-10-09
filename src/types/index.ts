@@ -263,6 +263,25 @@ export interface ChangeRequest {
   updatedAt: string;
 }
 
+export interface ProfileClaimRequest {
+  id: string;
+  requesterId: string;
+  requesterName: string;
+  requesterEmail: string;
+  targetAlumniId: string;
+  university: string;
+  department: string;
+  studentId: string;
+  graduationYear: string;
+  proofUrl: string;
+  notes: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  updatedAt: string;
+  reviewedBy?: string;
+  reviewerComment?: string;
+}
+
 export interface VerificationRequest {
   id: string;
   userId: string;
