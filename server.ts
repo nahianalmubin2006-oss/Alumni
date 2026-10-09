@@ -576,6 +576,9 @@ let customUniStore: CustomUniversityStore = (() => {
 if (!customUniStore.logos) customUniStore.logos = {};
 if (!customUniStore.departments) customUniStore.departments = {};
 if (!Array.isArray(customUniStore.customUniversities)) customUniStore.customUniversities = [];
+customUniStore.customUniversities.forEach((university) => {
+  if (!Array.isArray(university.departments)) university.departments = [];
+});
 if (!Array.isArray(customUniStore.customDepartments)) customUniStore.customDepartments = [];
 
 function persistCustomUniStore() {
