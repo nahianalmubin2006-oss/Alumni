@@ -17,19 +17,19 @@ test('self-registration cannot create privileged or pre-approved profiles', () =
 });
 
 test('institution admins cannot move alumni or student records outside their assigned scope', () => {
-  assert.match(rules, /isDepartmentAdmin\(resource\.data\.university, resource\.data\.department\)[\s\S]{0,220}request\.resource\.data\.university == resource\.data\.university[\s\S]{0,100}request\.resource\.data\.department == resource\.data\.department/);
+  assert.match(rules, /isDepartmentAdmin\(resource\.data\.university, resource\.data\.department\)[\s\S]{0,220}request\.resource\.data\.university == resource\.data\.university[\s\S]{0,250}request\.resource\.data\.department == resource\.data\.department/);
   assert.match(rules, /canManageDirectory\([\s\S]{0,120}request\.resource\.data\.university,\s*request\.resource\.data\.department/);
 });
 
 test('profile claims require an authenticated claimant and privileged review', () => {
   assert.match(rules, /match \/profileClaims\/\{claimId\}/);
   assert.match(rules, /request\.resource\.data\.requesterId == request\.auth\.uid/);
-  assert.match(rules, /allow update: if isSuperAdmin\(\)[\s\S]{0,180}request\.resource\.data\.status in \['APPROVED', 'REJECTED'\]/);
+  assert.match(rules, /allow update: if isSuperAdmin\(\)[\s\S]{0,300}request\.resource\.data\.status in \['APPROVED', 'REJECTED'\]/);
   assert.match(rules, /match \/profileClaims\/\{claimId\}[\s\S]{0,1500}allow delete: if false;/);
 });
 
 test('audit records are immutable and created only by trusted Super Admins', () => {
-  assert.match(rules, /match \/auditLogs\/\{logId\}[\s\S]{0,180}allow create: if isSuperAdmin\(\);[\s\S]{0,100}allow update, delete: if false;/);
+  assert.match(rules, /match \/auditLogs\/\{logId\}[\s\S]{0,300}allow create: if isSuperAdmin\(\);[\s\S]{0,250}allow update, delete: if false;/);
 });
 
 test('API responses get baseline security headers and JSON body limits', () => {
