@@ -168,7 +168,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     maintenanceMode: false,
     allowRegistrations: true,
     requireVerificationReview: true,
+    defaultProfilePictures: [],
   });
+  const [newDefaultPictureName, setNewDefaultPictureName] = useState('');
+  const [newDefaultPictureUrl, setNewDefaultPictureUrl] = useState('');
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
   const [passMsg, setPassMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -455,6 +458,42 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       showToast(err.message, 'error');
       loadSettings();
     }
+  };
+
+  const saveDefaultProfilePictures = async (pictures: Array<{ id: string; name: string; url: string }>) => {
+    try {
+      const res = await apiFetch('/api/admin/settings', {
+        method: 'POST',
+        body: JSON.stringify({ defaultProfilePictures: pictures }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not save default profile pictures');
+      setSettings((previous: any) => ({ ...previous, ...(data.settings || {}), defaultProfilePictures: pictures }));
+      showToast('Default profile pictures saved.', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Could not save default profile pictures', 'error');
+    }
+  };
+
+  const handleAddDefaultProfilePicture = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const name = newDefaultPictureName.trim();
+    const url = newDefaultPictureUrl.trim();
+    if (!name || !url) return;
+    const pictures = Array.isArray(settings.defaultProfilePictures) ? settings.defaultProfilePictures : [];
+    if (pictures.length >= 12) {
+      showToast('You can add up to 12 default pictures.', 'error');
+      return;
+    }
+    await saveDefaultProfilePictures([...pictures, { id: `profile-default-${Date.now()}`, name, url }]);
+    setNewDefaultPictureName('');
+    setNewDefaultPictureUrl('');
+  };
+
+  const handleRemoveDefaultProfilePicture = async (id: string) => {
+    const pictures = (Array.isArray(settings.defaultProfilePictures) ? settings.defaultProfilePictures : [])
+      .filter((picture: any) => picture.id !== id);
+    await saveDefaultProfilePictures(pictures);
   };
 
   // If loading or unauthenticated, enforce strict security gate
@@ -1377,6 +1416,48 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     className="w-4 h-4 accent-blue-600 rounded"
                   />
                 </div>
+              </div>
+
+              {/* Default profile picture library */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Default Profile Pictures</h3>
+                  <p className="text-xs text-slate-400 mt-1">Manage up to 12 HTTPS image links that students and alumni can choose for their profile. Host images publicly, then paste their image URL here.</p>
+                </div>
+                <form onSubmit={handleAddDefaultProfilePicture} className="grid sm:grid-cols-[1fr_2fr_auto] gap-3">
+                  <input
+                    value={newDefaultPictureName}
+                    onChange={(e) => setNewDefaultPictureName(e.target.value)}
+                    required
+                    maxLength={50}
+                    placeholder="Picture name (e.g. Blue Avatar)"
+                    className="min-w-0 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+                  />
+                  <input
+                    type="url"
+                    value={newDefaultPictureUrl}
+                    onChange={(e) => setNewDefaultPictureUrl(e.target.value)}
+                    required
+                    placeholder="https://example.com/default-avatar.png"
+                    className="min-w-0 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+                  />
+                  <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition">Add Picture</button>
+                </form>
+                {(settings.defaultProfilePictures || []).length ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {settings.defaultProfilePictures.map((picture: { id: string; name: string; url: string }) => (
+                      <div key={picture.id} className="overflow-hidden rounded-xl border border-slate-700 bg-slate-800/60 p-2">
+                        <img src={picture.url} alt={picture.name} className="w-full h-28 object-cover rounded-lg bg-slate-700" />
+                        <div className="flex items-center justify-between gap-2 mt-2">
+                          <span className="text-xs text-white font-bold truncate">{picture.name}</span>
+                          <button type="button" onClick={() => handleRemoveDefaultProfilePicture(picture.id)} className="text-[10px] text-rose-300 hover:text-rose-200 font-bold shrink-0">Remove</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-slate-700 p-5 text-center text-xs text-slate-500">No default pictures added yet.</div>
+                )}
               </div>
 
               {/* Password update */}
