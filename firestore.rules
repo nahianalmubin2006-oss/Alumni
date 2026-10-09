@@ -215,8 +215,14 @@ service cloud.firestore {
       allow create: if isSuperAdmin() || (
         isSignedIn()
         && request.resource.data.authorId == request.auth.uid
-        && request.resource.data.status in ['DRAFT', 'PENDING_APPROVAL']
-        && request.resource.data.get('isPermanent', false) == false
+        && (
+          (
+            request.resource.data.status in ['DRAFT', 'PENDING_APPROVAL']
+            && request.resource.data.get('isPermanent', false) == false
+          )
+          || isUniversityAdmin(request.resource.data.university)
+          || isDepartmentAdmin(request.resource.data.university, request.resource.data.department)
+        )
       );
       allow update: if isSuperAdmin()
         || isUniversityAdmin(resource.data.university)
