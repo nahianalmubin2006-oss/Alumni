@@ -927,6 +927,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               >
                                 {u.role}
                               </span>
+                              <div className="text-[10px] text-slate-400 mt-1">{u.profileType || (u.role === 'USER' ? 'Student' : 'Admin')} profile</div>
                             </td>
                             <td className="py-3 px-4">
                               <span
