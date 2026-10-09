@@ -108,7 +108,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   onLogoutSuccess,
   onBack,
 }) => {
-  const { profileClaims, approveProfileClaim, rejectProfileClaim } = useData();
+  const { profileClaims, canReviewProfileClaims, approveProfileClaim, rejectProfileClaim } = useData();
 
   const {
     adminUser,
@@ -1155,7 +1155,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   >
                     Admin Access ({adminApplications.filter((item) => item.status === 'PENDING').length})
                   </button>
-                  {isSuperAdmin && (
+                  {isSuperAdmin && canReviewProfileClaims && (
                     <button
                       onClick={() => setApprovalsTab('profile-claims')}
                       className={`px-3 py-1.5 rounded-lg transition ${
@@ -1227,7 +1227,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 </div>
               )}
 
-              {approvalsTab === 'profile-claims' && isSuperAdmin && (
+              {approvalsTab === 'profile-claims' && isSuperAdmin && canReviewProfileClaims && (
                 <div className="space-y-3">
                   {profileClaims.length === 0 ? (
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-xs text-slate-400">
