@@ -185,7 +185,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
     });
   }, [alumniOnly, alumniSearch, countryFilter, universityFilter, departmentFilter, directorySort]);
 
-  const approvedAlumni = useMemo(() => alumniOnly.filter((a) => a.status === 'APPROVED'), [alumni]);
+  const approvedAlumni = useMemo(() => alumniOnly.filter((a) => a.status === 'APPROVED'), [alumniOnly]);
   const uniqueCountries = useMemo(
     () => Array.from(new Set(approvedAlumni.map((a) => a.country).filter((value): value is string => Boolean(value))).values()).sort(),
     [approvedAlumni]
