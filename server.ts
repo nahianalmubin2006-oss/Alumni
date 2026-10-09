@@ -12,7 +12,17 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-app.use(express.json());
+// Baseline HTTP hardening without changing the existing auth/session flow.
+app.disable('x-powered-by');
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (_req.path.startsWith('/api/')) res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+app.use(express.json({ limit: '1mb' }));
 
 // In-memory bot metadata tracker (persisted between requests)
 let botState = {
@@ -1947,7 +1957,7 @@ app.get('/api/admin/users/:id', requireAdminAuth, (req, res) => {
   if (!user) {
     return res.status(404).json({ error: 'User not found.' });
   }
-  const { passwordHash, ...sanitized } = user;
+  const { passwordHash, firebaseUid, ...sanitized } = user;
   return res.json({ success: true, user: sanitized });
 });
 
@@ -1985,7 +1995,7 @@ app.put('/api/admin/users/:id', requireAdminAuth, (req: AdminRequest, res) => {
     details: `Updated dossier information for ${target.name}.`,
   });
 
-  const { passwordHash, ...sanitized } = target;
+  const { passwordHash, firebaseUid, ...sanitized } = target;
   return res.json({ success: true, user: sanitized });
 });
 
@@ -2035,7 +2045,7 @@ app.post('/api/admin/users/:id/role', requireSuperAdmin, (req: AdminRequest, res
     details: `Changed account type of ${target.name} from ${oldProfileType}/${oldRole} to ${target.profileType || 'Student'}/${role}.`,
   });
 
-  const { passwordHash, ...sanitized } = target;
+  const { passwordHash, firebaseUid, ...sanitized } = target;
   return res.json({ success: true, user: sanitized });
 });
 
@@ -2077,7 +2087,7 @@ app.post('/api/admin/users/:id/status', requireAdminAuth, (req: AdminRequest, re
     details: `Status changed from ${oldStatus} to ${status}. Reason: ${reason || 'Administrative action'}`,
   });
 
-  const { passwordHash, ...sanitized } = target;
+  const { passwordHash, firebaseUid, ...sanitized } = target;
   return res.json({ success: true, user: sanitized });
 });
 
@@ -2339,6 +2349,18 @@ setInterval(() => {
     }
   }
 }, 15 * 60 * 1000);
+
+// Return safe JSON errors for malformed or oversized API request bodies.
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (res.headersSent) return next(err);
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Request body is too large.' });
+  }
+  if (err instanceof SyntaxError && 'body' in err) {
+    return res.status(400).json({ error: 'Request body must be valid JSON.' });
+  }
+  return next(err);
+});
 
 // Setup Vite middleware in dev or static files in production
 async function startServer() {
