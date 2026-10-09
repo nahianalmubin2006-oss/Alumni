@@ -2045,7 +2045,7 @@ app.post('/api/admin/users/:id/role', requireSuperAdmin, (req: AdminRequest, res
     details: `Changed account type of ${target.name} from ${oldProfileType}/${oldRole} to ${target.profileType || 'Student'}/${role}.`,
   });
 
-  const { passwordHash, ...sanitized } = target;
+  const { passwordHash, firebaseUid, ...sanitized } = target;
   return res.json({ success: true, user: sanitized });
 });
 
@@ -2087,7 +2087,7 @@ app.post('/api/admin/users/:id/status', requireAdminAuth, (req: AdminRequest, re
     details: `Status changed from ${oldStatus} to ${status}. Reason: ${reason || 'Administrative action'}`,
   });
 
-  const { passwordHash, ...sanitized } = target;
+  const { passwordHash, firebaseUid, ...sanitized } = target;
   return res.json({ success: true, user: sanitized });
 });
 
