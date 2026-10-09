@@ -204,9 +204,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // 2. If server auth failed, try Firebase Auth
     try {
       const fbUserCred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
-      const isSuper = isSuperAdminEmail(fbUserCred.user.email);
-
-      if (isSuper || fbUserCred.user) {
+      // Firebase sign-in proves identity only; the server decides whether this identity has an admin role.
+      if (fbUserCred.user) {
         // Exchange with backend to obtain admin session
         const exchangeRes = await fetch('/api/admin/auth/firebase-login', {
           method: 'POST',
