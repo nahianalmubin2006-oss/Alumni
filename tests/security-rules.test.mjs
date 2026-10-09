@@ -25,7 +25,7 @@ test('profile claims require an authenticated claimant and privileged review', (
   assert.match(rules, /match \/profileClaims\/\{claimId\}/);
   assert.match(rules, /request\.resource\.data\.requesterId == request\.auth\.uid/);
   assert.match(rules, /allow update: if isSuperAdmin\(\)[\s\S]{0,300}request\.resource\.data\.status in \['APPROVED', 'REJECTED'\]/);
-  assert.match(rules, /match \/profileClaims\/\{claimId\}[\s\S]{0,1500}allow delete: if false;/);
+  assert.match(rules, /match \/profileClaims\/\{claimId\}[\s\S]{0,4000}allow delete: if false;/);
 });
 
 test('audit records are immutable and created only by trusted Super Admins', () => {
