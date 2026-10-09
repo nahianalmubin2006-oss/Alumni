@@ -12,7 +12,6 @@ interface AdminLoginViewProps {
 export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
   onNavigatePublic,
   onLoginSuccess,
-  onBack,
 }) => {
   const { loginAdmin, logoutAdmin, sendAdminPasswordReset } = useAdmin();
   const [portalMode, setPortalMode] = useState<'choice' | 'central-login' | 'co-admin-signup' | 'institution-request'>('choice');
@@ -176,7 +175,7 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
         <div className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-6 sm:p-8">
-          <button onClick={() => { if (portalMode === 'central-login') setPortalMode('choice'); else if (onBack) onBack(); else onNavigatePublic(); }} className="text-xs text-slate-400 hover:text-white mb-5">← Back to portal options</button>
+          <button onClick={() => setPortalMode('choice')} className="text-xs text-slate-400 hover:text-white mb-5">← Back to portal options</button>
           <h1 className="text-2xl font-black">Co-admin application</h1>
           <p className="text-xs text-slate-400 mt-2">Your credentials are stored as a pending application. You cannot log in until the Super Admin approves it.</p>
           {successMessage && <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">{successMessage}</div>}
