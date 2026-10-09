@@ -21,6 +21,11 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
   const [selectedDept, setSelectedDept] = useState('');
   const [alumniSearch, setAlumniSearch] = useState('');
   const [countryFilter, setCountryFilter] = useState('All');
+  const [universityFilter, setUniversityFilter] = useState('All');
+  const [departmentFilter, setDepartmentFilter] = useState('All');
+  const [directorySort, setDirectorySort] = useState('name-asc');
+  const [directoryPage, setDirectoryPage] = useState(1);
+  const directoryPageSize = 9;
 
   // Sorted universities by alumni count
   const universityRankings = useMemo(() => {
@@ -138,26 +143,63 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
     };
   }, [universityRankings, departmentRankings]);
 
-  // Filter individual alumni directory
+  // Filter and sort only approved alumni, then paginate the result set.
   const filteredAlumni = useMemo(() => {
-    return alumni.filter((a) => {
+    const query = alumniSearch.trim().toLocaleLowerCase();
+    const filtered = alumni.filter((a) => {
       if (a.status !== 'APPROVED') return false;
-      const hay = [a.name, a.university, a.department, a.jobRole, a.company, a.country, a.batch]
+      const hay = [a.name, a.university, a.department, a.jobRole, a.company, a.country, a.batch, a.graduationYear]
+        .filter(Boolean)
         .join(' ')
-        .toLowerCase();
-      const matchesSearch = !alumniSearch || hay.includes(alumniSearch.trim().toLowerCase());
+        .toLocaleLowerCase();
+      const matchesSearch = !query || hay.includes(query);
       const matchesCountry = countryFilter === 'All' || a.country === countryFilter;
-      return matchesSearch && matchesCountry;
+      const matchesUniversity = universityFilter === 'All' || a.university === universityFilter;
+      const matchesDepartment = departmentFilter === 'All' || a.department === departmentFilter;
+      return matchesSearch && matchesCountry && matchesUniversity && matchesDepartment;
     });
-  }, [alumni, alumniSearch, countryFilter]);
 
-  const uniqueCountries = useMemo(() => {
-    const set = new Set<string>();
-    alumni.forEach((a) => {
-      if (a.country) set.add(a.country);
+    return filtered.sort((a, b) => {
+      const nameA = (a.name || '').toLocaleLowerCase();
+      const nameB = (b.name || '').toLocaleLowerCase();
+      const universityA = (a.university || '').toLocaleLowerCase();
+      const universityB = (b.university || '').toLocaleLowerCase();
+      const yearA = Number(a.graduationYear || a.batch) || 0;
+      const yearB = Number(b.graduationYear || b.batch) || 0;
+
+      switch (directorySort) {
+        case 'name-desc': return nameB.localeCompare(nameA);
+        case 'university-asc': return universityA.localeCompare(universityB) || nameA.localeCompare(nameB);
+        case 'year-newest': return yearB - yearA || nameA.localeCompare(nameB);
+        case 'year-oldest': return yearA - yearB || nameA.localeCompare(nameB);
+        default: return nameA.localeCompare(nameB);
+      }
     });
-    return Array.from(set);
-  }, [alumni]);
+  }, [alumni, alumniSearch, countryFilter, universityFilter, departmentFilter, directorySort]);
+
+  const approvedAlumni = useMemo(() => alumni.filter((a) => a.status === 'APPROVED'), [alumni]);
+  const uniqueCountries = useMemo(
+    () => Array.from(new Set(approvedAlumni.map((a) => a.country).filter((value): value is string => Boolean(value))).values()).sort(),
+    [approvedAlumni]
+  );
+  const uniqueUniversities = useMemo(
+    () => Array.from(new Set(approvedAlumni.map((a) => a.university).filter((value): value is string => Boolean(value))).values()).sort(),
+    [approvedAlumni]
+  );
+  const uniqueDepartments = useMemo(
+    () => Array.from(new Set(approvedAlumni.map((a) => a.department).filter((value): value is string => Boolean(value))).values()).sort(),
+    [approvedAlumni]
+  );
+  const totalDirectoryPages = Math.max(1, Math.ceil(filteredAlumni.length / directoryPageSize));
+  const visibleAlumni = filteredAlumni.slice((directoryPage - 1) * directoryPageSize, directoryPage * directoryPageSize);
+  const clearDirectoryFilters = () => {
+    setAlumniSearch('');
+    setCountryFilter('All');
+    setUniversityFilter('All');
+    setDepartmentFilter('All');
+    setDirectorySort('name-asc');
+    setDirectoryPage(1);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-5 py-7 sm:py-10">
@@ -358,26 +400,68 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 w-full md:max-w-4xl">
             <input
               value={alumniSearch}
-              onChange={(e) => setAlumniSearch(e.target.value)}
-              placeholder="Search alumni..."
-              className="border border-soft rounded-xl px-3.5 py-2 text-sm outline-none focus:border-blue-400 bg-white"
+              onChange={(e) => { setAlumniSearch(e.target.value); setDirectoryPage(1); }}
+              placeholder="Search name, role, company, batch..."
+              aria-label="Search alumni directory"
+              className="min-w-0 border border-soft rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-blue-400 bg-white"
             />
             <select
+              value={universityFilter}
+              onChange={(e) => { setUniversityFilter(e.target.value); setDirectoryPage(1); }}
+              aria-label="Filter by university"
+              className="min-w-0 border border-soft rounded-xl px-3 py-2.5 text-sm bg-white outline-none cursor-pointer"
+            >
+              <option value="All">All Universities</option>
+              {uniqueUniversities.map((u) => <option key={u} value={u}>{u}</option>)}
+            </select>
+            <select
+              value={departmentFilter}
+              onChange={(e) => { setDepartmentFilter(e.target.value); setDirectoryPage(1); }}
+              aria-label="Filter by department"
+              className="min-w-0 border border-soft rounded-xl px-3 py-2.5 text-sm bg-white outline-none cursor-pointer"
+            >
+              <option value="All">All Departments</option>
+              {uniqueDepartments.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <select
               value={countryFilter}
-              onChange={(e) => setCountryFilter(e.target.value)}
-              className="border border-soft rounded-xl px-3 py-2 text-sm bg-white outline-none cursor-pointer"
+              onChange={(e) => { setCountryFilter(e.target.value); setDirectoryPage(1); }}
+              aria-label="Filter by country"
+              className="min-w-0 border border-soft rounded-xl px-3 py-2.5 text-sm bg-white outline-none cursor-pointer"
             >
               <option value="All">All Countries</option>
-              {uniqueCountries.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
+              {uniqueCountries.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
+            <select
+              value={directorySort}
+              onChange={(e) => { setDirectorySort(e.target.value); setDirectoryPage(1); }}
+              aria-label="Sort alumni"
+              className="min-w-0 border border-soft rounded-xl px-3 py-2.5 text-sm bg-white outline-none cursor-pointer"
+            >
+              <option value="name-asc">Name: A to Z</option>
+              <option value="name-desc">Name: Z to A</option>
+              <option value="university-asc">University: A to Z</option>
+              <option value="year-newest">Graduation: Newest first</option>
+              <option value="year-oldest">Graduation: Oldest first</option>
+            </select>
+            <button
+              type="button"
+              onClick={clearDirectoryFilters}
+              className="border border-soft rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 hover:text-blue-600 hover:border-blue-300 transition"
+            >
+              Clear filters
+            </button>
           </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 text-xs text-slate-500">
+          <span>
+            Showing <b className="navy">{filteredAlumni.length === 0 ? 0 : (directoryPage - 1) * directoryPageSize + 1}–{Math.min(directoryPage * directoryPageSize, filteredAlumni.length)}</b> of <b className="navy">{filteredAlumni.length.toLocaleString()}</b> approved alumni
+          </span>
+          <span>Page {Math.min(directoryPage, totalDirectoryPages)} of {totalDirectoryPages}</span>
         </div>
 
         {filteredAlumni.length === 0 ? (
@@ -391,7 +475,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredAlumni.map((person) => {
+            {visibleAlumni.map((person) => {
               const initials = person.name
                 .split(' ')
                 .map((x) => x[0])
@@ -455,6 +539,31 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {filteredAlumni.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-4 border-t border-soft">
+            <p className="text-xs text-slate-400">Showing {visibleAlumni.length} profiles on this page</p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={directoryPage <= 1}
+                onClick={() => setDirectoryPage((page) => Math.max(1, page - 1))}
+                className="px-3.5 py-2 rounded-xl border border-soft text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:border-blue-300 transition"
+              >
+                ← Previous
+              </button>
+              <span className="text-xs text-slate-500 tabular-nums">{directoryPage} / {totalDirectoryPages}</span>
+              <button
+                type="button"
+                disabled={directoryPage >= totalDirectoryPages}
+                onClick={() => setDirectoryPage((page) => Math.min(totalDirectoryPages, page + 1))}
+                className="px-3.5 py-2 rounded-xl border border-soft text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:border-blue-300 transition"
+              >
+                Next →
+              </button>
+            </div>
           </div>
         )}
       </div>
