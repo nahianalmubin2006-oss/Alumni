@@ -10,7 +10,15 @@ interface AlumniViewProps {
 }
 
 export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) => {
-  const { universities, alumni, stats } = useData();
+  const { universities, alumni, stats, allUsers } = useData();
+
+  // Legacy student records may exist in the alumni collection. Never list a profile
+  // as an alumnus when its canonical user profile identifies it as a current student.
+  const alumniOnly = useMemo(() => alumni.filter((record) => {
+    const linkedUserId = record.userId || record.id;
+    const linkedProfile = allUsers.find((user) => user.uid === linkedUserId || user.id === linkedUserId);
+    return linkedProfile?.profileType !== 'Student';
+  }), [alumni, allUsers]);
 
   const uChartCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const dChartCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -31,7 +39,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
   const universityRankings = useMemo(() => {
     return universities
       .map((u) => {
-        const liveCount = alumni.filter(
+        const liveCount = alumniOnly.filter(
           (a) => a.status === 'APPROVED' && a.university?.toLowerCase() === u.name.toLowerCase()
         ).length;
         return {
@@ -41,7 +49,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
         };
       })
       .sort((a, b) => b.alumni - a.alumni);
-  }, [universities, alumni]);
+  }, [universities, alumniOnly]);
 
   // Sorted departments by aggregated alumni
   const departmentRankings = useMemo(() => {
@@ -58,7 +66,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
         universitiesCount: unisCount,
       };
     }).sort((a, b) => b.alumni - a.alumni);
-  }, [alumni]);
+  }, [alumniOnly]);
 
   const top5Unis = universityRankings.slice(0, 5);
   const top5Depts = departmentRankings.slice(0, 5);
@@ -146,7 +154,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
   // Filter and sort only approved alumni, then paginate the result set.
   const filteredAlumni = useMemo(() => {
     const query = alumniSearch.trim().toLocaleLowerCase();
-    const filtered = alumni.filter((a) => {
+    const filtered = alumniOnly.filter((a) => {
       if (a.status !== 'APPROVED') return false;
       const hay = [a.name, a.university, a.department, a.jobRole, a.company, a.country, a.batch, a.graduationYear]
         .filter(Boolean)
@@ -175,9 +183,9 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
         default: return nameA.localeCompare(nameB);
       }
     });
-  }, [alumni, alumniSearch, countryFilter, universityFilter, departmentFilter, directorySort]);
+  }, [alumniOnly, alumniSearch, countryFilter, universityFilter, departmentFilter, directorySort]);
 
-  const approvedAlumni = useMemo(() => alumni.filter((a) => a.status === 'APPROVED'), [alumni]);
+  const approvedAlumni = useMemo(() => alumniOnly.filter((a) => a.status === 'APPROVED'), [alumniOnly]);
   const uniqueCountries = useMemo(
     () => Array.from(new Set(approvedAlumni.map((a) => a.country).filter((value): value is string => Boolean(value))).values()).sort(),
     [approvedAlumni]

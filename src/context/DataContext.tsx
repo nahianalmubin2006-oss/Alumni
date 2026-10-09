@@ -662,8 +662,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Interconnected dynamic statistics
   const stats = useMemo(() => {
-    // Approved alumni count from database
-    const approvedAlumni = alumni.filter((a) => a.status === 'APPROVED');
+    // Exclude legacy records linked to current Student profiles from alumni totals.
+    const approvedAlumni = alumni.filter((a) => {
+      if (a.status !== 'APPROVED') return false;
+      const linkedUserId = a.userId || a.id;
+      const linkedProfile = allUsers.find((user) => user.uid === linkedUserId || user.id === linkedUserId);
+      return linkedProfile?.profileType !== 'Student';
+    });
     // Calculate total base alumni across universities + individual dynamic approved alumni additions
     const totalAlumni = approvedAlumni.length;
 
@@ -698,7 +703,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Action: Approve User
   const approveUser = async (userId: string, targetRole?: Role) => {
     const existingUser = allUsers.find((u) => u.uid === userId);
-    const newRole = targetRole || existingUser?.role || (existingUser?.profileType === 'Alumni' ? 'ALUMNI' : 'STUDENT');
+    // A Student profile must never be promoted into the alumni directory by an
+    // approval dropdown or a stale role value. Profile type is the source of truth.
+    const newRole = existingUser?.profileType === 'Student'
+      ? 'STUDENT'
+      : targetRole || existingUser?.role || (existingUser?.profileType === 'Alumni' ? 'ALUMNI' : 'STUDENT');
 
     // 1. Instant optimistic update so UI is lightning fast
     setAllUsers((prev) =>
@@ -721,7 +730,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // If alumni, also approve in alumni collection and update university count dynamically
-    if (existingUser?.profileType === 'Alumni' || newRole === 'ALUMNI') {
+    if (existingUser?.profileType === 'Alumni') {
       const alumniDocRef = doc(db, 'alumni', userId);
       try {
         await updateDoc(alumniDocRef, {
