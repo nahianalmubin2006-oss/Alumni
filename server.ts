@@ -28,7 +28,7 @@ app.use((req, res, next) => {
 });
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// Ensure public/uploads/avatars directory exists for profile photos
+// Ensure public/uploads/avatars directory exists
 const UPLOADS_DIR = path.resolve(__dirname, 'public/uploads/avatars');
 try {
   if (!fs.existsSync(UPLOADS_DIR)) {
@@ -38,55 +38,78 @@ try {
   console.warn('Notice: Failed to initialize uploads directory:', e);
 }
 
-// Serve public uploads statically
+// Serve public uploads statically.
 app.use('/uploads', express.static(path.resolve(__dirname, 'public/uploads')));
 
-// Profile Avatar Upload & Local Storage API
-app.post('/api/user/upload-avatar', (req, res) => {
+// Avatar uploads must be tied to the verified Firebase identity. A caller cannot
+// write files under another user's ID or anonymously consume server disk space.
+app.post('/api/user/upload-avatar', async (req, res) => {
+  const { image, userId, idToken } = req.body || {};
+  if (typeof image !== 'string' || typeof userId !== 'string' || typeof idToken !== 'string') {
+    return res.status(400).json({ error: 'Image data, user ID, and Firebase ID token are required.' });
+  }
+
+  const firebaseApiKey = process.env.FIREBASE_API_KEY;
+  if (!firebaseApiKey) {
+    return res.status(503).json({ error: 'Firebase server authentication is not configured.' });
+  }
+
+  let verifiedUid = '';
   try {
-    const { image, userId } = req.body || {};
-    if (!image || typeof image !== 'string') {
-      return res.status(400).json({ error: 'Image data payload is required.' });
+    const identityResponse = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(firebaseApiKey)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      }
+    );
+    const identityData = await identityResponse.json();
+    const identity = Array.isArray(identityData.users) ? identityData.users[0] : null;
+    if (!identityResponse.ok || !identity?.localId) {
+      return res.status(401).json({ error: 'Firebase authentication token is invalid or expired.' });
     }
+    if (identity.localId !== userId || identity.emailVerified !== true) {
+      return res.status(403).json({ error: 'You may upload a profile picture only for your own verified account.' });
+    }
+    verifiedUid = String(identity.localId);
+  } catch (error) {
+    console.error('Avatar identity verification failed:', error);
+    return res.status(503).json({ error: 'Unable to verify Firebase authentication at this time.' });
+  }
 
-    const safeUid = (userId && typeof userId === 'string')
-      ? userId.replace(/[^a-zA-Z0-9_-]/g, '')
-      : 'user';
-    const timestamp = Date.now();
-    const filename = `avatar-${safeUid}-${timestamp}.jpg`;
+  const matches = image.match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/);
+  if (!matches) {
+    return res.status(400).json({ error: 'Use a valid JPEG, PNG, or WebP image.' });
+  }
+  const imageBuffer = Buffer.from(matches[2], 'base64');
+  if (imageBuffer.length === 0) {
+    return res.status(400).json({ error: 'The uploaded image is empty or invalid.' });
+  }
+  if (imageBuffer.length > 5 * 1024 * 1024) {
+    return res.status(413).json({ error: 'Profile pictures must be 5 MB or smaller.' });
+  }
+
+  try {
+    const safeUid = verifiedUid.replace(/[^a-zA-Z0-9_-]/g, '');
+    const extension = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+    const filename = `avatar-${safeUid}-${Date.now()}.${extension}`;
     const filePath = path.join(UPLOADS_DIR, filename);
-
-    // Decode base64
-    const matches = image.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
-    if (matches && matches[2]) {
-      const buffer = Buffer.from(matches[2], 'base64');
-      fs.writeFileSync(filePath, buffer);
-    } else {
-      const rawBase64 = image.replace(/^data:image\/\w+;base64,/, '');
-      const buffer = Buffer.from(rawBase64, 'base64');
-      fs.writeFileSync(filePath, buffer);
-    }
-
+    await fs.promises.writeFile(filePath, imageBuffer, { flag: 'wx' });
     const publicUrl = `/uploads/avatars/${filename}`;
 
-    // Update user in adminStore if present
-    const userInAdmin = adminStore.users.find((u) => u.id === safeUid || u.id === userId);
+    const userInAdmin = adminStore.users.find((user) => user.firebaseUid === verifiedUid || user.id === verifiedUid);
     if (userInAdmin) {
       (userInAdmin as any).photoUrl = publicUrl;
       persistAdminStore();
     }
 
-    return res.json({
-      success: true,
-      photoUrl: publicUrl,
-      message: 'Profile picture saved successfully.',
-    });
-  } catch (err: any) {
-    console.error('Failed to save profile picture on server:', err);
-    return res.status(500).json({ error: err.message || 'Failed to save avatar image' });
+    return res.json({ success: true, photoUrl: publicUrl, message: 'Profile picture saved successfully.' });
+  } catch (error: any) {
+    console.error('Failed to save profile picture on server:', error);
+    return res.status(500).json({ error: 'Failed to save avatar image.' });
   }
 });
-
 
 // In-memory bot metadata tracker (persisted between requests)
 let botState = {
