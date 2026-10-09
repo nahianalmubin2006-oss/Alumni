@@ -114,7 +114,9 @@ service cloud.firestore {
           || (isSuperAdmin() && request.resource.data.status == 'APPROVED')
         )
         && request.resource.data.profileType in ['Student', 'Alumni', 'Admin'];
-      allow update: if isSuperAdmin() || (isOwner(userId) && ownerCanEditProfile());
+      allow update: if request.resource.data.uid == resource.data.uid
+        && request.resource.data.id == resource.data.id
+        && (isSuperAdmin() || (isOwner(userId) && ownerCanEditProfile()));
       allow delete: if isSuperAdmin();
     }
 
@@ -207,7 +209,7 @@ service cloud.firestore {
       allow create: if isSuperAdmin() || (
         isSignedIn()
         && request.resource.data.authorId == request.auth.uid
-        && request.resource.data.status == 'PENDING_APPROVAL'
+        && request.resource.data.status in ['DRAFT', 'PENDING_APPROVAL']
       );
       allow update: if isSuperAdmin()
         || isUniversityAdmin(resource.data.university)
