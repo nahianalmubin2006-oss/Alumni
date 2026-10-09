@@ -735,6 +735,9 @@ app.post('/api/admin/applications/co-admin', (req, res) => {
     return res.status(400).json({ error: 'Enter a valid name and email, and choose a password of at least 10 characters.' });
   }
   const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail.endsWith('@gmail.com')) {
+    return res.status(400).json({ error: 'Co-admin applications must use a Gmail address.' });
+  }
   if (adminStore.users.some((user) => user.email.toLowerCase() === normalizedEmail) ||
       adminStore.adminApplications!.some((item) => item.email === normalizedEmail && item.status === 'PENDING')) {
     return res.status(409).json({ error: 'An account or pending application already exists for this email.' });
