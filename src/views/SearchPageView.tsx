@@ -14,7 +14,7 @@ export const SearchPageView: React.FC<SearchPageViewProps> = ({
   onNavigate,
   onBack,
 }) => {
-  const { universities, alumni, news } = useData();
+  const { universities, alumni, students, news } = useData();
 
   const [query, setQuery] = useState(initialQuery);
   const [activeCategory, setActiveCategory] = useState<'all' | 'universities' | 'departments' | 'alumni' | 'news'>('all');
@@ -31,33 +31,70 @@ export const SearchPageView: React.FC<SearchPageViewProps> = ({
       };
     }
 
-    // 1. Universities
-    const matchedUnis = ALL_DIRECTORY_UNIVERSITIES.filter((u) =>
-      u.name.toLowerCase().includes(q)
+    // 1. Universities (from live state with baseline directory fallback)
+    const uniSource = universities && universities.length > 0 ? universities : ALL_DIRECTORY_UNIVERSITIES;
+    const matchedUnis = uniSource.filter((u) =>
+      (u.name || '').toLowerCase().includes(q)
     ).slice(0, 12);
 
     // 2. Departments
     const matchedDepts = RAW_DEPARTMENT_CATALOG.filter((d) =>
-      [d.name, d.group, ...d.aliases].join(' ').toLowerCase().includes(q)
+      [d.name, d.group, ...(d.aliases || [])].join(' ').toLowerCase().includes(q)
     ).slice(0, 12);
 
-    // 3. Alumni / Companies / Countries / Batches
+    // 3. Alumni and Students / Companies / Countries / Batches
     const matchedAlumni = alumni.filter((a) => {
       const hay = [
-        a.name,
-        a.university,
-        a.department,
-        a.company,
-        a.country,
-        a.city,
-        a.jobRole,
-        a.batch,
-        a.graduationYear,
+        a.name || '',
+        a.university || '',
+        a.department || '',
+        a.company || '',
+        a.country || '',
+        a.city || '',
+        a.jobRole || '',
+        a.batch || '',
+        a.graduationYear || '',
+        a.studentId || '',
       ]
         .join(' ')
         .toLowerCase();
       return hay.includes(q);
     }).slice(0, 16);
+
+    // Also include matched enrolled students if not already in list
+    if (students && students.length > 0) {
+      const matchedStudents = students.filter((s) => {
+        const hay = [
+          s.name || '',
+          s.university || '',
+          s.department || '',
+          s.studentId || '',
+          s.studentYear || '',
+          s.expectedGraduation || '',
+        ].join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+      matchedStudents.forEach((st) => {
+        if (!matchedAlumni.some((a) => a.id === st.id || a.userId === st.userId)) {
+          matchedAlumni.push({
+            id: st.id,
+            userId: st.userId,
+            name: st.name,
+            email: st.email,
+            university: st.university,
+            department: st.department,
+            batch: st.expectedGraduation || 'Student',
+            studentId: st.studentId,
+            bio: st.bio,
+            photoUrl: st.photoUrl,
+            status: 'APPROVED',
+            isVerified: false,
+            createdAt: st.createdAt,
+            updatedAt: st.updatedAt,
+          } as any);
+        }
+      });
+    }
 
     // 4. News
     const matchedNews = news.filter((n) => {
@@ -80,7 +117,7 @@ export const SearchPageView: React.FC<SearchPageViewProps> = ({
       matchedNews,
       total,
     };
-  }, [query, alumni, news]);
+  }, [query, universities, alumni, students, news]);
 
   return (
     <div className="max-w-6xl mx-auto px-5 py-12">

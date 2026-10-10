@@ -80,8 +80,8 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
     return () => { cancelled = true; };
   }, []);
 
-  // Profile sub-tabs: 'posts' | 'followed' | 'dossier'
-  const [profileTab, setProfileTab] = useState<'posts' | 'followed' | 'dossier'>('posts');
+  // Profile sub-tabs: 'dossier' | 'posts' | 'followed'
+  const [profileTab, setProfileTab] = useState<'dossier' | 'posts' | 'followed'>('dossier');
 
   // Post creation states
   const [newPostContent, setNewPostContent] = useState('');
@@ -122,10 +122,70 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Continuous auto-sync with userProfile so fields are never blank when opening edit mode
+  useEffect(() => {
+    if (userProfile) {
+      setName(userProfile.name || '');
+      setProfileType(userProfile.profileType || 'Student');
+      if (userProfile.photoUrl) setPhotoUrl(userProfile.photoUrl);
+      setStudentId(userProfile.studentId || '');
+      setEducationLevel(userProfile.educationLevel || 'Undergraduate');
+      setStudentYear(userProfile.studentYear || '');
+      setExpectedGraduation(userProfile.expectedGraduation || '');
+      setGraduationYear(userProfile.graduationYear || '');
+      setJobRole(userProfile.jobRole || '');
+      setCompany(userProfile.company || '');
+      setCountry(userProfile.country || 'Bangladesh');
+      setCity(userProfile.city || 'Dhaka');
+      setBio(userProfile.bio || '');
+      setLinkedin(userProfile.linkedin || '');
+
+      const currentUni = userProfile.university || '';
+      const currentDept = userProfile.department || '';
+      const hasUniInList = ALL_DIRECTORY_UNIVERSITIES.some((u) => u.name === currentUni);
+      const hasDeptInList = RAW_DEPARTMENT_CATALOG.some((d) => d.name === currentDept);
+
+      if (currentUni && !hasUniInList) {
+        setUniversity('OTHER');
+        setCustomUniversity(currentUni);
+      } else {
+        setUniversity(currentUni);
+        setCustomUniversity('');
+      }
+
+      if (currentDept && !hasDeptInList) {
+        setDepartment('OTHER');
+        setCustomDepartment(currentDept);
+      } else {
+        setDepartment(currentDept);
+        setCustomDepartment('');
+      }
+    }
+  }, [userProfile]);
+
   const handleGoogleSignIn = async () => {
     setErrorMsg('');
     try {
-      await loginWithGoogle();
+      const finalUniversity = (university === 'OTHER' ? customUniversity : university).trim();
+      const finalDepartment = (department === 'OTHER' ? customDepartment : department).trim();
+      const prefilled: any = {
+        name: name.trim() || undefined,
+        profileType: profileType || 'Student',
+        university: finalUniversity || undefined,
+        department: finalDepartment || undefined,
+        studentId: studentId.trim() || undefined,
+        educationLevel: educationLevel || undefined,
+        studentYear: studentYear.trim() || undefined,
+        expectedGraduation: expectedGraduation.trim() || undefined,
+        graduationYear: graduationYear.trim() || undefined,
+        jobRole: jobRole.trim() || undefined,
+        company: company.trim() || undefined,
+        country: country.trim() || undefined,
+        city: city.trim() || undefined,
+        bio: bio.trim() || undefined,
+        linkedin: linkedin.trim() || undefined,
+      };
+      await loginWithGoogle(prefilled);
     } catch (err: any) {
       if (err?.code === 'auth/popup-blocked') {
         setErrorMsg('Pop-up was blocked by your browser. Please allow popups or use email/password.');
@@ -139,13 +199,6 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
       }
     }
   };
-
-  // Sync photoUrl with userProfile.photoUrl
-  useEffect(() => {
-    if (userProfile?.photoUrl) {
-      setPhotoUrl(userProfile.photoUrl);
-    }
-  }, [userProfile?.photoUrl]);
 
   // Robust profile photo processing, storage, and persistence helper
   const handleUploadProfilePhoto = async (file: File) => {
@@ -411,6 +464,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
     try {
       await updateProfileData({
         name,
+        profileType,
         photoUrl,
         university: finalUniversity,
         department: finalDepartment,
@@ -430,6 +484,41 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
       setViewState('default');
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to update profile.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickCompleteProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalUniversity = (university === 'OTHER' ? customUniversity : university).trim();
+    const finalDepartment = (department === 'OTHER' ? customDepartment : department).trim();
+
+    if (!finalUniversity) {
+      setErrorMsg('Please select or enter your University.');
+      return;
+    }
+    if (!finalDepartment) {
+      setErrorMsg('Please select or enter your Department.');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      await updateProfileData({
+        university: finalUniversity,
+        department: finalDepartment,
+        profileType: profileType || 'Student',
+        studentId: studentId.trim(),
+        educationLevel: educationLevel || 'Undergraduate',
+        studentYear: studentYear.trim(),
+        expectedGraduation: expectedGraduation.trim(),
+        graduationYear: graduationYear.trim(),
+      });
+      setSuccessMsg('Your campus profile is now complete and active in the directory!');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Could not complete profile.');
     } finally {
       setLoading(false);
     }
@@ -646,19 +735,143 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                 </div>
               </div>
 
-              {/* Status and Institutional Affiliation Notice */}
+              {/* Status and Institutional Affiliation Setup */}
               {(!userProfile.university || userProfile.university === '') && (
-                <div className="mt-4 p-4 rounded-xl bg-blue-50 border border-blue-200 text-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-                  <div>
-                    <b className="navy font-bold">Institutional Affiliation Needed:</b> Please set
-                    your university and department so your campus peers can connect.
+                <div className="mt-4 p-5 rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50/60 to-white border border-blue-200 text-slate-800 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-blue-100">
+                    <div className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                        🎓
+                      </span>
+                      <div>
+                        <b className="navy text-sm font-black block">Complete Your Campus Profile</b>
+                        <p className="text-[11px] text-slate-500">
+                          Select your university and faculty discipline once to join the live directory.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100/80 px-2.5 py-0.5 rounded-full self-start sm:self-auto">
+                      1-Step Setup
+                    </span>
                   </div>
-                  <button
-                    onClick={enterEditMode}
-                    className="bg-navy text-white px-3 py-1.5 rounded-lg font-bold hover:bg-slate-800 transition shrink-0"
-                  >
-                    Set University →
-                  </button>
+
+                  <form onSubmit={handleQuickCompleteProfile} className="mt-4 space-y-3.5">
+                    <div className="grid sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 block mb-1">I am a *</label>
+                        <select
+                          value={profileType}
+                          onChange={(e) => setProfileType(e.target.value as ProfileType)}
+                          className="account-input py-1.5 text-xs bg-white"
+                        >
+                          <option value="Student">Current Student</option>
+                          <option value="Alumni">Graduated Alumni</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 block mb-1">University *</label>
+                        <select
+                          value={university}
+                          onChange={(e) => setUniversity(e.target.value)}
+                          required
+                          className="account-input py-1.5 text-xs bg-white"
+                        >
+                          <option value="" disabled>-- Select University --</option>
+                          {ALL_DIRECTORY_UNIVERSITIES.map((u) => (
+                            <option key={u.name} value={u.name}>
+                              {u.name}
+                            </option>
+                          ))}
+                          <option value="OTHER">Other / Custom University</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 block mb-1">Department *</label>
+                        <select
+                          value={department}
+                          onChange={(e) => setDepartment(e.target.value)}
+                          required
+                          className="account-input py-1.5 text-xs bg-white"
+                        >
+                          <option value="" disabled>-- Select Department --</option>
+                          {RAW_DEPARTMENT_CATALOG.map((d) => (
+                            <option key={d.name} value={d.name}>
+                              {d.name}
+                            </option>
+                          ))}
+                          <option value="OTHER">Other / Custom Department</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {(university === 'OTHER' || department === 'OTHER') && (
+                      <div className="grid sm:grid-cols-2 gap-3 pt-1">
+                        {university === 'OTHER' && (
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-600 block mb-1">Custom University Name *</label>
+                            <input
+                              value={customUniversity}
+                              onChange={(e) => setCustomUniversity(e.target.value)}
+                              required
+                              placeholder="e.g. Bangladesh University of Professionals"
+                              className="account-input py-1.5 text-xs"
+                            />
+                          </div>
+                        )}
+                        {department === 'OTHER' && (
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-600 block mb-1">Custom Department Name *</label>
+                            <input
+                              value={customDepartment}
+                              onChange={(e) => setCustomDepartment(e.target.value)}
+                              required
+                              placeholder="e.g. Computer Science & Engineering"
+                              className="account-input py-1.5 text-xs"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="grid sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 block mb-1">Student ID / Roll</label>
+                        <input
+                          value={studentId}
+                          onChange={(e) => setStudentId(e.target.value)}
+                          placeholder="e.g. 230204101"
+                          className="account-input py-1.5 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 block mb-1">
+                          {profileType === 'Student' ? 'Current Year / Semester' : 'Graduation Batch Year'}
+                        </label>
+                        <input
+                          value={profileType === 'Student' ? studentYear : graduationYear}
+                          onChange={(e) =>
+                            profileType === 'Student'
+                              ? setStudentYear(e.target.value)
+                              : setGraduationYear(e.target.value)
+                          }
+                          placeholder={profileType === 'Student' ? 'e.g. 2nd Year, 4th Semester' : 'e.g. 2024'}
+                          className="account-input py-1.5 text-xs"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl text-xs font-bold transition shadow-xs disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>{loading ? 'Saving...' : 'Save & Join Directory'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </form>
                 </div>
               )}
 
@@ -691,6 +904,18 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
 
             {/* Profile Navigation Tabs Bar */}
             <div className="flex items-center gap-2 px-6 sm:px-8 border-t border-soft bg-slate-50/70 pt-2 pb-2 text-xs overflow-x-auto">
+              <button
+                onClick={() => setProfileTab('dossier')}
+                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer ${
+                  profileTab === 'dossier'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+                }`}
+              >
+                <GraduationCap className="w-3.5 h-3.5" />
+                <span>Academic Credentials & Info</span>
+              </button>
+
               <button
                 onClick={() => setProfileTab('posts')}
                 className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer ${
@@ -729,18 +954,6 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                 >
                   {userProfile.followedUniversities?.length || 0}
                 </span>
-              </button>
-
-              <button
-                onClick={() => setProfileTab('dossier')}
-                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer ${
-                  profileTab === 'dossier'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                }`}
-              >
-                <GraduationCap className="w-3.5 h-3.5" />
-                <span>Academic Credentials & Info</span>
               </button>
             </div>
           </div>
@@ -1210,147 +1423,420 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
           {/* TAB 3: ACADEMIC CREDENTIALS & INFO DOSSIER                */}
           {/* ========================================================= */}
           {profileTab === 'dossier' && (
-            <div className="card p-7 shadow-xl border-soft space-y-6">
-              {/* Verification Badge Request */}
-              {userProfile.profileType === 'Alumni' && !userProfile.isVerifiedAlumni && (
-                <div className="p-5 rounded-2xl bg-blue-50/70 border border-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div>
-                    <b className="navy text-sm block">Want an Official Verified Alumni Badge?</b>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Submit proof of graduation (Certificate, Transcript or LinkedIn) for Super Admin
-                      verification.
+            <div className="space-y-6">
+              {/* SECTION 1: ACADEMIC CREDENTIALS & CAMPUS STANDING */}
+              <div className="card p-6 sm:p-7 shadow-xl border-soft">
+                <div className="flex items-center justify-between pb-4 border-b border-soft">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
+                      <GraduationCap className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black navy">Academic Identity & Institutional Credentials</h3>
+                      <p className="text-[11px] text-slate-400">Verified higher education affiliation & degree records</p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    <span>{userProfile.profileType === 'Alumni' ? 'Confirmed Graduate' : 'Active Student'}</span>
+                  </span>
+                </div>
+
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
+                  {/* University */}
+                  <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">University Affiliation</span>
+                      <div className="flex items-center gap-2 mt-2">
+                        {userProfile.university && getUniversityLogo(userProfile.university) && (
+                          <img
+                            src={getUniversityLogo(userProfile.university)}
+                            alt=""
+                            className="w-5 h-5 object-contain shrink-0"
+                          />
+                        )}
+                        <b className="text-sm navy font-black leading-tight">
+                          {userProfile.university || <span className="text-slate-400 italic font-normal">Not configured</span>}
+                        </b>
+                      </div>
+                    </div>
+                    {userProfile.university && (
+                      <button
+                        onClick={() => onNavigate('universityDetail', { name: userProfile.university })}
+                        className="mt-3 text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>View Campus Page</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Department */}
+                  <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Faculty / Department</span>
+                      <b className="text-sm navy font-black block mt-2 leading-tight">
+                        {userProfile.department || <span className="text-slate-400 italic font-normal">Not configured</span>}
+                      </b>
+                    </div>
+                    {userProfile.department && userProfile.university && (
+                      <button
+                        onClick={() =>
+                          onNavigate('departmentProfile', {
+                            dept: userProfile.department,
+                            uni: userProfile.university,
+                          })
+                        }
+                        className="mt-3 text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Explore Discipline Cohorts</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Degree Level */}
+                  <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Degree / Program Level</span>
+                    <b className="text-sm navy font-black block mt-2">
+                      {userProfile.educationLevel || 'Undergraduate (Bachelor’s)'}
+                    </b>
+                    <span className="text-[11px] text-slate-400 mt-1 block">Degree Track</span>
+                  </div>
+
+                  {/* Student ID / Roll */}
+                  <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Registration / Student Roll</span>
+                    <p className="text-sm font-mono font-bold navy mt-2">
+                      {userProfile.studentId || <span className="text-slate-400 font-sans italic text-xs font-normal">Not recorded</span>}
                     </p>
+                    <span className="text-[11px] text-slate-400 mt-1 block">Campus ID</span>
+                  </div>
+
+                  {/* Student Year or Graduation Year */}
+                  {userProfile.profileType === 'Student' ? (
+                    <>
+                      <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Current Standing</span>
+                        <b className="text-sm navy font-black block mt-2">
+                          {userProfile.studentYear || 'Active Student'}
+                        </b>
+                        <span className="text-[11px] text-slate-400 mt-1 block">Enrolled Semester</span>
+                      </div>
+
+                      <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Expected Graduation</span>
+                        <b className="text-sm text-blue-600 font-black block mt-2">
+                          {userProfile.expectedGraduation || '2028'}
+                        </b>
+                        <span className="text-[11px] text-slate-400 mt-1 block">Target Degree Completion</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Graduation Batch</span>
+                        <b className="text-sm text-emerald-700 font-black block mt-2">
+                          Class of {userProfile.graduationYear || '2024'}
+                        </b>
+                        <span className="text-[11px] text-slate-400 mt-1 block">Convocated Cohort</span>
+                      </div>
+
+                      <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Directory Status</span>
+                        <b className="text-sm text-emerald-700 font-black block mt-2 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Active Alumni</span>
+                        </b>
+                        <span className="text-[11px] text-slate-400 mt-1 block">Live in directory searches</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* SECTION 2: PROFESSIONAL & CAREER TRAJECTORY */}
+              <div className="card p-6 sm:p-7 shadow-xl border-soft">
+                <div className="flex items-center justify-between pb-4 border-b border-soft">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center">
+                      <Briefcase className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black navy">Professional Career & Industry Trajectory</h3>
+                      <p className="text-[11px] text-slate-400">Current position, global geography, and professional social links</p>
+                    </div>
                   </div>
                   <button
-                    onClick={() => setVerificationModalOpen(true)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition shrink-0 cursor-pointer"
+                    type="button"
+                    onClick={enterEditMode}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
                   >
-                    Request Verification Badge →
+                    Edit Career
                   </button>
                 </div>
-              )}
 
-              {/* Claim an existing alumni directory record */}
-              {currentUser && claimCandidates.length > 0 && (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 space-y-4">
-                  <div>
-                    <b className="block text-sm navy">Claim an existing alumni profile</b>
-                    <p className="mt-1 text-xs text-slate-600">We found directory records matching your signed-in email or student ID. Submit evidence; the record will not be linked until a Super Admin reviews it.</p>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
+                  <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Role & Position</span>
+                    <b className="text-sm navy font-black block mt-2">
+                      {userProfile.jobRole || <span className="text-slate-400 italic font-normal">Not specified</span>}
+                    </b>
+                    <span className="text-[11px] text-slate-400 mt-1 block">Job Title</span>
                   </div>
-                  <div className="space-y-3">
-                    {claimCandidates.map((record) => {
-                      const pending = profileClaims.some((claim) => claim.targetAlumniId === record.id && claim.status === 'PENDING');
-                      return (
-                        <div key={record.id} className="rounded-xl border border-amber-200 bg-white p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                          <div>
-                            <p className="font-bold text-sm navy">{record.name}</p>
-                            <p className="text-xs text-slate-500 mt-1">{record.university} · {record.department} · Batch {record.graduationYear || record.batch}</p>
-                            <p className="text-[11px] text-slate-500 mt-1">Student ID: {record.studentId || 'Not recorded'}</p>
-                          </div>
-                          {pending ? (
-                            <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800">Claim pending review</span>
-                          ) : (
-                            <button type="button" disabled={submittingClaim || !claimProofUrl.trim()} onClick={() => void handleProfileClaimSubmit(record)} className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">
-                              {submittingClaim ? 'Submitting…' : 'Request to claim'}
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    <label className="text-xs font-bold text-slate-600">Evidence link (HTTPS) *<input required type="url" value={claimProofUrl} onChange={(e) => setClaimProofUrl(e.target.value)} placeholder="https://..." className="account-input mt-1" /></label>
-                    <label className="text-xs font-bold text-slate-600">Notes for reviewer<textarea value={claimNotes} onChange={(e) => setClaimNotes(e.target.value)} maxLength={1000} rows={2} placeholder="Explain how this record belongs to you" className="account-input mt-1" /></label>
-                  </div>
-                  <p className="text-[11px] text-slate-500">Evidence and notes are shared with authorized reviewers. Never enter your password or sensitive financial information.</p>
-                </div>
-              )}
 
-              {profileClaims.filter((claim) => claim.requesterId === currentUser?.uid).length > 0 && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <b className="text-sm navy">Your profile claim history</b>
-                  <div className="mt-2 space-y-2">
-                    {profileClaims.filter((claim) => claim.requesterId === currentUser?.uid).map((claim) => (
-                      <div key={claim.id} className="flex items-center justify-between gap-3 text-xs">
-                        <span>{claim.university} · {claim.department}</span>
-                        <span className={claim.status === 'APPROVED' ? 'font-bold text-emerald-700' : claim.status === 'REJECTED' ? 'font-bold text-rose-700' : 'font-bold text-amber-700'}>{claim.status}</span>
-                      </div>
-                    ))}
+                  <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Organization / Employer</span>
+                    <b className="text-sm navy font-black block mt-2">
+                      {userProfile.company || <span className="text-slate-400 italic font-normal">Not specified</span>}
+                    </b>
+                    <span className="text-[11px] text-slate-400 mt-1 block">Company</span>
+                  </div>
+
+                  <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-slate-400" />
+                      <span>Current Location</span>
+                    </span>
+                    <b className="text-sm navy font-black block mt-2">
+                      {userProfile.city ? `${userProfile.city}, ` : ''}{userProfile.country || 'Bangladesh'}
+                    </b>
+                    <span className="text-[11px] text-slate-400 mt-1 block">Residence & Market</span>
+                  </div>
+
+                  <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 sm:col-span-2 lg:col-span-3">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Professional Social Link</span>
+                    <div className="flex items-center justify-between gap-3 mt-2">
+                      <p className="text-xs font-semibold text-slate-700 truncate">
+                        {userProfile.linkedin ? (
+                          <a
+                            href={userProfile.linkedin.startsWith('http') ? userProfile.linkedin : `https://${userProfile.linkedin}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline flex items-center gap-1 font-mono"
+                          >
+                            <span>{userProfile.linkedin}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
+                        ) : (
+                          <span className="text-slate-400 italic">No LinkedIn profile connected yet</span>
+                        )}
+                      </p>
+                      <button
+                        onClick={enterEditMode}
+                        className="text-[11px] font-bold text-blue-600 hover:underline shrink-0 cursor-pointer"
+                      >
+                        {userProfile.linkedin ? 'Update Link' : '+ Add LinkedIn'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {/* Details Grid */}
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="bg-slate-50 rounded-xl p-4">
-                  <span className="text-xs font-bold text-slate-400 uppercase">Email (Gmail / Academic)</span>
-                  <p className="text-sm font-semibold navy mt-1">{userProfile.email}</p>
-                </div>
-                <div className="bg-slate-50 rounded-xl p-4">
-                  <span className="text-xs font-bold text-slate-400 uppercase">Profile Classification</span>
-                  <p className="text-sm font-semibold navy mt-1">{userProfile.profileType}</p>
-                </div>
-                <div className="bg-slate-50 rounded-xl p-4">
-                  <span className="text-xs font-bold text-slate-400 uppercase">University Affiliation</span>
-                  <p className="text-sm font-semibold navy mt-1">{userProfile.university || 'N/A'}</p>
-                </div>
-                <div className="bg-slate-50 rounded-xl p-4">
-                  <span className="text-xs font-bold text-slate-400 uppercase">Department / Faculty</span>
-                  <p className="text-sm font-semibold navy mt-1">{userProfile.department || 'N/A'}</p>
-                </div>
-
-                {userProfile.studentId && (
-                  <div className="bg-slate-50 rounded-xl p-4">
-                    <span className="text-xs font-bold text-slate-400 uppercase">Student Registration / ID</span>
-                    <p className="text-sm font-semibold navy mt-1 font-mono">{userProfile.studentId}</p>
+              {/* SECTION 3: PERSONAL BIOGRAPHY & ACADEMIC PASSIONS */}
+              <div className="card p-6 sm:p-7 shadow-xl border-soft">
+                <div className="flex items-center justify-between pb-4 border-b border-soft">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black navy">Biography & Academic Focus</h3>
+                      <p className="text-[11px] text-slate-400">Research interests, career milestones, or campus background</p>
+                    </div>
                   </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={enterEditMode}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                  >
+                    Edit Bio
+                  </button>
+                </div>
 
-                {userProfile.profileType === 'Student' ? (
-                  <>
-                    <div className="bg-slate-50 rounded-xl p-4">
-                      <span className="text-xs font-bold text-slate-400 uppercase">Current Year / Semester</span>
-                      <p className="text-sm font-semibold navy mt-1">
-                        {userProfile.studentYear || '2nd year, Semester 4'}
+                <div className="mt-4">
+                  {userProfile.bio ? (
+                    <blockquote className="p-4 rounded-2xl bg-slate-50 border-l-4 border-blue-600 text-sm text-slate-700 leading-relaxed italic">
+                      "{userProfile.bio}"
+                    </blockquote>
+                  ) : (
+                    <div className="p-6 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200">
+                      <p className="text-xs text-slate-400">You haven't written a biography yet.</p>
+                      <button
+                        onClick={enterEditMode}
+                        className="mt-2 text-xs font-bold text-blue-600 hover:underline cursor-pointer"
+                      >
+                        + Add a bio so campus peers know your interests
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* SECTION 4: INSTITUTIONAL VERIFICATION & BADGES */}
+              <div className="card p-6 sm:p-7 shadow-xl border-soft space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-soft">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black navy">Degree Verification & Directory Record</h3>
+                      <p className="text-[11px] text-slate-400">Institutional validation badges and claimed directory archives</p>
+                    </div>
+                  </div>
+                </div>
+
+                {userProfile.isVerifiedAlumni ? (
+                  <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <b className="text-sm text-emerald-900 block font-black">Official Verified Degree Holder</b>
+                      <p className="text-xs text-emerald-700 mt-0.5">
+                        Your university credentials and graduation proof have been verified by institutional administrators.
                       </p>
                     </div>
-                    <div className="bg-slate-50 rounded-xl p-4">
-                      <span className="text-xs font-bold text-slate-400 uppercase">Expected Graduation</span>
-                      <p className="text-sm font-semibold navy mt-1">
-                        {userProfile.expectedGraduation || '2028'}
+                  </div>
+                ) : userProfile.profileType === 'Alumni' ? (
+                  <div className="p-5 rounded-2xl bg-blue-50/70 border border-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <b className="navy text-sm block">Want an Official Verified Alumni Badge?</b>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Submit proof of graduation (Certificate, Transcript or LinkedIn) for Super Admin verification.
                       </p>
                     </div>
-                  </>
+                    <button
+                      onClick={() => setVerificationModalOpen(true)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition shrink-0 cursor-pointer shadow-xs"
+                    >
+                      Request Degree Badge →
+                    </button>
+                  </div>
                 ) : (
-                  <>
-                    <div className="bg-slate-50 rounded-xl p-4">
-                      <span className="text-xs font-bold text-slate-400 uppercase">Graduation Year</span>
-                      <p className="text-sm font-semibold navy mt-1">
-                        {userProfile.graduationYear || '2023'}
-                      </p>
-                    </div>
-                    <div className="bg-slate-50 rounded-xl p-4">
-                      <span className="text-xs font-bold text-slate-400 uppercase">Current Role & Company</span>
-                      <p className="text-sm font-semibold navy mt-1">
-                        {userProfile.jobRole} {userProfile.company ? `at ${userProfile.company}` : ''}
-                      </p>
-                    </div>
-                    <div className="bg-slate-50 rounded-xl p-4">
-                      <span className="text-xs font-bold text-slate-400 uppercase">Current Location</span>
-                      <p className="text-sm font-semibold navy mt-1">
-                        {userProfile.city ? `${userProfile.city}, ` : ''}
-                        {userProfile.country || 'Bangladesh'}
-                      </p>
-                    </div>
-                  </>
-                )}
-
-                {userProfile.bio && (
-                  <div className="bg-slate-50 rounded-xl p-4 sm:col-span-2">
-                    <span className="text-xs font-bold text-slate-400 uppercase">Bio</span>
-                    <p className="text-sm text-slate-700 mt-1 leading-relaxed">{userProfile.bio}</p>
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-3">
+                    <span className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">
+                      ✓
+                    </span>
+                    <span>
+                      <b>Active Student Enrollment:</b> As an actively enrolled student, you have full access to campus feeds, mentor outreach, and directory discovery. Degree badge requests become available upon graduation.
+                    </span>
                   </div>
                 )}
+
+                {/* Claim an existing alumni directory record */}
+                {currentUser && claimCandidates.length > 0 && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 space-y-4">
+                    <div>
+                      <b className="block text-sm navy">Claim an existing alumni profile</b>
+                      <p className="mt-1 text-xs text-slate-600">
+                        We found directory records matching your signed-in email or student ID. Submit evidence; the record will not be linked until a Super Admin reviews it.
+                      </p>
+                    </div>
+                    <div className="space-y-3">
+                      {claimCandidates.map((record) => {
+                        const pending = profileClaims.some(
+                          (claim) => claim.targetAlumniId === record.id && claim.status === 'PENDING'
+                        );
+                        return (
+                          <div
+                            key={record.id}
+                            className="rounded-xl border border-amber-200 bg-white p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                          >
+                            <div>
+                              <p className="font-bold text-sm navy">{record.name}</p>
+                              <p className="text-xs text-slate-500 mt-1">
+                                {record.university} · {record.department} · Batch {record.graduationYear || record.batch}
+                              </p>
+                              <p className="text-[11px] text-slate-500 mt-1">
+                                Student ID: {record.studentId || 'Not recorded'}
+                              </p>
+                            </div>
+                            {pending ? (
+                              <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800">
+                                Claim pending review
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={submittingClaim || !claimProofUrl.trim()}
+                                onClick={() => void handleProfileClaimSubmit(record)}
+                                className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50 cursor-pointer"
+                              >
+                                {submittingClaim ? 'Submitting…' : 'Request to claim'}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <label className="text-xs font-bold text-slate-600">
+                        Evidence link (HTTPS) *
+                        <input
+                          required
+                          type="url"
+                          value={claimProofUrl}
+                          onChange={(e) => setClaimProofUrl(e.target.value)}
+                          placeholder="https://..."
+                          className="account-input mt-1"
+                        />
+                      </label>
+                      <label className="text-xs font-bold text-slate-600">
+                        Notes for reviewer
+                        <textarea
+                          value={claimNotes}
+                          onChange={(e) => setClaimNotes(e.target.value)}
+                          maxLength={1000}
+                          rows={2}
+                          placeholder="Explain how this record belongs to you"
+                          className="account-input mt-1"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {profileClaims.filter((claim) => claim.requesterId === currentUser?.uid).length > 0 && (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <b className="text-sm navy">Your profile claim history</b>
+                    <div className="mt-2 space-y-2">
+                      {profileClaims
+                        .filter((claim) => claim.requesterId === currentUser?.uid)
+                        .map((claim) => (
+                          <div key={claim.id} className="flex items-center justify-between gap-3 text-xs">
+                            <span>
+                              {claim.university} · {claim.department}
+                            </span>
+                            <span
+                              className={
+                                claim.status === 'APPROVED'
+                                  ? 'font-bold text-emerald-700'
+                                  : claim.status === 'REJECTED'
+                                  ? 'font-bold text-rose-700'
+                                  : 'font-bold text-amber-700'
+                              }
+                            >
+                              {claim.status}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action shortcut to edit all profile credentials */}
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={enterEditMode}
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition cursor-pointer shadow-xs"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>Edit Profile & Credentials</span>
+                </button>
               </div>
             </div>
           )}
@@ -1935,6 +2421,34 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
               </div>
 
               <div>
+                <label className="text-xs font-bold text-slate-600">Profile Classification *</label>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setProfileType('Student')}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                      profileType === 'Student'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    Student (Enrolled)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProfileType('Alumni')}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                      profileType === 'Alumni'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    Alumni (Graduated)
+                  </button>
+                </div>
+              </div>
+
+              <div>
                 <label className="text-xs font-bold text-slate-600">University *</label>
                 <select
                   value={university}
@@ -1989,6 +2503,19 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
               </div>
 
               <div>
+                <label className="text-xs font-bold text-slate-600">Education Level *</label>
+                <select
+                  value={educationLevel}
+                  onChange={(e) => setEducationLevel(e.target.value)}
+                  className="account-input mt-1 bg-white cursor-pointer"
+                >
+                  <option value="Undergraduate">Bachelor's / Undergraduate</option>
+                  <option value="Master's">Master's</option>
+                  <option value="PhD">PhD</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="text-xs font-bold text-slate-600">Student ID / Roll</label>
                 <input
                   value={studentId}
@@ -1998,7 +2525,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                 />
               </div>
 
-              {userProfile?.profileType === 'Student' ? (
+              {profileType === 'Student' ? (
                 <>
                   <div>
                     <label className="text-xs font-bold text-slate-600">Current Year / Semester</label>

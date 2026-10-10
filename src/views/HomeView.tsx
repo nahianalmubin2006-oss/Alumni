@@ -45,9 +45,15 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
     const handler = () => setUpdateVersion((v) => v + 1);
     window.addEventListener('alumni-custom-logos-changed', handler);
     window.addEventListener('alumni-university-updated', handler);
+    window.addEventListener('university-updated', handler);
+    window.addEventListener('alumni-profile-updated', handler);
+    window.addEventListener('alumni-directory-updated', handler);
     return () => {
       window.removeEventListener('alumni-custom-logos-changed', handler);
       window.removeEventListener('alumni-university-updated', handler);
+      window.removeEventListener('university-updated', handler);
+      window.removeEventListener('alumni-profile-updated', handler);
+      window.removeEventListener('alumni-directory-updated', handler);
     };
   }, []);
 
@@ -162,11 +168,12 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
 
     if (selectedDeptGroup !== 'All') {
       list = list.filter((u) => {
-        const uDepts = departments.filter((d) => d.university.toLowerCase() === u.name.toLowerCase());
+        const uLower = (u.name || '').toLowerCase().trim();
+        const uDepts = departments.filter((d) => (d.university || '').toLowerCase().trim() === uLower);
         const hasInGroup = uDepts.some((d) => d.group === selectedDeptGroup);
         if (hasInGroup) return true;
         return VERIFIED_DEPARTMENT_SEEDS.some(
-          (s) => s.university.toLowerCase() === u.name.toLowerCase() && s.group === selectedDeptGroup
+          (s) => (s.university || '').toLowerCase().trim() === uLower && s.group === selectedDeptGroup
         );
       });
     }
@@ -174,10 +181,11 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
     if (uniSearch.trim()) {
       const q = uniSearch.toLowerCase().trim();
       list = list.filter((u) => {
-        const nameMatch = u.name.toLowerCase().includes(q) || (u.shortName && u.shortName.toLowerCase().includes(q));
+        const uLower = (u.name || '').toLowerCase().trim();
+        const nameMatch = uLower.includes(q) || (u.shortName && u.shortName.toLowerCase().includes(q));
         const locMatch = u.location && u.location.toLowerCase().includes(q);
         const deptMatch = departments.some(
-          (d) => d.university.toLowerCase() === u.name.toLowerCase() && d.name.toLowerCase().includes(q)
+          (d) => (d.university || '').toLowerCase().trim() === uLower && (d.name || '').toLowerCase().includes(q)
         );
         return nameMatch || locMatch || deptMatch;
       });

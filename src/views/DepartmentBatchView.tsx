@@ -144,12 +144,20 @@ export const DepartmentBatchView: React.FC<DepartmentBatchViewProps> = ({
   }, [departmentName, batchYear]);
 
   // Find real alumni from this batch
+  const uLower = (universityName || '').toLowerCase().trim();
+  const dLower = (departmentName || '').toLowerCase().trim();
+  const bYear = (batchYear || '').trim();
+
   const batchAlumni = alumni.filter(
     (a) =>
-      a.university.toLowerCase() === universityName.toLowerCase() &&
-      a.department.toLowerCase() === departmentName.toLowerCase() &&
-      a.batch === batchYear &&
-      a.status === 'APPROVED'
+      (a.university || '').toLowerCase().trim() === uLower &&
+      (a.department || '').toLowerCase().trim() === dLower &&
+      (!bYear ||
+        (a.batch || '').trim() === bYear ||
+        (a.graduationYear || '').trim() === bYear ||
+        (a.batch || '').includes(bYear) ||
+        (a.graduationYear || '').includes(bYear)) &&
+      (!a.status || a.status === 'APPROVED')
   );
 
   return (

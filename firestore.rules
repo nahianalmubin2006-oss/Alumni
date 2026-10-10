@@ -75,7 +75,7 @@ service cloud.firestore {
         'name', 'university', 'department', 'studentId', 'educationLevel',
         'studentYear', 'expectedGraduation', 'graduationYear', 'jobRole',
         'company', 'country', 'city', 'bio', 'photoUrl', 'linkedin',
-        'followedUniversities', 'savedUniversities', 'updatedAt'
+        'followedUniversities', 'savedUniversities', 'profileType', 'role', 'updatedAt'
       ];
     }
 
@@ -84,9 +84,17 @@ service cloud.firestore {
         .hasOnly(editableProfileFields())
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.id == resource.data.id
-        && request.resource.data.role == resource.data.role
+        && (
+          (request.resource.data.role == resource.data.role && request.resource.data.profileType == resource.data.profileType)
+          || (
+            resource.data.role in ['STUDENT', 'ALUMNI']
+            && (
+              (request.resource.data.role == 'STUDENT' && request.resource.data.profileType == 'Student')
+              || (request.resource.data.role == 'ALUMNI' && request.resource.data.profileType == 'Alumni')
+            )
+          )
+        )
         && request.resource.data.status == resource.data.status
-        && request.resource.data.profileType == resource.data.profileType
         && request.resource.data.email == resource.data.email
         && request.resource.data.createdAt == resource.data.createdAt;
     }

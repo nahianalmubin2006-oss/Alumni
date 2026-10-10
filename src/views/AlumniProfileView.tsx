@@ -50,11 +50,12 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
   // Find alumni record or generate rich fallback profile
   const profile: AlumniRecord = useMemo(() => {
     if (alumniId) {
-      const match = alumni.find((a) => a.id === alumniId);
+      const match = alumni.find((a) => a.id === alumniId || a.userId === alumniId);
       if (match) return match;
     }
     if (alumniName) {
-      const match = alumni.find((a) => a.name.toLowerCase() === alumniName.toLowerCase());
+      const q = (alumniName || '').toLowerCase().trim();
+      const match = alumni.find((a) => (a.name || '').toLowerCase().trim() === q);
       if (match) return match;
     }
 

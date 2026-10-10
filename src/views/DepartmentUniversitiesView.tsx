@@ -17,7 +17,7 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
   onNavigate,
   onBack,
 }) => {
-  const { news, departments, universities, alumni, triggerAINewsBotScan } = useData();
+  const { news, departments, universities, alumni, students, triggerAINewsBotScan } = useData();
   const [search, setSearch] = useState('');
   const [isScanningDept, setIsScanningDept] = useState(false);
 
@@ -57,7 +57,7 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
     }
   };
 
-  // Filter universities offering this department
+  // Filter universities offering this department (combining verified catalog + active alumni & students)
   const list = useMemo(() => {
     const offered = new Set([
       ...VERIFIED_DEPARTMENT_SEEDS
@@ -66,6 +66,12 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
       ...departments
         .filter((d) => d.status !== 'Inactive' && normalizeDepartmentName(d.name) === normalizeDepartmentName(departmentName))
         .map((d) => d.university.toLowerCase()),
+      ...alumni
+        .filter((a) => normalizeDepartmentName(a.department || '') === normalizeDepartmentName(departmentName))
+        .map((a) => (a.university || '').toLowerCase()),
+      ...students
+        .filter((s) => normalizeDepartmentName(s.department || '') === normalizeDepartmentName(departmentName))
+        .map((s) => (s.university || '').toLowerCase()),
     ]);
     return universities
       .filter((u) => u.status !== 'Inactive' && offered.has(u.name.toLowerCase()))
@@ -74,7 +80,7 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
         const matchesSearch = !q || u.name.toLowerCase().includes(q);
         return matchesSearch;
       });
-  }, [departments, universities, alumni, search, departmentName]);
+  }, [departments, universities, alumni, students, search, departmentName]);
 
   return (
     <div className="max-w-7xl mx-auto px-5 py-10">

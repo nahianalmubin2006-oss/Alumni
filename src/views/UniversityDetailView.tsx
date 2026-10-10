@@ -44,6 +44,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     universities,
     departments,
     alumni,
+    students,
     news,
     submitChangeRequest,
     makeNewsPermanent,
@@ -70,9 +71,13 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     const handler = () => setUpdateVersion((v) => v + 1);
     window.addEventListener('alumni-custom-logos-changed', handler);
     window.addEventListener('alumni-university-updated', handler);
+    window.addEventListener('alumni-profile-updated', handler);
+    window.addEventListener('alumni-directory-updated', handler);
     return () => {
       window.removeEventListener('alumni-custom-logos-changed', handler);
       window.removeEventListener('alumni-university-updated', handler);
+      window.removeEventListener('alumni-profile-updated', handler);
+      window.removeEventListener('alumni-directory-updated', handler);
     };
   }, []);
 
@@ -129,16 +134,30 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
 
   // Related alumni
   const uniAlumni = useMemo(() => {
-    return alumni.filter((a) => a.university.toLowerCase() === universityName.toLowerCase() && a.status === 'APPROVED');
+    const qName = (universityName || '').toLowerCase().trim();
+    return alumni.filter(
+      (a) => (a.university || '').toLowerCase().trim() === qName && a.status === 'APPROVED'
+    );
   }, [alumni, universityName]);
 
-  // Available departments for this university
+  // Related students
+  const uniStudents = useMemo(() => {
+    const qName = (universityName || '').toLowerCase().trim();
+    return students.filter(
+      (s) => (s.university || '').toLowerCase().trim() === qName && s.status === 'APPROVED'
+    );
+  }, [students, universityName]);
+
+  // Available departments for this university (combining verified catalog + active alumni & student affiliations)
   const uniDeptList = useMemo(() => {
+    const qName = (universityName || '').toLowerCase().trim();
     const fromDb = departments
-      .filter((d) => d.university.toLowerCase() === universityName.toLowerCase() && d.status !== 'Inactive')
+      .filter((d) => (d.university || '').toLowerCase().trim() === qName && d.status !== 'Inactive')
       .map((d) => d.name);
-    return Array.from(new Set(fromDb));
-  }, [departments, universityName]);
+    const fromAlumni = uniAlumni.map((a) => a.department).filter(Boolean);
+    const fromStudents = uniStudents.map((s) => s.department).filter(Boolean);
+    return Array.from(new Set([...fromDb, ...fromAlumni, ...fromStudents]));
+  }, [departments, universityName, uniAlumni, uniStudents]);
 
   // Related news with department filtering & hot topic prioritization
   const uniNews = useMemo(() => {

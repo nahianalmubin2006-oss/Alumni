@@ -283,7 +283,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {currentUser && (
             <button
               onClick={() => onNavigate('account')}
-              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-soft bg-white text-xs font-semibold"
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-soft bg-white text-xs font-semibold hover:border-blue-300 transition cursor-pointer"
             >
               <span
                 className={`w-2 h-2 rounded-full ${
@@ -297,8 +297,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                   ? 'Alumni'
                   : userProfile?.profileType === 'Student'
                   ? 'Student'
-                  : 'Member'}
+                  : userProfile?.name || 'Member'}
               </span>
+            </button>
+          )}
+
+          {/* Direct Log in / Sign up button if logged out */}
+          {!currentUser && (
+            <button
+              onClick={() => onNavigate('account')}
+              className="bg-navy hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1.5"
+            >
+              <span>Log in / Sign up</span>
             </button>
           )}
 

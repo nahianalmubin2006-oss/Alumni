@@ -146,18 +146,21 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
     setNewIsHot(false);
   };
 
+  const uLower = (universityName || '').toLowerCase().trim();
+  const dLower = (departmentName || '').toLowerCase().trim();
+
   // All department metrics are derived from approved live records. Unknown values stay 0.
   const departmentAlumni = alumniRecords.filter(
     (a) =>
       a.status === 'APPROVED' &&
-      a.university.toLowerCase() === universityName.toLowerCase() &&
-      a.department.toLowerCase() === departmentName.toLowerCase()
+      (a.university || '').toLowerCase().trim() === uLower &&
+      (a.department || '').toLowerCase().trim() === dLower
   );
   const departmentStudents = studentRecords.filter(
     (s) =>
       s.status === 'APPROVED' &&
-      s.university.toLowerCase() === universityName.toLowerCase() &&
-      s.department.toLowerCase() === departmentName.toLowerCase()
+      (s.university || '').toLowerCase().trim() === uLower &&
+      (s.department || '').toLowerCase().trim() === dLower
   );
   const alumni = departmentAlumni.length;
   const companies = new Set(departmentAlumni.map((a) => a.company).filter(Boolean)).size;

@@ -27,9 +27,15 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate, 
     const handler = () => setUpdateVersion((v) => v + 1);
     window.addEventListener('alumni-custom-logos-changed', handler);
     window.addEventListener('alumni-university-updated', handler);
+    window.addEventListener('university-updated', handler);
+    window.addEventListener('alumni-profile-updated', handler);
+    window.addEventListener('alumni-directory-updated', handler);
     return () => {
       window.removeEventListener('alumni-custom-logos-changed', handler);
       window.removeEventListener('alumni-university-updated', handler);
+      window.removeEventListener('university-updated', handler);
+      window.removeEventListener('alumni-profile-updated', handler);
+      window.removeEventListener('alumni-directory-updated', handler);
     };
   }, []);
 
@@ -140,21 +146,22 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate, 
     const combined: University[] = Array.from(uniMap.values())
       .filter((u) => u.status !== 'Inactive')
       .map((u) => {
+        const uName = (u.name || '').toLowerCase().trim();
         const liveAlumni = alumni.filter(
-          (a) => a.status === 'APPROVED' && a.university.toLowerCase() === u.name.toLowerCase()
+          (a) => a.status === 'APPROVED' && (a.university || '').toLowerCase().trim() === uName
         ).length;
         const liveStudents = students.filter(
-          (s) => s.status === 'APPROVED' && s.university.toLowerCase() === u.name.toLowerCase()
+          (s) => s.status === 'APPROVED' && (s.university || '').toLowerCase().trim() === uName
         ).length;
         const liveDepartments = departments.filter(
           (d) =>
-            d.university.toLowerCase() === u.name.toLowerCase() &&
+            (d.university || '').toLowerCase().trim() === uName &&
             d.status !== 'Inactive' &&
             d.verified !== false
         ).length;
 
         const matchingAlumni = alumni.filter(
-          (a) => a.status === 'APPROVED' && a.university.toLowerCase() === u.name.toLowerCase()
+          (a) => a.status === 'APPROVED' && (a.university || '').toLowerCase().trim() === uName
         );
         const liveCountries = new Set(matchingAlumni.map((a) => a.country).filter(Boolean)).size;
         const liveCompanies = new Set(matchingAlumni.map((a) => a.company).filter(Boolean)).size;

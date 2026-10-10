@@ -211,7 +211,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [departments, setDepartments] = useState<Department[]>([]);
 
   const [batches, setBatches] = useState<Batch[]>([]);
-  const [alumni, setAlumni] = useState<AlumniRecord[]>([]);
+  const [alumni, setAlumni] = useState<AlumniRecord[]>(INITIAL_ALUMNI);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [news, setNews] = useState<NewsArticle[]>(INITIAL_NEWS);
   const [posts, setPosts] = useState<UserPost[]>(INITIAL_POSTS);
@@ -478,12 +478,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubAlumni = onSnapshot(
       collection(db, 'alumni'),
       (snap) => {
-        const list: AlumniRecord[] = [];
+        const map = new Map<string, AlumniRecord>();
+        // 1. Baseline directory seeds
+        INITIAL_ALUMNI.forEach((a) => map.set(a.id, a));
+        // 2. Real-time Firestore records override or add
         snap.forEach((d) => {
           const item = d.data() as AlumniRecord;
-          list.push({ ...item, id: d.id });
+          map.set(d.id, { ...item, id: d.id });
         });
-        setAlumni(list);
+        setAlumni(Array.from(map.values()));
       },
       (error) => {
         console.warn('Alumni listener warning:', error.message);
@@ -554,7 +557,178 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
+    // Instant local synchronization listeners across all pages
+    const handleProfileUpdateEvent = (e: Event) => {
+      const p = (e as CustomEvent<UserProfile>).detail;
+      if (!p) return;
+      const targetUid = p.uid || p.id;
+      const normEmail = (p.email || '').toLowerCase().trim();
+
+      if (p.profileType === 'Alumni') {
+        // 1. Add / update in alumni
+        setAlumni((prev) => {
+          const map = new Map<string, AlumniRecord>();
+          prev.forEach((a) => map.set(a.id, a));
+          const existing =
+            map.get(targetUid) ||
+            Array.from(map.values()).find(
+              (a) => a.userId === targetUid || (a.email && normEmail && a.email.toLowerCase().trim() === normEmail)
+            );
+          const id = existing?.id || targetUid;
+          map.set(id, {
+            ...existing,
+            id,
+            userId: targetUid,
+            name: p.name,
+            email: p.email,
+            university: p.university,
+            department: p.department,
+            batch: p.graduationYear || existing?.batch || '2024',
+            graduationYear: p.graduationYear || existing?.graduationYear || '2024',
+            studentId: p.studentId || existing?.studentId || '',
+            educationLevel: p.educationLevel || existing?.educationLevel || 'Undergraduate',
+            jobRole: p.jobRole || existing?.jobRole || '',
+            company: p.company || existing?.company || '',
+            country: p.country || existing?.country || 'Bangladesh',
+            city: p.city || existing?.city || '',
+            bio: p.bio || existing?.bio || '',
+            photoUrl: p.photoUrl || existing?.photoUrl || '',
+            linkedin: p.linkedin || existing?.linkedin || '',
+            isVerified: Boolean(p.isVerifiedAlumni),
+            status: 'APPROVED',
+            createdAt: existing?.createdAt || p.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+          return Array.from(map.values());
+        });
+        // 2. Remove from students if transitioned
+        setStudents((prev) =>
+          prev.filter(
+            (s) =>
+              s.id !== targetUid &&
+              s.userId !== targetUid &&
+              (!s.email || !normEmail || s.email.toLowerCase().trim() !== normEmail)
+          )
+        );
+      } else if (p.profileType === 'Student') {
+        // 1. Add / update in students
+        setStudents((prev) => {
+          const map = new Map<string, StudentRecord>();
+          prev.forEach((s) => map.set(s.id, s));
+          const existing =
+            map.get(targetUid) ||
+            Array.from(map.values()).find(
+              (s) => s.userId === targetUid || (s.email && normEmail && s.email.toLowerCase().trim() === normEmail)
+            );
+          const id = existing?.id || targetUid;
+          map.set(id, {
+            ...existing,
+            id,
+            userId: targetUid,
+            name: p.name,
+            email: p.email,
+            university: p.university,
+            department: p.department,
+            studentId: p.studentId || existing?.studentId || '',
+            educationLevel: p.educationLevel || existing?.educationLevel || 'Undergraduate',
+            studentYear: p.studentYear || existing?.studentYear || '',
+            expectedGraduation: p.expectedGraduation || existing?.expectedGraduation || '',
+            bio: p.bio || existing?.bio || '',
+            photoUrl: p.photoUrl || existing?.photoUrl || '',
+            status: 'APPROVED',
+            createdAt: existing?.createdAt || p.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+          return Array.from(map.values());
+        });
+        // 2. Remove from alumni if transitioned
+        setAlumni((prev) =>
+          prev.filter(
+            (a) =>
+              a.id !== targetUid &&
+              a.userId !== targetUid &&
+              (!a.email || !normEmail || a.email.toLowerCase().trim() !== normEmail)
+          )
+        );
+      }
+
+      // 3. Immediately update allUsers state so all admin and directory displays update live
+      setAllUsers((prev) => {
+        const map = new Map<string, UserProfile>();
+        prev.forEach((u) => map.set(u.uid || u.id, u));
+        map.set(targetUid, {
+          ...(map.get(targetUid) || {}),
+          ...p,
+          id: targetUid,
+          uid: targetUid,
+          updatedAt: new Date().toISOString(),
+        });
+        return Array.from(map.values());
+      });
+
+      // 4. Immediately update user's posts
+      setPosts((prev) =>
+        prev.map((post) =>
+          post.userId === targetUid
+            ? {
+                ...post,
+                authorName: p.name || post.authorName,
+                authorPhotoUrl: p.photoUrl !== undefined ? p.photoUrl : post.authorPhotoUrl,
+                authorUniversity: p.university || post.authorUniversity,
+                authorDepartment: p.department || post.authorDepartment,
+              }
+            : post
+        )
+      );
+
+      // 5. Ensure university is present in universities state and counts stay fresh
+      if (p.university) {
+        setUniversities((prev) => {
+          const map = new Map<string, University>();
+          prev.forEach((u) => map.set(u.name.toLowerCase().trim(), u));
+          const key = p.university.toLowerCase().trim();
+          if (!map.has(key)) {
+            const newUni: University = {
+              id: 'uni-' + encodeURIComponent(key.replace(/[^a-z0-9]/g, '-')),
+              name: p.university,
+              type: 'Public',
+              location: p.country ? `${p.city ? p.city + ', ' : ''}${p.country}` : 'Bangladesh',
+              verified: false,
+              alumniCount: p.profileType === 'Alumni' ? 1 : 0,
+              studentCount: p.profileType === 'Student' ? 1 : 0,
+              departmentCount: 1,
+              followersCount: 1,
+              employmentRate: 85,
+              higherStudiesRate: 10,
+              countriesCount: 1,
+              companiesCount: p.company ? 1 : 0,
+              logoUrl: getUniversityLogo(p.university) || '',
+              website: '',
+            };
+            return [...prev, newUni];
+          } else {
+            return prev.map((u) => {
+              if (u.name.toLowerCase().trim() !== key) return u;
+              return {
+                ...u,
+                alumniCount: p.profileType === 'Alumni' ? Math.max((u.alumniCount || 0) + 1, 1) : u.alumniCount,
+                studentCount: p.profileType === 'Student' ? Math.max((u.studentCount || 0) + 1, 1) : u.studentCount,
+                departmentCount: Math.max(u.departmentCount || 1, 1),
+                companiesCount: p.company ? Math.max((u.companiesCount || 0) + 1, 1) : u.companiesCount,
+                countriesCount: p.country ? Math.max((u.countriesCount || 0) + 1, 1) : u.countriesCount,
+              };
+            });
+          }
+        });
+      }
+    };
+
+    window.addEventListener('alumni-profile-updated', handleProfileUpdateEvent);
+    window.addEventListener('alumni-directory-updated', handleProfileUpdateEvent);
+
     return () => {
+      window.removeEventListener('alumni-profile-updated', handleProfileUpdateEvent);
+      window.removeEventListener('alumni-directory-updated', handleProfileUpdateEvent);
       unsubUniversities();
       unsubDepartments();
       unsubAlumni();

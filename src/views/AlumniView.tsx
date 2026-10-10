@@ -35,8 +35,8 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
   const { universities, alumni, stats, allUsers } = useData();
 
   // Legacy student records may exist in the alumni collection. Never list a profile
-  // as an alumnus when its canonical user profile identifies it as a current student.
   const alumniOnly = useMemo(() => alumni.filter((record) => {
+    if ((record as any).profileType === 'Student') return false;
     const linkedUserId = record.userId || record.id;
     const linkedProfile = allUsers.find((user) => user.uid === linkedUserId || user.id === linkedUserId);
     return linkedProfile?.profileType !== 'Student';
@@ -85,11 +85,12 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
   // Sorted departments by aggregated alumni
   const departmentRankings = useMemo(() => {
     return RAW_DEPARTMENT_CATALOG.map((d) => {
-      const deptAlumni = alumni.filter(
-        (a) => a.status === 'APPROVED' && a.department?.toLowerCase() === d.name.toLowerCase()
+      const dName = d.name.toLowerCase().trim();
+      const deptAlumni = alumniOnly.filter(
+        (a) => a.status === 'APPROVED' && (a.department || '').toLowerCase().trim() === dName
       );
       const liveCount = deptAlumni.length;
-      const unisCount = new Set(deptAlumni.map((a) => a.university?.toLowerCase()).filter(Boolean)).size;
+      const unisCount = new Set(deptAlumni.map((a) => (a.university || '').toLowerCase().trim()).filter(Boolean)).size;
       return {
         name: d.name,
         group: d.group,
