@@ -14,6 +14,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
   collection,
   addDoc,
@@ -134,6 +135,107 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const localPhoto = typeof window !== 'undefined' ? localStorage.getItem(`alumni_photo_${user.uid}`) : null;
         if (!data.photoUrl && localPhoto) data.photoUrl = localPhoto;
 
+        // Check pending registration cache or session prefill (e.g., from Google Sign-In or pre-filled signup form)
+        let pending = pendingRegistrationCache.get(normalizedEmail) || pendingRegistrationCache.get(user.uid);
+        if (!pending && typeof window !== 'undefined') {
+          try {
+            const cachedReg =
+              sessionStorage.getItem(`alumni_pending_reg_${normalizedEmail}`) ||
+              sessionStorage.getItem('alumni_pending_google') ||
+              localStorage.getItem('alumni_pending_signup');
+            if (cachedReg) {
+              pending = JSON.parse(cachedReg);
+            }
+          } catch (e) {}
+        }
+
+        // Auto-heal missing fields if pending prefill is available (prevents forcing user to re-enter data)
+        if (pending && (!data.university || data.university === '')) {
+          if (pending.university) data.university = pending.university;
+          if (pending.department) data.department = pending.department;
+          if (pending.profileType) {
+            data.profileType = pending.profileType;
+            data.role = isMasterAdmin ? 'SUPER_ADMIN' : pending.profileType === 'Alumni' ? 'ALUMNI' : 'STUDENT';
+          }
+          if (pending.studentId) data.studentId = pending.studentId;
+          if (pending.educationLevel) data.educationLevel = pending.educationLevel;
+          if (pending.studentYear) data.studentYear = pending.studentYear;
+          if (pending.expectedGraduation) data.expectedGraduation = pending.expectedGraduation;
+          if (pending.graduationYear) data.graduationYear = pending.graduationYear;
+          if (pending.jobRole) data.jobRole = pending.jobRole;
+          if (pending.company) data.company = pending.company;
+          if (pending.country) data.country = pending.country;
+          if (pending.city) data.city = pending.city;
+          if (pending.bio) data.bio = pending.bio;
+          if (pending.linkedin) data.linkedin = pending.linkedin;
+          if (pending.photoUrl && !data.photoUrl) data.photoUrl = pending.photoUrl;
+
+          updateDoc(userDocRef, {
+            university: data.university,
+            department: data.department || '',
+            profileType: data.profileType,
+            role: data.role,
+            studentId: data.studentId || '',
+            educationLevel: data.educationLevel || 'Undergraduate',
+            studentYear: data.studentYear || '',
+            expectedGraduation: data.expectedGraduation || '',
+            graduationYear: data.graduationYear || '',
+            jobRole: data.jobRole || '',
+            company: data.company || '',
+            country: data.country || 'Bangladesh',
+            city: data.city || '',
+            bio: data.bio || '',
+            photoUrl: data.photoUrl || '',
+            linkedin: data.linkedin || '',
+            updatedAt: new Date().toISOString(),
+          }).catch(() => {});
+
+          // Ensure student or alumni directory document exists and stays active
+          if (data.university && data.department) {
+            if (data.profileType === 'Alumni') {
+              setDoc(doc(db, 'alumni', user.uid), {
+                id: user.uid,
+                userId: user.uid,
+                name: data.name,
+                email: data.email,
+                university: data.university,
+                department: data.department,
+                batch: data.graduationYear || '2024',
+                graduationYear: data.graduationYear || '2024',
+                studentId: data.studentId || '',
+                educationLevel: data.educationLevel || 'Undergraduate',
+                jobRole: data.jobRole || '',
+                company: data.company || '',
+                country: data.country || 'Bangladesh',
+                city: data.city || '',
+                bio: data.bio || '',
+                photoUrl: data.photoUrl || '',
+                linkedin: data.linkedin || '',
+                isVerified: Boolean(data.isVerifiedAlumni),
+                status: 'APPROVED',
+                updatedAt: new Date().toISOString(),
+              }, { merge: true }).catch(() => {});
+            } else if (data.profileType === 'Student') {
+              setDoc(doc(db, 'students', user.uid), {
+                id: user.uid,
+                userId: user.uid,
+                name: data.name,
+                email: data.email,
+                university: data.university,
+                department: data.department,
+                studentId: data.studentId || '',
+                educationLevel: data.educationLevel || 'Undergraduate',
+                studentYear: data.studentYear || '',
+                expectedGraduation: data.expectedGraduation || '',
+                bio: data.bio || '',
+                photoUrl: data.photoUrl || '',
+                status: 'APPROVED',
+                updatedAt: new Date().toISOString(),
+              }, { merge: true }).catch(() => {});
+            }
+          }
+        }
+
         // Auto-heal missing fields if existing directory record is found
         if ((!data.university || !data.department) && matchedDirectoryRecord) {
           data.university = data.university || matchedDirectoryRecord.university || '';
@@ -175,6 +277,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: data.role,
             updatedAt: new Date().toISOString(),
           }).catch(() => {});
+
+          if (data.university && data.department) {
+            if (data.profileType === 'Alumni') {
+              setDoc(doc(db, 'alumni', user.uid), {
+                id: user.uid,
+                userId: user.uid,
+                name: data.name,
+                email: data.email,
+                university: data.university,
+                department: data.department,
+                batch: data.graduationYear || '2024',
+                graduationYear: data.graduationYear || '2024',
+                studentId: data.studentId || '',
+                educationLevel: data.educationLevel || 'Undergraduate',
+                jobRole: data.jobRole || '',
+                company: data.company || '',
+                country: data.country || 'Bangladesh',
+                city: data.city || '',
+                bio: data.bio || '',
+                photoUrl: data.photoUrl || '',
+                linkedin: data.linkedin || '',
+                isVerified: Boolean(data.isVerifiedAlumni),
+                status: 'APPROVED',
+                updatedAt: new Date().toISOString(),
+              }, { merge: true }).catch(() => {});
+            } else if (data.profileType === 'Student') {
+              setDoc(doc(db, 'students', user.uid), {
+                id: user.uid,
+                userId: user.uid,
+                name: data.name,
+                email: data.email,
+                university: data.university,
+                department: data.department,
+                studentId: data.studentId || '',
+                educationLevel: data.educationLevel || 'Undergraduate',
+                studentYear: data.studentYear || '',
+                expectedGraduation: data.expectedGraduation || '',
+                bio: data.bio || '',
+                photoUrl: data.photoUrl || '',
+                status: 'APPROVED',
+                updatedAt: new Date().toISOString(),
+              }, { merge: true }).catch(() => {});
+            }
+          }
         }
 
         // Ensure student and alumni profiles never require manual review to become active
@@ -473,6 +619,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const userDocRef = doc(db, 'users', user.uid);
       await setDoc(userDocRef, newProfile);
+      setCurrentUser(user);
       setUserProfile(newProfile);
 
       // Create matching student/alumni record immediately active in directory
@@ -501,6 +648,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }, { merge: true });
+        // Clean up from students collection if existed
+        deleteDoc(doc(db, 'students', user.uid)).catch(() => {});
       } else if (data.profileType === 'Student') {
         const studentDocRef = doc(db, 'students', user.uid);
         await setDoc(studentDocRef, {
@@ -520,10 +669,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }, { merge: true });
+        // Clean up from alumni collection if existed
+        deleteDoc(doc(db, 'alumni', user.uid)).catch(() => {});
       }
 
       pendingRegistrationCache.delete(normalizedEmail);
       pendingRegistrationCache.delete(user.uid);
+      setCurrentUser(user);
+      setUserProfile(newProfile);
       isRegisteringRef.current = false;
 
       if (typeof window !== 'undefined') {
@@ -553,32 +706,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithGoogle = async (prefilledData?: Partial<RegisterUserData>) => {
-    if (prefilledData) {
-      if (prefilledData.email) {
-        pendingRegistrationCache.set(prefilledData.email.toLowerCase().trim(), prefilledData as RegisterUserData);
+    isRegisteringRef.current = true;
+    try {
+      if (prefilledData) {
+        if (prefilledData.email) {
+          pendingRegistrationCache.set(prefilledData.email.toLowerCase().trim(), prefilledData as RegisterUserData);
+        }
+        try {
+          sessionStorage.setItem('alumni_pending_google', JSON.stringify(prefilledData));
+          localStorage.setItem('alumni_pending_signup', JSON.stringify(prefilledData));
+        } catch (e) {}
       }
-      try {
-        sessionStorage.setItem('alumni_pending_google', JSON.stringify(prefilledData));
-        localStorage.setItem('alumni_pending_signup', JSON.stringify(prefilledData));
-      } catch (e) {}
-    }
-    const res = await signInWithPopup(auth, googleProvider);
-    if (prefilledData) {
-      pendingRegistrationCache.set(res.user.uid, prefilledData as RegisterUserData);
-      if (res.user.email) {
-        pendingRegistrationCache.set(res.user.email.toLowerCase().trim(), prefilledData as RegisterUserData);
+      const res = await signInWithPopup(auth, googleProvider);
+      if (prefilledData) {
+        pendingRegistrationCache.set(res.user.uid, prefilledData as RegisterUserData);
+        if (res.user.email) {
+          pendingRegistrationCache.set(res.user.email.toLowerCase().trim(), prefilledData as RegisterUserData);
+        }
       }
-    }
-    const profile = await fetchOrCreateUserProfile(res.user);
-    setCurrentUser(res.user);
-    setUserProfile(profile);
+      const profile = await fetchOrCreateUserProfile(res.user);
+      setCurrentUser(res.user);
+      setUserProfile(profile);
 
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('alumni-profile-updated', { detail: profile }));
-      window.dispatchEvent(new CustomEvent('alumni-directory-updated', { detail: profile }));
-      if (profile.university) {
-        window.dispatchEvent(new CustomEvent('university-updated', { detail: { name: profile.university } }));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('alumni-profile-updated', { detail: profile }));
+        window.dispatchEvent(new CustomEvent('alumni-directory-updated', { detail: profile }));
+        if (profile.university) {
+          window.dispatchEvent(new CustomEvent('university-updated', { detail: { name: profile.university } }));
+        }
       }
+    } finally {
+      isRegisteringRef.current = false;
     }
   };
 
@@ -665,6 +823,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Set alumni document note:', err);
       });
 
+      // Remove from students collection so user is not in both places
+      deleteDoc(doc(db, 'students', currentUser.uid)).catch(() => {});
+
       // Also update any claimed legacy alumni records where userId == currentUser.uid
       try {
         const alumniSnap = await getDocs(query(collection(db, 'alumni'), where('userId', '==', currentUser.uid)));
@@ -697,6 +858,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Set student document note:', err);
       });
 
+      // Remove from alumni collection so user is not in both places
+      deleteDoc(doc(db, 'alumni', currentUser.uid)).catch(() => {});
+
       // Also update any matching student records where userId == currentUser.uid
       try {
         const studentSnap = await getDocs(query(collection(db, 'students'), where('userId', '==', currentUser.uid)));
@@ -727,7 +891,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.dispatchEvent(new CustomEvent('alumni-profile-updated', { detail: updated }));
       window.dispatchEvent(new CustomEvent('alumni-directory-updated', { detail: updated }));
       if (updated.university) {
-        window.dispatchEvent(new CustomEvent('university-updated', { detail: { name: updated.university } }));
+        window.dispatchEvent(
+          new CustomEvent('university-updated', {
+            detail: {
+              name: updated.university,
+              oldUniversity: userProfile?.university && userProfile.university !== updated.university ? userProfile.university : undefined,
+            },
+          })
+        );
       }
     }
 

@@ -107,36 +107,58 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
 
     const customLogo = getUniversityLogo(universityName, found?.logoUrl);
 
-    if (found) {
-      return {
-        ...found,
-        logoUrl: found.logoUrl || customLogo || '',
-      };
-    }
+    const matchingAlumni = alumni.filter(
+      (a) => (a.university || '').toLowerCase().trim() === qName && a.status === 'APPROVED'
+    );
+    const matchingStudents = students.filter(
+      (s) => (s.university || '').toLowerCase().trim() === qName && s.status === 'APPROVED'
+    );
+    const matchingDepts = new Set([
+      ...departments.filter((d) => (d.university || '').toLowerCase().trim() === qName && d.status !== 'Inactive').map((d) => d.name),
+      ...matchingAlumni.map((a) => a.department).filter(Boolean),
+      ...matchingStudents.map((s) => s.department).filter(Boolean),
+    ]);
+    const liveAlumni = matchingAlumni.length;
+    const liveStudents = matchingStudents.length;
+    const liveDepts = matchingDepts.size;
+    const liveCountries = new Set(matchingAlumni.map((a) => a.country).filter(Boolean)).size;
+    const liveCompanies = new Set(matchingAlumni.map((a) => a.company).filter(Boolean)).size;
 
-    return {
+    const base: University = found || {
       id: 'uni-' + encodeURIComponent(qName.replace(/[^a-z0-9]/g, '-')),
       name: universityName,
       type: 'Public' as const,
       location: '',
       logoUrl: customLogo || '',
+      website: '',
+      overview: '',
       verified: false,
+      followersCount: 0,
       alumniCount: 0,
       studentCount: 0,
-      followersCount: 0,
       departmentCount: 0,
-      employmentRate: 0,
-      higherStudiesRate: 0,
       countriesCount: 0,
       companiesCount: 0,
+      employmentRate: 0,
+      higherStudiesRate: 0,
     };
-  }, [universities, universityName, updateVersion]);
+
+    return {
+      ...base,
+      logoUrl: base.logoUrl || customLogo || '',
+      alumniCount: liveAlumni || base.alumniCount || 0,
+      studentCount: liveStudents || base.studentCount || 0,
+      departmentCount: liveDepts || base.departmentCount || 0,
+      countriesCount: liveCountries || base.countriesCount || 0,
+      companiesCount: liveCompanies || base.companiesCount || 0,
+    };
+  }, [universities, universityName, updateVersion, alumni, students, departments]);
 
   // Related alumni
   const uniAlumni = useMemo(() => {
     const qName = (universityName || '').toLowerCase().trim();
     return alumni.filter(
-      (a) => (a.university || '').toLowerCase().trim() === qName && a.status === 'APPROVED'
+      (a) => (a.university || '').toLowerCase().trim() === qName && (!a.status || a.status.toUpperCase() === 'APPROVED')
     );
   }, [alumni, universityName]);
 
@@ -144,7 +166,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
   const uniStudents = useMemo(() => {
     const qName = (universityName || '').toLowerCase().trim();
     return students.filter(
-      (s) => (s.university || '').toLowerCase().trim() === qName && s.status === 'APPROVED'
+      (s) => (s.university || '').toLowerCase().trim() === qName && (!s.status || s.status.toUpperCase() === 'APPROVED')
     );
   }, [students, universityName]);
 

@@ -143,22 +143,25 @@ export const DepartmentBatchView: React.FC<DepartmentBatchViewProps> = ({
     };
   }, [departmentName, batchYear]);
 
-  // Find real alumni from this batch
   const uLower = (universityName || '').toLowerCase().trim();
   const dLower = (departmentName || '').toLowerCase().trim();
   const bYear = (batchYear || '').trim();
+  const normD = (departmentName || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
 
-  const batchAlumni = alumni.filter(
-    (a) =>
-      (a.university || '').toLowerCase().trim() === uLower &&
-      (a.department || '').toLowerCase().trim() === dLower &&
-      (!bYear ||
-        (a.batch || '').trim() === bYear ||
-        (a.graduationYear || '').trim() === bYear ||
-        (a.batch || '').includes(bYear) ||
-        (a.graduationYear || '').includes(bYear)) &&
-      (!a.status || a.status === 'APPROVED')
-  );
+  const batchAlumni = alumni.filter((a) => {
+    if (a.status && a.status !== 'APPROVED') return false;
+    const uniMatch = (a.university || '').toLowerCase().trim() === uLower;
+    const aDeptLower = (a.department || '').toLowerCase().trim();
+    const aDeptNorm = (a.department || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+    const deptMatch = aDeptLower === dLower || aDeptNorm === normD;
+    const yearMatch =
+      !bYear ||
+      (a.batch || '').trim() === bYear ||
+      (a.graduationYear || '').trim() === bYear ||
+      (a.batch || '').includes(bYear) ||
+      (a.graduationYear || '').includes(bYear);
+    return uniMatch && deptMatch && yearMatch;
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-5 py-10">

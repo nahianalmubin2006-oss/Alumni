@@ -149,19 +149,25 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
   const uLower = (universityName || '').toLowerCase().trim();
   const dLower = (departmentName || '').toLowerCase().trim();
 
-  // All department metrics are derived from approved live records. Unknown values stay 0.
-  const departmentAlumni = alumniRecords.filter(
-    (a) =>
-      a.status === 'APPROVED' &&
-      (a.university || '').toLowerCase().trim() === uLower &&
-      (a.department || '').toLowerCase().trim() === dLower
-  );
-  const departmentStudents = studentRecords.filter(
-    (s) =>
-      s.status === 'APPROVED' &&
-      (s.university || '').toLowerCase().trim() === uLower &&
-      (s.department || '').toLowerCase().trim() === dLower
-  );
+  const normD = (departmentName || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+
+  // All department metrics are derived from approved live records with fuzzy & normalized linkage.
+  const departmentAlumni = alumniRecords.filter((a) => {
+    if (a.status !== 'APPROVED') return false;
+    const uniMatch = (a.university || '').toLowerCase().trim() === uLower;
+    const aDeptLower = (a.department || '').toLowerCase().trim();
+    const aDeptNorm = (a.department || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+    const deptMatch = aDeptLower === dLower || aDeptNorm === normD;
+    return uniMatch && deptMatch;
+  });
+  const departmentStudents = studentRecords.filter((s) => {
+    if (s.status !== 'APPROVED') return false;
+    const uniMatch = (s.university || '').toLowerCase().trim() === uLower;
+    const sDeptLower = (s.department || '').toLowerCase().trim();
+    const sDeptNorm = (s.department || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+    const deptMatch = sDeptLower === dLower || sDeptNorm === normD;
+    return uniMatch && deptMatch;
+  });
   const alumni = departmentAlumni.length;
   const companies = new Set(departmentAlumni.map((a) => a.company).filter(Boolean)).size;
   const countries = new Set(departmentAlumni.map((a) => a.country).filter(Boolean)).size;

@@ -44,19 +44,98 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
   onNavigate,
   onBack,
 }) => {
-  const { alumni } = useData();
+  const { alumni, allUsers } = useData();
   const { currentUser, userProfile } = useAuth();
 
-  // Find alumni record or generate rich fallback profile
+  // Find alumni record or generate rich fallback profile with live synchronization
   const profile: AlumniRecord = useMemo(() => {
+    // If viewing own profile, always use live userProfile state
+    if (currentUser && userProfile && (alumniId === currentUser.uid || (alumniName && alumniName.toLowerCase().trim() === (userProfile.name || '').toLowerCase().trim()))) {
+      return {
+        id: currentUser.uid,
+        userId: currentUser.uid,
+        name: userProfile.name,
+        email: userProfile.email,
+        university: userProfile.university || 'University of Dhaka',
+        department: userProfile.department || 'General Faculty',
+        batch: userProfile.graduationYear || userProfile.expectedGraduation || '2024',
+        graduationYear: userProfile.graduationYear || userProfile.expectedGraduation || '2024',
+        studentId: userProfile.studentId || '',
+        educationLevel: userProfile.educationLevel || 'Undergraduate',
+        jobRole: userProfile.jobRole || '',
+        company: userProfile.company || '',
+        country: userProfile.country || 'Bangladesh',
+        city: userProfile.city || '',
+        bio: userProfile.bio || '',
+        photoUrl: userProfile.photoUrl || '',
+        linkedin: userProfile.linkedin || '',
+        isVerified: Boolean(userProfile.isVerifiedAlumni),
+        status: 'APPROVED',
+        createdAt: userProfile.createdAt,
+        updatedAt: userProfile.updatedAt,
+      };
+    }
+
     if (alumniId) {
       const match = alumni.find((a) => a.id === alumniId || a.userId === alumniId);
       if (match) return match;
+      const userMatch = allUsers.find((u) => u.uid === alumniId || u.id === alumniId);
+      if (userMatch) {
+        return {
+          id: userMatch.uid || userMatch.id,
+          userId: userMatch.uid || userMatch.id,
+          name: userMatch.name,
+          email: userMatch.email,
+          university: userMatch.university || 'University of Dhaka',
+          department: userMatch.department || 'General Faculty',
+          batch: userMatch.graduationYear || userMatch.expectedGraduation || '2024',
+          graduationYear: userMatch.graduationYear || userMatch.expectedGraduation || '2024',
+          studentId: userMatch.studentId || '',
+          educationLevel: userMatch.educationLevel || 'Undergraduate',
+          jobRole: userMatch.jobRole || '',
+          company: userMatch.company || '',
+          country: userMatch.country || 'Bangladesh',
+          city: userMatch.city || '',
+          bio: userMatch.bio || '',
+          photoUrl: userMatch.photoUrl || '',
+          linkedin: userMatch.linkedin || '',
+          isVerified: Boolean(userMatch.isVerifiedAlumni),
+          status: 'APPROVED',
+          createdAt: userMatch.createdAt,
+          updatedAt: userMatch.updatedAt,
+        };
+      }
     }
     if (alumniName) {
       const q = (alumniName || '').toLowerCase().trim();
       const match = alumni.find((a) => (a.name || '').toLowerCase().trim() === q);
       if (match) return match;
+      const userMatch = allUsers.find((u) => (u.name || '').toLowerCase().trim() === q);
+      if (userMatch) {
+        return {
+          id: userMatch.uid || userMatch.id,
+          userId: userMatch.uid || userMatch.id,
+          name: userMatch.name,
+          email: userMatch.email,
+          university: userMatch.university || 'University of Dhaka',
+          department: userMatch.department || 'General Faculty',
+          batch: userMatch.graduationYear || userMatch.expectedGraduation || '2024',
+          graduationYear: userMatch.graduationYear || userMatch.expectedGraduation || '2024',
+          studentId: userMatch.studentId || '',
+          educationLevel: userMatch.educationLevel || 'Undergraduate',
+          jobRole: userMatch.jobRole || '',
+          company: userMatch.company || '',
+          country: userMatch.country || 'Bangladesh',
+          city: userMatch.city || '',
+          bio: userMatch.bio || '',
+          photoUrl: userMatch.photoUrl || '',
+          linkedin: userMatch.linkedin || '',
+          isVerified: Boolean(userMatch.isVerifiedAlumni),
+          status: 'APPROVED',
+          createdAt: userMatch.createdAt,
+          updatedAt: userMatch.updatedAt,
+        };
+      }
     }
 
     if (alumni.length > 0) return alumni[0];

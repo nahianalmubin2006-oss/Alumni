@@ -148,10 +148,10 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate, 
       .map((u) => {
         const uName = (u.name || '').toLowerCase().trim();
         const liveAlumni = alumni.filter(
-          (a) => a.status === 'APPROVED' && (a.university || '').toLowerCase().trim() === uName
+          (a) => (!a.status || a.status.toUpperCase() === 'APPROVED') && (a.university || '').toLowerCase().trim() === uName
         ).length;
         const liveStudents = students.filter(
-          (s) => s.status === 'APPROVED' && (s.university || '').toLowerCase().trim() === uName
+          (s) => (!s.status || s.status.toUpperCase() === 'APPROVED') && (s.university || '').toLowerCase().trim() === uName
         ).length;
         const liveDepartments = departments.filter(
           (d) =>
@@ -161,7 +161,7 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate, 
         ).length;
 
         const matchingAlumni = alumni.filter(
-          (a) => a.status === 'APPROVED' && (a.university || '').toLowerCase().trim() === uName
+          (a) => (!a.status || a.status.toUpperCase() === 'APPROVED') && (a.university || '').toLowerCase().trim() === uName
         );
         const liveCountries = new Set(matchingAlumni.map((a) => a.country).filter(Boolean)).size;
         const liveCompanies = new Set(matchingAlumni.map((a) => a.company).filter(Boolean)).size;

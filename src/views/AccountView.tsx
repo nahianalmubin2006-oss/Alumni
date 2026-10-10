@@ -166,26 +166,37 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
   const handleGoogleSignIn = async () => {
     setErrorMsg('');
     try {
-      const finalUniversity = (university === 'OTHER' ? customUniversity : university).trim();
-      const finalDepartment = (department === 'OTHER' ? customDepartment : department).trim();
+      let fallbackPrefill: any = {};
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem('alumni_pending_signup') || sessionStorage.getItem('alumni_pending_google');
+          if (cached) fallbackPrefill = JSON.parse(cached);
+        } catch (e) {}
+      }
+
+      const finalUniversity = (university === 'OTHER' ? customUniversity : university).trim() || fallbackPrefill.university;
+      const finalDepartment = (department === 'OTHER' ? customDepartment : department).trim() || fallbackPrefill.department;
       const prefilled: any = {
-        name: name.trim() || undefined,
-        profileType: profileType || 'Student',
+        name: name.trim() || fallbackPrefill.name || undefined,
+        email: email.trim() || fallbackPrefill.email || undefined,
+        profileType: profileType || fallbackPrefill.profileType || 'Student',
         university: finalUniversity || undefined,
         department: finalDepartment || undefined,
-        studentId: studentId.trim() || undefined,
-        educationLevel: educationLevel || undefined,
-        studentYear: studentYear.trim() || undefined,
-        expectedGraduation: expectedGraduation.trim() || undefined,
-        graduationYear: graduationYear.trim() || undefined,
-        jobRole: jobRole.trim() || undefined,
-        company: company.trim() || undefined,
-        country: country.trim() || undefined,
-        city: city.trim() || undefined,
-        bio: bio.trim() || undefined,
-        linkedin: linkedin.trim() || undefined,
+        studentId: studentId.trim() || fallbackPrefill.studentId || undefined,
+        educationLevel: educationLevel || fallbackPrefill.educationLevel || undefined,
+        studentYear: studentYear.trim() || fallbackPrefill.studentYear || undefined,
+        expectedGraduation: expectedGraduation.trim() || fallbackPrefill.expectedGraduation || undefined,
+        graduationYear: graduationYear.trim() || fallbackPrefill.graduationYear || undefined,
+        jobRole: jobRole.trim() || fallbackPrefill.jobRole || undefined,
+        company: company.trim() || fallbackPrefill.company || undefined,
+        country: country.trim() || fallbackPrefill.country || undefined,
+        city: city.trim() || fallbackPrefill.city || undefined,
+        bio: bio.trim() || fallbackPrefill.bio || undefined,
+        linkedin: linkedin.trim() || fallbackPrefill.linkedin || undefined,
       };
       await loginWithGoogle(prefilled);
+      setViewState('default');
+      setSuccessMsg('Signed in successfully! Welcome to your campus profile.');
     } catch (err: any) {
       if (err?.code === 'auth/popup-blocked') {
         setErrorMsg('Pop-up was blocked by your browser. Please allow popups or use email/password.');
@@ -512,9 +523,9 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
         profileType: profileType || 'Student',
         studentId: studentId.trim(),
         educationLevel: educationLevel || 'Undergraduate',
-        studentYear: studentYear.trim(),
-        expectedGraduation: expectedGraduation.trim(),
-        graduationYear: graduationYear.trim(),
+        studentYear: studentYear.trim() || (profileType === 'Student' ? 'Active Student' : ''),
+        expectedGraduation: expectedGraduation.trim() || (profileType === 'Student' ? '2028' : ''),
+        graduationYear: graduationYear.trim() || (profileType === 'Alumni' ? '2024' : ''),
       });
       setSuccessMsg('Your campus profile is now complete and active in the directory!');
     } catch (err: any) {
@@ -718,6 +729,16 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
 
                 {/* Profile Action Buttons */}
                 <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                  {userProfile.university && (
+                    <button
+                      onClick={() => onNavigate('alumniProfile', { id: userProfile.id, name: userProfile.name })}
+                      className="inline-flex items-center gap-1.5 border border-slate-200 bg-white hover:bg-slate-50 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 transition shadow-xs cursor-pointer"
+                      title="View how your profile appears to the public in the live directory"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Live Directory Profile</span>
+                    </button>
+                  )}
                   <button
                     onClick={enterEditMode}
                     className="inline-flex items-center gap-2 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl text-xs font-bold text-blue-700 transition shadow-xs cursor-pointer"
@@ -1462,7 +1483,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                     </div>
                     {userProfile.university && (
                       <button
-                        onClick={() => onNavigate('universityDetail', { name: userProfile.university })}
+                        onClick={() => onNavigate('universityDetail', { name: userProfile.university || '' })}
                         className="mt-3 text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
                       >
                         <span>View Campus Page</span>
@@ -1483,8 +1504,8 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                       <button
                         onClick={() =>
                           onNavigate('departmentProfile', {
-                            dept: userProfile.department,
-                            uni: userProfile.university,
+                            dept: userProfile.department || '',
+                            uni: userProfile.university || '',
                           })
                         }
                         className="mt-3 text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
@@ -2327,16 +2348,27 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                 <button
                   type="button"
                   onClick={() => setViewState('choice')}
-                  className="px-4 py-2 border border-soft rounded-xl text-xs font-semibold text-slate-600"
+                  className="px-4 py-2 border border-soft rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-navy text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition disabled:opacity-50"
+                  className="bg-navy text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer shadow-xs"
                 >
                   {loading ? 'Creating...' : 'Create Account'}
+                </button>
+              </div>
+
+              <div className="sm:col-span-2 pt-3 border-t border-slate-100 text-center">
+                <p className="text-xs text-slate-400 mb-2">Or continue with Google — your selected campus affiliation will be preserved:</p>
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  className="w-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 py-3 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                >
+                  <span>Continue with Google</span>
                 </button>
               </div>
             </form>

@@ -581,8 +581,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             userId: targetUid,
             name: p.name,
             email: p.email,
-            university: p.university,
-            department: p.department,
+            university: p.university || existing?.university || '',
+            department: p.department || existing?.department || '',
             batch: p.graduationYear || existing?.batch || '2024',
             graduationYear: p.graduationYear || existing?.graduationYear || '2024',
             studentId: p.studentId || existing?.studentId || '',
@@ -627,8 +627,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             userId: targetUid,
             name: p.name,
             email: p.email,
-            university: p.university,
-            department: p.department,
+            university: p.university || existing?.university || '',
+            department: p.department || existing?.department || '',
             studentId: p.studentId || existing?.studentId || '',
             educationLevel: p.educationLevel || existing?.educationLevel || 'Undergraduate',
             studentYear: p.studentYear || existing?.studentYear || '',
@@ -681,16 +681,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         )
       );
 
-      // 5. Ensure university is present in universities state and counts stay fresh
+      // 5. Ensure university is present in universities state
       if (p.university) {
+        const uniName = p.university;
         setUniversities((prev) => {
           const map = new Map<string, University>();
           prev.forEach((u) => map.set(u.name.toLowerCase().trim(), u));
-          const key = p.university.toLowerCase().trim();
+          const key = uniName.toLowerCase().trim();
           if (!map.has(key)) {
             const newUni: University = {
               id: 'uni-' + encodeURIComponent(key.replace(/[^a-z0-9]/g, '-')),
-              name: p.university,
+              name: uniName,
               type: 'Public',
               location: p.country ? `${p.city ? p.city + ', ' : ''}${p.country}` : 'Bangladesh',
               verified: false,
@@ -702,33 +703,53 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
               higherStudiesRate: 10,
               countriesCount: 1,
               companiesCount: p.company ? 1 : 0,
-              logoUrl: getUniversityLogo(p.university) || '',
+              logoUrl: getUniversityLogo(uniName) || '',
               website: '',
             };
             return [...prev, newUni];
-          } else {
-            return prev.map((u) => {
-              if (u.name.toLowerCase().trim() !== key) return u;
-              return {
-                ...u,
-                alumniCount: p.profileType === 'Alumni' ? Math.max((u.alumniCount || 0) + 1, 1) : u.alumniCount,
-                studentCount: p.profileType === 'Student' ? Math.max((u.studentCount || 0) + 1, 1) : u.studentCount,
-                departmentCount: Math.max(u.departmentCount || 1, 1),
-                companiesCount: p.company ? Math.max((u.companiesCount || 0) + 1, 1) : u.companiesCount,
-                countriesCount: p.country ? Math.max((u.countriesCount || 0) + 1, 1) : u.countriesCount,
-              };
-            });
           }
+          return prev;
         });
       }
     };
 
+    const handleUniUpdateEvent = (e: Event) => {
+      const detail = (e as CustomEvent<{ name: string; oldUniversity?: string }>).detail;
+      if (!detail?.name) return;
+      const key = detail.name.toLowerCase().trim();
+      setUniversities((prev) => {
+        if (!prev.some((u) => u.name.toLowerCase().trim() === key)) {
+          const newUni: University = {
+            id: 'uni-' + encodeURIComponent(key.replace(/[^a-z0-9]/g, '-')),
+            name: detail.name,
+            type: 'Public',
+            location: 'Bangladesh',
+            verified: false,
+            alumniCount: 0,
+            studentCount: 0,
+            departmentCount: 1,
+            followersCount: 1,
+            employmentRate: 85,
+            higherStudiesRate: 10,
+            countriesCount: 1,
+            companiesCount: 0,
+            logoUrl: getUniversityLogo(detail.name) || '',
+            website: '',
+          };
+          return [...prev, newUni];
+        }
+        return prev;
+      });
+    };
+
     window.addEventListener('alumni-profile-updated', handleProfileUpdateEvent);
     window.addEventListener('alumni-directory-updated', handleProfileUpdateEvent);
+    window.addEventListener('university-updated', handleUniUpdateEvent);
 
     return () => {
       window.removeEventListener('alumni-profile-updated', handleProfileUpdateEvent);
       window.removeEventListener('alumni-directory-updated', handleProfileUpdateEvent);
+      window.removeEventListener('university-updated', handleUniUpdateEvent);
       unsubUniversities();
       unsubDepartments();
       unsubAlumni();
@@ -749,7 +770,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuditLogs([]);
       setAdminAssignments([]);
       setRawUsers([]);
-      setAllUsers([]);
       setLoadingData(false);
       return;
     }
@@ -951,6 +971,57 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
     setAllUsers(unified);
   }, [rawUsers, alumni, students]);
+
+  // Dynamic synchronization of university statistics across all pages:
+  useEffect(() => {
+    setUniversities((prev) => {
+      let changed = false;
+      const next = prev.map((u) => {
+        const uName = (u.name || '').toLowerCase().trim();
+        const liveAlumni = alumni.filter(
+          (a) => (!a.status || a.status.toUpperCase() === 'APPROVED') && (a.university || '').toLowerCase().trim() === uName
+        ).length;
+        const liveStudents = students.filter(
+          (s) => (!s.status || s.status.toUpperCase() === 'APPROVED') && (s.university || '').toLowerCase().trim() === uName
+        ).length;
+        const matchingDepts = new Set(
+          departments.filter((d) => (d.university || '').toLowerCase().trim() === uName && d.status !== 'Inactive').map((d) => d.name)
+        );
+        alumni.forEach((a) => {
+          if ((a.university || '').toLowerCase().trim() === uName && a.department) matchingDepts.add(a.department);
+        });
+        students.forEach((s) => {
+          if ((s.university || '').toLowerCase().trim() === uName && s.department) matchingDepts.add(s.department);
+        });
+
+        const matchingAlumni = alumni.filter(
+          (a) => (!a.status || a.status.toUpperCase() === 'APPROVED') && (a.university || '').toLowerCase().trim() === uName
+        );
+        const liveCountries = new Set(matchingAlumni.map((a) => a.country).filter(Boolean)).size;
+        const liveCompanies = new Set(matchingAlumni.map((a) => a.company).filter(Boolean)).size;
+
+        if (
+          u.alumniCount !== liveAlumni ||
+          u.studentCount !== liveStudents ||
+          u.departmentCount !== matchingDepts.size ||
+          u.countriesCount !== liveCountries ||
+          u.companiesCount !== liveCompanies
+        ) {
+          changed = true;
+          return {
+            ...u,
+            alumniCount: liveAlumni,
+            studentCount: liveStudents,
+            departmentCount: matchingDepts.size || u.departmentCount || 1,
+            countriesCount: liveCountries || u.countriesCount || 0,
+            companiesCount: liveCompanies || u.companiesCount || 0,
+          };
+        }
+        return u;
+      });
+      return changed ? next : prev;
+    });
+  }, [alumni, students, departments]);
 
   // Interconnected dynamic statistics
   const stats = useMemo(() => {
