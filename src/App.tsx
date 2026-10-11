@@ -44,6 +44,10 @@ function getInitialPageFromPath(): { page: string; params: Record<string, string
   if (pathname === '/account') return { page: 'account', params: {} };
   if (pathname === '/terms') return { page: 'terms', params: {} };
   if (pathname === '/creator') return { page: 'creator', params: {} };
+  if (pathname === '/search') {
+    const searchParams = new URLSearchParams(window.location.search);
+    return { page: 'search', params: { query: searchParams.get('query') || searchParams.get('q') || '' } };
+  }
 
   return { page: 'home', params: {} };
 }
@@ -141,8 +145,8 @@ export default function App() {
     else if (page === 'creator') newPath = '/creator';
     else if (page === 'search') newPath = '/search';
 
-    if (window.location.pathname !== newPath) {
-      window.history.pushState({}, '', newPath);
+    if (window.location.pathname !== newPath || window.history.state?.page !== page) {
+      window.history.pushState({ page, params }, '', newPath);
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -168,8 +172,8 @@ export default function App() {
       else if (prev.page === 'creator') newPath = '/creator';
       else if (prev.page === 'search') newPath = '/search';
 
-      if (window.location.pathname !== newPath) {
-        window.history.pushState({}, '', newPath);
+      if (window.location.pathname !== newPath || window.history.state?.page !== prev.page) {
+        window.history.pushState({ page: prev.page, params: prev.params }, '', newPath);
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -190,15 +194,25 @@ export default function App() {
     else if (upper.page === 'creator') newPath = '/creator';
     else if (upper.page === 'search') newPath = '/search';
 
-    if (window.location.pathname !== newPath) {
-      window.history.pushState({}, '', newPath);
+    if (window.location.pathname !== newPath || window.history.state?.page !== upper.page) {
+      window.history.pushState({ page: upper.page, params: upper.params }, '', newPath);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Browser back / forward button synchronization
   useEffect(() => {
-    const handlePopState = () => {
+    // Seed initial history state
+    if (!window.history.state?.page) {
+      window.history.replaceState({ page: initial.page, params: initial.params }, '', window.location.pathname + window.location.search);
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.page) {
+        setCurrentPage(event.state.page);
+        setPageParams(event.state.params || {});
+        return;
+      }
       const state = getInitialPageFromPath();
       setCurrentPage(state.page);
       setPageParams(state.params);
@@ -211,8 +225,8 @@ export default function App() {
   const handleSearch = (query: string) => {
     setCurrentPage('search');
     setPageParams({ query });
-    if (window.location.pathname !== '/search') {
-      window.history.pushState({}, '', '/search');
+    if (window.location.pathname !== '/search' || window.history.state?.page !== 'search') {
+      window.history.pushState({ page: 'search', params: { query } }, '', '/search');
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -316,6 +330,7 @@ export default function App() {
                   departmentName={pageParams.dept || 'Computer Science & Engineering'}
                   universityName={pageParams.uni || 'University of Dhaka'}
                   batchYear={pageParams.batch || '2023'}
+                  batchNumber={pageParams.batchNumber ? Number(pageParams.batchNumber) : undefined}
                   onNavigate={handleNavigate}
                   onBack={handleBack}
                 />

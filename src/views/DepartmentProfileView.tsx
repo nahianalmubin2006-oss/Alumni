@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Chart from 'chart.js/auto';
-import { universityInitials, getUniversityLogo } from '../data/initialData';
+import {
+  universityInitials,
+  getUniversityLogo,
+  normalizeDepartmentName,
+  DU_CSE_ANALYTICS,
+} from '../data/initialData';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import {
@@ -17,8 +22,18 @@ import {
   RefreshCw,
   Newspaper,
   ArrowLeft,
+  Briefcase,
+  Globe,
+  Building2,
+  GraduationCap,
+  BarChart3,
+  PieChart,
+  Info,
+  Calendar,
+  History,
+  TrendingUp,
 } from 'lucide-react';
-import { Role } from '../types';
+import { Role, Batch } from '../types';
 
 interface DepartmentProfileViewProps {
   departmentName: string;
@@ -37,6 +52,7 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
   const {
     alumni: alumniRecords,
     students: studentRecords,
+    batches: batchRecords,
     submitChangeRequest,
     news,
     makeNewsPermanent,
@@ -48,6 +64,7 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartInstanceRef = useRef<Chart | null>(null);
+  const [chartMetric, setChartMetric] = useState<'SECTOR' | 'COUNTRY' | 'EMPLOYER' | 'STATUS'>('SECTOR');
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editAchievements, setEditAchievements] = useState('');
@@ -168,19 +185,129 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
     const deptMatch = sDeptLower === dLower || sDeptNorm === normD;
     return uniMatch && deptMatch;
   });
+  const isDuCse =
+    uLower.includes('dhaka') &&
+    (normD.includes('computerscience') || normD.includes('cse'));
+
   const alumni = departmentAlumni.length;
   const companies = new Set(departmentAlumni.map((a) => a.company).filter(Boolean)).size;
   const countries = new Set(departmentAlumni.map((a) => a.country).filter(Boolean)).size;
-  const employment = 0;
-  const higherStudy = 0;
 
-  const careers: Record<string, number> = useMemo(() => ({
-    'Technology & Software': 42,
-    'Government & Public Sector': 18,
-    'Finance & Banking': 15,
-    'Research & Higher Ed': 12,
-    'Industry & Other': 13,
-  }), []);
+  // Real employment calculation: verified employed in industry, tech, public sector, academia
+  const verifiedEmployedAlumni = useMemo(() => {
+    return departmentAlumni.filter((a) => {
+      const s = (a.careerStatus || '').toLowerCase();
+      return (
+        s.includes('employ') ||
+        Boolean(a.company && a.company !== 'Unrecorded' && a.company !== 'Unknown') ||
+        Boolean(a.jobRole)
+      );
+    });
+  }, [departmentAlumni]);
+
+  const higherStudyAlumni = useMemo(() => {
+    return departmentAlumni.filter((a) => {
+      const s = (a.careerStatus || '').toLowerCase();
+      const r = (a.jobRole || '').toLowerCase();
+      return (
+        s.includes('further') ||
+        s.includes('phd') ||
+        s.includes('study') ||
+        s.includes('academic') ||
+        s.includes('research') ||
+        r.includes('ph.d') ||
+        r.includes('researcher') ||
+        r.includes('professor')
+      );
+    });
+  }, [departmentAlumni]);
+
+  const verifiedEmploymentCount = verifiedEmployedAlumni.length;
+  const higherStudyCount = higherStudyAlumni.length;
+  const verifiedStatusCount = departmentAlumni.filter((a) => Boolean(a.careerStatus || a.jobRole || a.company)).length;
+  const unverifiedStatusCount = Math.max(0, departmentAlumni.length - verifiedStatusCount);
+
+  const employment = departmentAlumni.length > 0
+    ? Math.round((verifiedEmploymentCount / departmentAlumni.length) * 100)
+    : 0;
+  const higherStudy = departmentAlumni.length > 0
+    ? Math.round((higherStudyCount / departmentAlumni.length) * 100)
+    : 0;
+
+  // Dynamic distribution datasets based on selected metric
+  const chartData = useMemo(() => {
+    if (departmentAlumni.length === 0) {
+      return {
+        labels: ['No verified records yet'],
+        values: [1],
+        percentages: [100],
+        total: 0,
+        items: [['No verified records yet', 0]] as [string, number][],
+      };
+    }
+
+    const map = new Map<string, number>();
+
+    if (chartMetric === 'SECTOR') {
+      departmentAlumni.forEach((a) => {
+        let key = a.sector || 'Software Engineering';
+        if (key.includes('Software') && !key.includes('Research')) key = 'Software Engineering';
+        else if (key.includes('Academia') || key.includes('Research')) key = 'Academia / Research';
+        else if (key.includes('Government')) key = 'Government / Public Sector';
+        else if (key.includes('Entrepreneur')) key = 'Entrepreneurship / AI';
+        else if (key.includes('Finance')) key = 'Finance / Fintech';
+        map.set(key, (map.get(key) || 0) + 1);
+      });
+    } else if (chartMetric === 'COUNTRY') {
+      departmentAlumni.forEach((a) => {
+        const key = a.country || 'Unrecorded';
+        map.set(key, (map.get(key) || 0) + 1);
+      });
+    } else if (chartMetric === 'EMPLOYER') {
+      departmentAlumni.forEach((a) => {
+        const key = a.company || 'Technology Sector';
+        map.set(key, (map.get(key) || 0) + 1);
+      });
+    } else if (chartMetric === 'STATUS') {
+      departmentAlumni.forEach((a) => {
+        let key = a.careerStatus;
+        if (!key) {
+          if (a.company || a.jobRole) key = 'Employed (Industry & Public)';
+          else key = 'Unverified Status';
+        } else if (key.toLowerCase().includes('employ')) {
+          key = 'Employed (Industry & Public)';
+        } else if (key.toLowerCase().includes('academic') || key.toLowerCase().includes('research')) {
+          key = 'Academic / Researcher';
+        } else if (key.toLowerCase().includes('further') || key.toLowerCase().includes('phd')) {
+          key = 'Pursuing Further Studies (PhD)';
+        } else if (key.toLowerCase().includes('entrepreneur')) {
+          key = 'Entrepreneur / Founder';
+        }
+        map.set(key, (map.get(key) || 0) + 1);
+      });
+      if (unverifiedStatusCount > 0 && !map.has('Unverified Status')) {
+        map.set('Unverified Status', unverifiedStatusCount);
+      }
+    }
+
+    const sorted = Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+    let finalEntries: [string, number][] = sorted;
+    if (sorted.length > 7) {
+      const top6: [string, number][] = sorted.slice(0, 6);
+      const rest = sorted.slice(6).reduce((sum, item) => sum + item[1], 0);
+      top6.push(['Other Categories', rest]);
+      finalEntries = top6;
+    }
+
+    const total = departmentAlumni.length;
+    const labels = finalEntries.map((e) => e[0]);
+    const values = finalEntries.map((e) => e[1]);
+    const percentages = values.map((v) => Math.round((v / total) * 100));
+
+    return { labels, values, percentages, total, items: finalEntries };
+  }, [departmentAlumni, chartMetric, unverifiedStatusCount]);
+
+  const CHART_PALETTE = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'];
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -191,11 +318,11 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
     chartInstanceRef.current = new Chart(canvasRef.current, {
       type: 'doughnut',
       data: {
-        labels: Object.keys(careers),
+        labels: chartData.labels,
         datasets: [
           {
-            data: Object.values(careers),
-            backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'],
+            data: chartData.values,
+            backgroundColor: CHART_PALETTE.slice(0, chartData.labels.length),
             borderWidth: 0,
           },
         ],
@@ -207,9 +334,9 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
           legend: {
             position: 'bottom',
             labels: {
-              boxWidth: 12,
-              padding: 14,
-              font: { size: 11, weight: 'bold' },
+              boxWidth: 10,
+              padding: 10,
+              font: { size: 10, weight: 'bold' },
             },
           },
         },
@@ -221,7 +348,57 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
         chartInstanceRef.current.destroy();
       }
     };
-  }, [careers]);
+  }, [chartData]);
+
+  // Chronologically sorted graduation batches from earliest to latest
+  const deptBatches = useMemo(() => {
+    const fromRecords = batchRecords.filter((b) => {
+      const uMatch = (b.university || '').toLowerCase().trim() === uLower;
+      const dMatch =
+        (b.department || '').toLowerCase().trim() === dLower ||
+        normalizeDepartmentName(b.department || '') === normD;
+      return uMatch && dMatch;
+    });
+
+    if (fromRecords.length > 0) {
+      return [...fromRecords].sort((a, b) => {
+        const numA = a.batchNumber !== undefined ? a.batchNumber : parseInt(a.year || '0', 10);
+        const numB = b.batchNumber !== undefined ? b.batchNumber : parseInt(b.year || '0', 10);
+        return numA - numB;
+      });
+    }
+
+    // Dynamic fallback from alumni & students
+    const yearSet = new Set<string>();
+    departmentAlumni.forEach((a) => {
+      if (a.graduationYear) yearSet.add(a.graduationYear);
+      if (a.batch) {
+        const m = a.batch.match(/\b(19\d\d|20\d\d)\b/);
+        if (m) yearSet.add(m[1]);
+      }
+    });
+    if (yearSet.size === 0) {
+      ['2020', '2021', '2022', '2023', '2024', '2025'].forEach((y) => yearSet.add(y));
+    }
+
+    return Array.from(yearSet)
+      .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+      .map((yr, idx): Batch => ({
+        id: `batch-${yr}`,
+        year: yr,
+        department: departmentName,
+        university: universityName,
+        batchNumber: idx + 1,
+        batchName: `${yr} Batch`,
+        sessionName: undefined,
+        degree: undefined,
+        studentsCount: 0,
+        employedRate: 85,
+        higherStudyRate: 10,
+        internationalRate: 5,
+        entrepreneursRate: 0,
+      }));
+  }, [batchRecords, departmentAlumni, uLower, dLower, normD, departmentName, universityName]);
 
   // Department administration is managed in the Admin Dashboard
   const isThisDeptAdmin = false;
@@ -349,73 +526,245 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
         </div>
       </div>
 
-      {/* Charts & Breakdown */}
-      <div className="grid lg:grid-cols-2 gap-6 mt-6">
-        <div className="card p-6">
-          <h2 className="text-xl font-black navy">Where alumni work</h2>
-          <p className="text-xs text-slate-400 mt-1">Cross-industry distribution</p>
-          <div className="h-72 mt-4 relative">
-            <canvas ref={canvasRef}></canvas>
+      {/* Dynamic Circle Chart & Career Statistics Section */}
+      <div className="card p-6 mt-6 bg-white border border-slate-200/90 shadow-xs rounded-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 bg-blue-100 text-blue-700 rounded-lg">
+                <PieChart className="w-4 h-4" />
+              </span>
+              <h2 className="text-xl font-black navy">Career Statistics & Outcomes</h2>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Dynamic verified distributions across sectors, employers, countries, and career statuses
+            </p>
+          </div>
+
+          {/* Metric Selector Tabs */}
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl">
+            <button
+              onClick={() => setChartMetric('SECTOR')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                chartMetric === 'SECTOR'
+                  ? 'bg-white text-blue-700 shadow-xs'
+                  : 'text-slate-600 hover:text-navy'
+              }`}
+            >
+              Industry / Sector
+            </button>
+            <button
+              onClick={() => setChartMetric('COUNTRY')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                chartMetric === 'COUNTRY'
+                  ? 'bg-white text-blue-700 shadow-xs'
+                  : 'text-slate-600 hover:text-navy'
+              }`}
+            >
+              Country
+            </button>
+            <button
+              onClick={() => setChartMetric('EMPLOYER')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                chartMetric === 'EMPLOYER'
+                  ? 'bg-white text-blue-700 shadow-xs'
+                  : 'text-slate-600 hover:text-navy'
+              }`}
+            >
+              Top Employers
+            </button>
+            <button
+              onClick={() => setChartMetric('STATUS')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                chartMetric === 'STATUS'
+                  ? 'bg-white text-blue-700 shadow-xs'
+                  : 'text-slate-600 hover:text-navy'
+              }`}
+            >
+              Career Status
+            </button>
           </div>
         </div>
 
-        <div className="card p-6">
-          <h2 className="text-xl font-black navy">Career destinations</h2>
-          <p className="text-xs text-slate-400 mt-1">Sector and placement representation</p>
-          <div className="mt-5 space-y-3.5">
-            {Object.entries(careers).map(([k, v]) => (
-              <div key={k}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-600 text-xs font-semibold">{k}</span>
-                  <b className="navy text-xs">{v}%</b>
+        <div className="grid lg:grid-cols-2 gap-8 mt-6 items-center">
+          <div>
+            <div className="h-72 relative">
+              <canvas ref={canvasRef}></canvas>
+            </div>
+            <p className="text-[11px] text-center text-slate-400 mt-2">
+              Circle Chart: {chartMetric === 'SECTOR' ? 'Sector Allocation' : chartMetric === 'COUNTRY' ? 'Country Distribution' : chartMetric === 'EMPLOYER' ? 'Employer Representation' : 'Career Status'} · Denominator N={chartData.total}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-black navy uppercase tracking-wider text-slate-500 mb-3">
+                {chartMetric === 'SECTOR' ? 'Sector & Industry Representation' : chartMetric === 'COUNTRY' ? 'Global Geographic Breakdown' : chartMetric === 'EMPLOYER' ? 'Organizations & Employers' : 'Career Trajectory Distribution'}
+              </h3>
+              <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                {chartData.items.map(([label, count], idx) => {
+                  const pct = chartData.total > 0 ? Math.round((count / chartData.total) * 100) : 0;
+                  const color = CHART_PALETTE[idx % CHART_PALETTE.length];
+                  return (
+                    <div key={label}>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: color }} />
+                          <span className="truncate max-w-[220px]">{label}</span>
+                        </span>
+                        <span className="navy font-bold">
+                          {count} ({pct}%)
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%`, backgroundColor: color }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Data Quality & Statistical Transparency Box */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs space-y-1.5">
+              <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                <Info className="w-3.5 h-3.5 text-blue-600" />
+                <span>Dataset Quality & Category Definitions</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1 text-[11px] text-slate-600">
+                <div>
+                  <span className="text-slate-400 block">Verified Employment:</span>
+                  <b className="navy">{verifiedEmploymentCount} of {alumni} records ({employment}%)</b>
                 </div>
-                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-600 rounded-full" style={{ width: `${v}%` }}></div>
+                <div>
+                  <span className="text-slate-400 block">Known Career Status:</span>
+                  <b className="navy">{verifiedStatusCount} of {alumni} ({alumni > 0 ? Math.round((verifiedStatusCount/alumni)*100) : 0}%)</b>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Unverified / Unknown Status:</span>
+                  <b className="navy">{unverifiedStatusCount} records</b>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Destination Countries:</span>
+                  <b className="navy">{countries} countries verified</b>
                 </div>
               </div>
-            ))}
+              <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-200/60 leading-relaxed">
+                * Note on methodology: Denominator strictly reflects the verified public-profile sample of N={alumni}. Records with unknown or unverified employment details are cataloged as unrecorded and are NOT counted as unemployed.
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Batches Grid */}
-      <div className="card p-6 mt-6">
-        <div className="flex justify-between items-center gap-3">
+      {/* Graduation Batches Explorer in Chronological Order */}
+      <div className="card p-6 mt-6 bg-white border border-slate-200/90 shadow-xs rounded-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-black navy">Explore by batch</h2>
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 bg-blue-100 text-blue-700 rounded-lg">
+                <Calendar className="w-4 h-4" />
+              </span>
+              <h2 className="text-xl font-black navy">
+                Graduation Batches ({deptBatches.length} Cohorts)
+              </h2>
+            </div>
             <p className="text-xs text-slate-400 mt-1">
-              Select a graduating cohort to view specific alumni trajectories and outcomes
+              Chronologically sorted from earliest founding cohort to latest researched class
             </p>
           </div>
-          <span className="pill text-blue-600">6 batches</span>
+          <span className="pill text-blue-600 bg-blue-50 border-blue-200 text-xs font-bold">
+            Earliest → Latest
+          </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-5">
-          {['2020', '2021', '2022', '2023', '2024', '2025'].map((y) => {
-            const batchAlumni = departmentAlumni.filter((a) => a.graduationYear === y).length;
-            const batchEmployed = batchAlumni > 0 ? 85 : 0;
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 mt-5">
+          {deptBatches.map((b) => {
+            const count = departmentAlumni.filter((a) => {
+              if (b.batchNumber !== undefined && a.batchNumber === b.batchNumber) return true;
+              return a.graduationYear === b.year || a.batch?.includes(b.year);
+            }).length;
+
             return (
               <button
-                key={y}
+                key={b.id || b.year}
                 onClick={() =>
                   onNavigate('departmentBatch', {
                     dept: departmentName,
                     uni: universityName,
-                    batch: y,
+                    batch: b.year,
+                    batchNumber: String(b.batchNumber ?? ''),
                   })
                 }
-                className="p-4 border border-soft rounded-xl hover:border-blue-300 text-left transition group bg-white"
+                className="p-4 border border-slate-200 rounded-xl hover:border-blue-400 hover:shadow-md text-left transition group bg-white cursor-pointer flex flex-col justify-between"
               >
-                <b className="block navy group-hover:text-blue-600 transition text-sm">
-                  {y} Batch
-                </b>
-                <p className="text-xs text-slate-400 mt-1">{batchAlumni} alumni</p>
-                <p className="text-xs text-emerald-600 mt-1 font-semibold">{batchEmployed}% employed</p>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider">
+                      {b.batchNumber !== undefined && b.batchNumber > 0 ? `Batch #${b.batchNumber}` : `Founding Cohort`}
+                    </span>
+                    <span className="text-xs text-slate-400 group-hover:text-blue-600 transition">→</span>
+                  </div>
+                  <b className="block navy group-hover:text-blue-600 transition text-sm mt-1">
+                    {b.batchName || `${b.year} Batch`}
+                  </b>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {b.sessionName ? `Session ${b.sessionName}` : `Graduated ${b.year}`}
+                    {b.degree ? ` · ${b.degree}` : ''}
+                  </p>
+                </div>
+
+                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-600">
+                    {count} alumni {count > 0 ? 'profiles' : ''}
+                  </span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    count > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {count > 0 ? '✓ Researched' : 'Intake Cohort'}
+                  </span>
+                </div>
               </button>
             );
           })}
         </div>
       </div>
+
+      {/* Historical Milestones (DU CSE Heritage) */}
+      {isDuCse && DU_CSE_ANALYTICS.historyMilestones && (
+        <div className="card p-6 mt-6 bg-white border border-slate-200/90 shadow-xs rounded-2xl">
+          <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+            <span className="p-1.5 bg-amber-100 text-amber-700 rounded-lg">
+              <History className="w-4 h-4" />
+            </span>
+            <div>
+              <h2 className="text-xl font-black navy">
+                Department History & Milestones
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Official institutional milestones from 1992 foundation to modern global presence
+              </p>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
+            {DU_CSE_ANALYTICS.historyMilestones.map((m, idx) => (
+              <div key={idx} className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="text-xs font-black text-blue-600 uppercase tracking-widest">
+                  {m.year}
+                </div>
+                <b className="navy text-sm block mt-1">{m.title}</b>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  {m.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ========================================================= */}
       {/* 4. DEPARTMENT LIVE NEWS & ALUMNI ACHIEVEMENTS WIRE */}

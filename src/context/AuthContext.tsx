@@ -532,6 +532,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         setLoading(false);
       } else {
+        // If not authenticated in Firebase, check for internal persistent session
+        const internalToken = typeof window !== 'undefined' ? localStorage.getItem('alumni_internal_token') : null;
+        if (internalToken) {
+          try {
+            const resp = await fetch('/api/auth/verify-session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ token: internalToken }),
+            });
+            if (resp.ok) {
+              const resData = await resp.json();
+              if (resData.authenticated && resData.user) {
+                const mockUser = {
+                  uid: resData.user.id,
+                  email: resData.user.email,
+                  displayName: resData.user.name,
+                  emailVerified: true,
+                } as any;
+                setCurrentUser(mockUser);
+                setUserProfile(resData.user);
+                setLoading(false);
+                return;
+              }
+            }
+          } catch (e) {
+            console.warn('Internal session restore notice:', e);
+          }
+        }
         setCurrentUser(null);
         setUserProfile(null);
         setLoading(false);
@@ -549,10 +577,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithEmail = async (email: string, password: string) => {
-    const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-    const profile = await fetchOrCreateUserProfile(cred.user);
-    setCurrentUser(cred.user);
-    setUserProfile(profile);
+    const trimmedEmail = email.trim();
+    try {
+      const cred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
+      const profile = await fetchOrCreateUserProfile(cred.user);
+      setCurrentUser(cred.user);
+      setUserProfile(profile);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('alumni_internal_token');
+      }
+    } catch (firebaseErr: any) {
+      // Fallback: Check internal persistent authentication system
+      try {
+        const resp = await fetch('/api/auth/login-internal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: trimmedEmail, password }),
+        });
+        if (resp.ok) {
+          const json = await resp.json();
+          if (json.token && typeof window !== 'undefined') {
+            localStorage.setItem('alumni_internal_token', json.token);
+            localStorage.setItem('alumni_internal_user', JSON.stringify(json.user));
+          }
+          const mockUser = {
+            uid: json.user.id,
+            email: json.user.email,
+            displayName: json.user.name,
+            emailVerified: true,
+          } as any;
+          setCurrentUser(mockUser);
+          setUserProfile(json.user);
+          return;
+        } else {
+          const errJson = await resp.json().catch(() => ({}));
+          if (errJson.error) {
+            throw new Error(errJson.error);
+          }
+          throw firebaseErr;
+        }
+      } catch (internalErr: any) {
+        throw internalErr;
+      }
+    }
   };
 
   const registerUser = async (data: RegisterUserData) => {
@@ -567,13 +634,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (e) {}
       }
 
-      let user = currentUser;
-      if (!user && data.password) {
-        const cred = await createUserWithEmailAndPassword(auth, data.email.trim(), data.password);
-        user = cred.user;
-        if (data.name) {
-          await updateProfile(user, { displayName: data.name.trim() });
+      // 1. Guaranteed durable storage in internal persistent database
+      let internalData: any = null;
+      try {
+        const res = await fetch('/api/auth/register-internal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (res.ok) {
+          internalData = await res.json();
+          if (internalData.token && typeof window !== 'undefined') {
+            localStorage.setItem('alumni_internal_token', internalData.token);
+            localStorage.setItem('alumni_internal_user', JSON.stringify(internalData.user));
+          }
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          if (errData.error && res.status === 409) {
+            throw new Error(errData.error);
+          }
         }
+      } catch (storageErr: any) {
+        if (storageErr?.message?.includes('already registered')) {
+          throw storageErr;
+        }
+        console.warn('Notice: Internal database storage note:', storageErr);
+      }
+
+      // 2. Client-side Firebase User creation
+      let user = currentUser;
+      let firebaseCreated = false;
+      if (!user && data.password) {
+        try {
+          const cred = await createUserWithEmailAndPassword(auth, data.email.trim(), data.password);
+          user = cred.user;
+          firebaseCreated = true;
+          if (data.name) {
+            await updateProfile(user, { displayName: data.name.trim() }).catch(() => {});
+          }
+        } catch (fbErr: any) {
+          console.warn('Firebase user creation notice (using internal identity):', fbErr);
+          if (internalData?.user) {
+            user = {
+              uid: internalData.user.id,
+              email: internalData.user.email,
+              displayName: internalData.user.name,
+              emailVerified: true,
+            } as any;
+          } else {
+            throw fbErr;
+          }
+        }
+      }
+
+      if (!user && internalData?.user) {
+        user = {
+          uid: internalData.user.id,
+          email: internalData.user.email,
+          displayName: internalData.user.name,
+          emailVerified: true,
+        } as any;
       }
 
       if (!user) {
@@ -582,15 +702,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       pendingRegistrationCache.set(user.uid, data);
 
-      const isMasterAdmin = isTrustedSuperAdmin(user);
+      const isMasterAdmin = isTrustedSuperAdmin(user) || isSuperAdminEmail(data.email);
       const initialRole: Role = isMasterAdmin
         ? 'SUPER_ADMIN'
         : data.profileType === 'Alumni'
         ? 'ALUMNI'
         : 'STUDENT';
 
-      // No admin review is needed to become a student or alumni - status is immediately APPROVED
-      const newProfile: UserProfile = {
+      // 3. Assemble User Profile Dossier
+      const newProfile: UserProfile = internalData?.user ? {
+        ...internalData.user,
+        role: initialRole,
+        id: user.uid,
+        uid: user.uid,
+      } : {
         id: user.uid,
         uid: user.uid,
         email: data.email.trim(),
@@ -617,66 +742,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatedAt: new Date().toISOString(),
       };
 
-      const userDocRef = doc(db, 'users', user.uid);
-      await setDoc(userDocRef, newProfile);
       setCurrentUser(user);
       setUserProfile(newProfile);
 
-      // Create matching student/alumni record immediately active in directory
-      if (data.profileType === 'Alumni') {
-        const alumniDocRef = doc(db, 'alumni', user.uid);
-        await setDoc(alumniDocRef, {
-          id: user.uid,
-          userId: user.uid,
-          name: newProfile.name,
-          email: newProfile.email,
-          university: newProfile.university,
-          department: newProfile.department,
-          batch: newProfile.graduationYear || '2024',
-          studentId: newProfile.studentId || '',
-          educationLevel: newProfile.educationLevel || 'Undergraduate',
-          graduationYear: newProfile.graduationYear || '2024',
-          jobRole: newProfile.jobRole || '',
-          company: newProfile.company || '',
-          country: newProfile.country || 'Bangladesh',
-          city: newProfile.city || '',
-          bio: newProfile.bio || '',
-          photoUrl: newProfile.photoUrl || '',
-          linkedin: newProfile.linkedin || '',
-          isVerified: isMasterAdmin,
-          status: 'APPROVED',
+      // 4. Cloud Firestore storage sync
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        await setDoc(userDocRef, newProfile);
+
+        if (data.profileType === 'Alumni') {
+          const alumniDocRef = doc(db, 'alumni', user.uid);
+          await setDoc(alumniDocRef, {
+            id: user.uid,
+            userId: user.uid,
+            name: newProfile.name,
+            email: newProfile.email,
+            university: newProfile.university,
+            department: newProfile.department,
+            batch: newProfile.graduationYear || '2024',
+            studentId: newProfile.studentId || '',
+            educationLevel: newProfile.educationLevel || 'Undergraduate',
+            graduationYear: newProfile.graduationYear || '2024',
+            jobRole: newProfile.jobRole || '',
+            company: newProfile.company || '',
+            country: newProfile.country || 'Bangladesh',
+            city: newProfile.city || '',
+            bio: newProfile.bio || '',
+            photoUrl: newProfile.photoUrl || '',
+            linkedin: newProfile.linkedin || '',
+            isVerified: isMasterAdmin,
+            status: 'APPROVED',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+          deleteDoc(doc(db, 'students', user.uid)).catch(() => {});
+        } else if (data.profileType === 'Student') {
+          const studentDocRef = doc(db, 'students', user.uid);
+          await setDoc(studentDocRef, {
+            id: user.uid,
+            userId: user.uid,
+            name: newProfile.name,
+            email: newProfile.email,
+            university: newProfile.university,
+            department: newProfile.department,
+            studentId: newProfile.studentId || '',
+            educationLevel: newProfile.educationLevel || 'Undergraduate',
+            studentYear: newProfile.studentYear || '',
+            expectedGraduation: newProfile.expectedGraduation || '',
+            bio: newProfile.bio || '',
+            photoUrl: newProfile.photoUrl || '',
+            status: 'APPROVED',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+          deleteDoc(doc(db, 'alumni', user.uid)).catch(() => {});
+        }
+
+        await addDoc(collection(db, 'notifications'), {
+          recipientId: 'ADMIN',
+          recipientRole: 'SUPER_ADMIN',
+          title: `New ${data.profileType} Joined`,
+          message: `${data.name} opened an account for ${data.university} (${data.department}). Profile is immediately active in directory.`,
+          type: 'ACCOUNT',
+          read: false,
+          actionUrl: '/admin',
           createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }, { merge: true });
-        // Clean up from students collection if existed
-        deleteDoc(doc(db, 'students', user.uid)).catch(() => {});
-      } else if (data.profileType === 'Student') {
-        const studentDocRef = doc(db, 'students', user.uid);
-        await setDoc(studentDocRef, {
-          id: user.uid,
-          userId: user.uid,
-          name: newProfile.name,
-          email: newProfile.email,
-          university: newProfile.university,
-          department: newProfile.department,
-          studentId: newProfile.studentId || '',
-          educationLevel: newProfile.educationLevel || 'Undergraduate',
-          studentYear: newProfile.studentYear || '',
-          expectedGraduation: newProfile.expectedGraduation || '',
-          bio: newProfile.bio || '',
-          photoUrl: newProfile.photoUrl || '',
-          status: 'APPROVED',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }, { merge: true });
-        // Clean up from alumni collection if existed
-        deleteDoc(doc(db, 'alumni', user.uid)).catch(() => {});
+        }).catch(() => {});
+      } catch (firestoreErr) {
+        console.warn('Notice: Firestore sync notice (data is preserved in internal database):', firestoreErr);
       }
 
       pendingRegistrationCache.delete(normalizedEmail);
       pendingRegistrationCache.delete(user.uid);
-      setCurrentUser(user);
-      setUserProfile(newProfile);
       isRegisteringRef.current = false;
 
       if (typeof window !== 'undefined') {
@@ -686,18 +823,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           window.dispatchEvent(new CustomEvent('university-updated', { detail: { name: newProfile.university } }));
         }
       }
-
-      // Add notification for admin so administrators can see the new student/alumni
-      await addDoc(collection(db, 'notifications'), {
-        recipientId: 'ADMIN',
-        recipientRole: 'SUPER_ADMIN',
-        title: `New ${data.profileType} Joined`,
-        message: `${data.name} joined as a ${data.profileType} for ${data.university} (${data.department}). Profile is immediately active in directory.`,
-        type: 'ACCOUNT',
-        read: false,
-        actionUrl: '/admin',
-        createdAt: new Date().toISOString(),
-      });
     } catch (err: unknown) {
       isRegisteringRef.current = false;
       console.error('Registration error:', err);
@@ -742,6 +867,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     localStorage.removeItem('alumniSphereSyntheticSession');
+    localStorage.removeItem('alumni_internal_token');
+    localStorage.removeItem('alumni_internal_user');
     try {
       await signOut(auth);
     } catch (e) {}

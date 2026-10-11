@@ -233,7 +233,6 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onNavigate }) =>
       showToast('No pending members in queue to approve.', 'info');
       return;
     }
-    if (!window.confirm(`Approve all ${pendingList.length} pending members?`)) return;
 
     setBatchLoading(true);
     let count = 0;

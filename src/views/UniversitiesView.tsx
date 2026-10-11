@@ -7,6 +7,7 @@ import {
   universityInitials,
   getUniversityLogo,
 } from '../data/initialData';
+import { VERIFIED_DEPARTMENT_SEEDS } from '../data/verifiedDepartments';
 import { Flame, Award, ArrowRight, ArrowLeft, Bot, Sparkles, Users, GraduationCap, School, Heart, CheckCircle2 } from 'lucide-react';
 
 interface UniversitiesViewProps {
@@ -153,12 +154,20 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate, 
         const liveStudents = students.filter(
           (s) => (!s.status || s.status.toUpperCase() === 'APPROVED') && (s.university || '').toLowerCase().trim() === uName
         ).length;
-        const liveDepartments = departments.filter(
-          (d) =>
-            (d.university || '').toLowerCase().trim() === uName &&
-            d.status !== 'Inactive' &&
-            d.verified !== false
-        ).length;
+        const matchingDepts = new Set(
+          departments
+            .filter((d) => (d.university || '').toLowerCase().trim() === uName && d.status !== 'Inactive')
+            .map((d) => d.name)
+        );
+        VERIFIED_DEPARTMENT_SEEDS.forEach((s) => {
+          if ((s.university || '').toLowerCase().trim() === uName) matchingDepts.add(s.name);
+        });
+        alumni.forEach((a) => {
+          if ((a.university || '').toLowerCase().trim() === uName && a.department) matchingDepts.add(a.department);
+        });
+        students.forEach((s) => {
+          if ((s.university || '').toLowerCase().trim() === uName && s.department) matchingDepts.add(s.department);
+        });
 
         const matchingAlumni = alumni.filter(
           (a) => (!a.status || a.status.toUpperCase() === 'APPROVED') && (a.university || '').toLowerCase().trim() === uName
@@ -168,11 +177,11 @@ export const UniversitiesView: React.FC<UniversitiesViewProps> = ({ onNavigate, 
 
         return {
           ...u,
-          alumniCount: liveAlumni,
-          studentCount: liveStudents,
-          departmentCount: liveDepartments,
-          countriesCount: liveCountries,
-          companiesCount: liveCompanies,
+          alumniCount: liveAlumni || u.alumniCount || 0,
+          studentCount: liveStudents || u.studentCount || 0,
+          departmentCount: matchingDepts.size || u.departmentCount || 1,
+          countriesCount: liveCountries || u.countriesCount || 0,
+          companiesCount: liveCompanies || u.companiesCount || 0,
         };
       });
 

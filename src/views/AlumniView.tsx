@@ -52,6 +52,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
   const [selectedDept, setSelectedDept] = useState('');
   const [alumniSearch, setAlumniSearch] = useState('');
   const [countryFilter, setCountryFilter] = useState('All');
+  const [sectorFilter, setSectorFilter] = useState('All');
   const [universityFilter, setUniversityFilter] = useState('All');
   const [universityTypeFilter, setUniversityTypeFilter] = useState<'All' | 'Public' | 'Private' | 'International'>('All');
   const [departmentFilter, setDepartmentFilter] = useState('All');
@@ -71,7 +72,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
     return universities
       .map((u) => {
         const liveCount = alumniOnly.filter(
-          (a) => a.status === 'APPROVED' && a.university?.toLowerCase() === u.name.toLowerCase()
+          (a) => (!a.status || a.status.toUpperCase() === 'APPROVED') && a.university?.toLowerCase() === u.name.toLowerCase()
         ).length;
         return {
           name: u.name,
@@ -87,7 +88,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
     return RAW_DEPARTMENT_CATALOG.map((d) => {
       const dName = d.name.toLowerCase().trim();
       const deptAlumni = alumniOnly.filter(
-        (a) => a.status === 'APPROVED' && (a.department || '').toLowerCase().trim() === dName
+        (a) => (!a.status || a.status.toUpperCase() === 'APPROVED') && (a.department || '').toLowerCase().trim() === dName
       );
       const liveCount = deptAlumni.length;
       const unisCount = new Set(deptAlumni.map((a) => (a.university || '').toLowerCase().trim()).filter(Boolean)).size;
@@ -213,7 +214,10 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
     return map;
   }, []);
 
-  const approvedAlumni = useMemo(() => alumniOnly.filter((a) => a.status === 'APPROVED'), [alumniOnly]);
+  const approvedAlumni = useMemo(
+    () => alumniOnly.filter((a) => !a.status || a.status.toUpperCase() === 'APPROVED'),
+    [alumniOnly]
+  );
 
   // Filter and sort only approved alumni, then paginate the result set.
   const filteredAlumni = useMemo(() => {
@@ -274,7 +278,12 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
         return false;
       }
 
-      // 8. Search query (multi-field)
+      // 8. Sector filter
+      if (sectorFilter !== 'All' && (a.sector || 'Other') !== sectorFilter) {
+        return false;
+      }
+
+      // 9. Search query (multi-field including sector, specialization, degree)
       if (query) {
         const hay = [
           a.name,
@@ -286,6 +295,10 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
           a.city,
           a.batch,
           a.graduationYear,
+          a.sector,
+          a.specialization,
+          a.degree,
+          a.notes,
         ]
           .filter(Boolean)
           .join(' ')
@@ -319,6 +332,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
     approvedAlumni,
     alumniSearch,
     countryFilter,
+    sectorFilter,
     universityFilter,
     universityTypeFilter,
     departmentFilter,
@@ -335,6 +349,11 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
 
   const uniqueCountries = useMemo(
     () => Array.from(new Set(approvedAlumni.map((a) => a.country).filter((value): value is string => Boolean(value))).values()).sort(),
+    [approvedAlumni]
+  );
+
+  const uniqueSectors = useMemo(
+    () => Array.from(new Set(approvedAlumni.map((a) => a.sector).filter((value): value is string => Boolean(value))).values()).sort(),
     [approvedAlumni]
   );
 
@@ -415,7 +434,14 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
   ]);
 
   const totalDirectoryPages = Math.max(1, Math.ceil(filteredAlumni.length / directoryPageSize));
-  const visibleAlumni = filteredAlumni.slice((directoryPage - 1) * directoryPageSize, directoryPage * directoryPageSize);
+  const safeDirectoryPage = Math.min(Math.max(1, directoryPage), totalDirectoryPages);
+  const visibleAlumni = filteredAlumni.slice((safeDirectoryPage - 1) * directoryPageSize, safeDirectoryPage * directoryPageSize);
+
+  useEffect(() => {
+    if (directoryPage > totalDirectoryPages) {
+      setDirectoryPage(1);
+    }
+  }, [directoryPage, totalDirectoryPages]);
 
   const clearDirectoryFilters = () => {
     setAlumniSearch('');

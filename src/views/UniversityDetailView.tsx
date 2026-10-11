@@ -45,6 +45,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     departments,
     alumni,
     students,
+    batches,
     news,
     submitChangeRequest,
     makeNewsPermanent,
@@ -108,10 +109,10 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     const customLogo = getUniversityLogo(universityName, found?.logoUrl);
 
     const matchingAlumni = alumni.filter(
-      (a) => (a.university || '').toLowerCase().trim() === qName && a.status === 'APPROVED'
+      (a) => (a.university || '').toLowerCase().trim() === qName && (!a.status || a.status.toUpperCase() === 'APPROVED')
     );
     const matchingStudents = students.filter(
-      (s) => (s.university || '').toLowerCase().trim() === qName && s.status === 'APPROVED'
+      (s) => (s.university || '').toLowerCase().trim() === qName && (!s.status || s.status.toUpperCase() === 'APPROVED')
     );
     const matchingDepts = new Set([
       ...departments.filter((d) => (d.university || '').toLowerCase().trim() === qName && d.status !== 'Inactive').map((d) => d.name),
@@ -178,8 +179,45 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
       .map((d) => d.name);
     const fromAlumni = uniAlumni.map((a) => a.department).filter(Boolean);
     const fromStudents = uniStudents.map((s) => s.department).filter(Boolean);
-    return Array.from(new Set([...fromDb, ...fromAlumni, ...fromStudents]));
+    return Array.from(new Set([...fromDb, ...fromAlumni, ...fromStudents])).sort();
   }, [departments, universityName, uniAlumni, uniStudents]);
+
+  // Chronologically sorted graduation cohorts for this university
+  const uniBatches = useMemo(() => {
+    const qName = (universityName || '').toLowerCase().trim();
+    const list = batches.filter(
+      (b) => (b.university || '').toLowerCase().trim() === qName
+    );
+    if (list.length > 0) {
+      return [...list].sort((a, b) => {
+        const numA = a.batchNumber !== undefined ? a.batchNumber : parseInt(a.year || '0', 10);
+        const numB = b.batchNumber !== undefined ? b.batchNumber : parseInt(b.year || '0', 10);
+        return numA - numB;
+      });
+    }
+    const years = new Set<string>();
+    uniAlumni.forEach((a) => {
+      if (a.graduationYear) years.add(a.graduationYear);
+      if (a.batch) {
+        const m = a.batch.match(/\b(19\d\d|20\d\d)\b/);
+        if (m) years.add(m[1]);
+      }
+    });
+    if (years.size === 0) {
+      ['2020', '2021', '2022', '2023', '2024', '2025'].forEach((y) => years.add(y));
+    }
+    return Array.from(years)
+      .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+      .map((yr, idx) => ({
+        id: `batch-${yr}`,
+        year: yr,
+        department: 'Computer Science and Engineering',
+        university: universityName,
+        batchName: `${yr} Batch`,
+        batchNumber: idx + 1,
+        sessionName: undefined as string | undefined,
+      }));
+  }, [batches, universityName, uniAlumni]);
 
   // Related news with department filtering & hot topic prioritization
   const uniNews = useMemo(() => {
@@ -392,7 +430,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
 
               <div className="hero-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5 text-indigo-300" />
-                <span>{university.departmentCount || departments.filter((d) => d.university.toLowerCase() === university.name.toLowerCase()).length} Academic Departments</span>
+                <span>{university.departmentCount || uniDeptList.length} Academic Departments</span>
               </div>
 
               <div className="hero-pill px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5">
@@ -612,7 +650,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
 
       {activeTab === 'departments' && (
         <div className="mt-6">
-          {departments.filter((d) => d.university.toLowerCase() === university.name.toLowerCase() && d.status !== 'Inactive').length === 0 ? (
+          {uniDeptList.length === 0 ? (
             <div className="card p-10 text-center text-slate-500">
               <p className="font-semibold">No departments registered yet for {university.name}.</p>
               <p className="text-xs text-slate-400 mt-2">
@@ -621,29 +659,41 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {departments
-                .filter((d) => d.university.toLowerCase() === university.name.toLowerCase() && d.status !== 'Inactive')
-                .map((dept) => (
+              {uniDeptList.map((deptName) => {
+                const foundDept = departments.find(
+                  (d) =>
+                    d.name.toLowerCase().trim() === deptName.toLowerCase().trim() &&
+                    d.university.toLowerCase().trim() === university.name.toLowerCase().trim()
+                );
+                const deptAlumniCount = uniAlumni.filter(
+                  (a) => (a.department || '').toLowerCase().trim() === deptName.toLowerCase().trim()
+                ).length;
+                const group = foundDept?.group || 'Engineering';
+
+                return (
                   <button
-                    key={dept.name}
+                    key={deptName}
                     onClick={() =>
                       onNavigate('departmentProfile', {
-                        dept: dept.name,
+                        dept: deptName,
                         uni: university.name,
                       })
                     }
-                    className="card p-5 text-left hover:-translate-y-1 transition group cursor-pointer"
+                    className="card p-5 text-left hover:-translate-y-1 hover:border-blue-400 hover:shadow-xs transition group cursor-pointer"
                   >
                     <div className="flex justify-between items-start">
-                      <span className="pill text-[11px] text-blue-600">{dept.group}</span>
+                      <span className="pill text-[11px] text-blue-600 bg-blue-50 border-blue-200">{group}</span>
                       <span className="text-slate-400 group-hover:text-blue-600 transition">→</span>
                     </div>
                     <h3 className="font-bold text-slate-900 mt-3 group-hover:text-blue-600 transition">
-                      {dept.name}
+                      {deptName}
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1">Active career cohort tracking</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {deptAlumniCount > 0 ? `${deptAlumniCount} verified alumni · Active tracking` : 'Active career cohort tracking'}
+                    </p>
                   </button>
-                ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -661,15 +711,19 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {uniAlumni.map((a) => (
-                <div key={a.id} className="card p-5 flex gap-4">
-                  <div className="w-12 h-12 rounded-full avatar flex items-center justify-center font-bold text-base">
+                <button
+                  key={a.id}
+                  onClick={() => onNavigate('alumniProfile', { id: a.id, name: a.name })}
+                  className="card p-5 flex gap-4 text-left hover:border-blue-400 hover:shadow-xs transition group cursor-pointer"
+                >
+                  <div className="w-12 h-12 rounded-full avatar flex items-center justify-center font-bold text-base shrink-0 bg-linear-to-br from-blue-700 to-indigo-900 text-white">
                     {a.name.split(' ').map((x) => x[0]).join('').slice(0, 2)}
                   </div>
-                  <div>
-                    <b className="text-slate-900 block">{a.name}</b>
-                    <p className="text-sm text-slate-500">{a.jobRole}</p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      {a.company} · {a.country}
+                  <div className="min-w-0 flex-1">
+                    <b className="text-slate-900 group-hover:text-blue-600 transition block truncate">{a.name}</b>
+                    <p className="text-sm text-slate-500 truncate">{a.jobRole || 'Alumnus'}</p>
+                    <p className="text-xs text-slate-400 mt-1 truncate">
+                      {a.company || a.department} · {a.country || 'Bangladesh'}
                     </p>
                     {a.isVerified && (
                       <span className="inline-block mt-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
@@ -677,7 +731,7 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
                       </span>
                     )}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -685,24 +739,47 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
       )}
 
       {activeTab === 'batches' && (
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-          {['2020', '2021', '2022', '2023', '2024', '2025'].map((yr) => (
-            <button
-              key={yr}
-              onClick={() =>
-                onNavigate('departmentBatch', {
-                  dept: 'Computer Science & Engineering',
-                  uni: university.name,
-                  batch: yr,
-                })
-              }
-              className="card p-4 text-center hover:border-blue-400 transition"
-            >
-              <span className="text-xs text-blue-600 font-bold block">COHORT</span>
-              <b className="text-xl navy block mt-1">{yr}</b>
-              <span className="text-[11px] text-slate-400 block mt-1">View batch →</span>
-            </button>
-          ))}
+        <div className="mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-base font-black navy">
+                Graduating Cohorts ({uniBatches.length} Batches)
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Chronologically ordered from earliest available batch to latest researched class
+              </p>
+            </div>
+            <span className="pill text-blue-600 bg-blue-50 text-xs font-bold">
+              Earliest → Latest
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {uniBatches.map((b) => (
+              <button
+                key={b.id || b.year}
+                onClick={() =>
+                  onNavigate('departmentBatch', {
+                    dept: b.department || 'Computer Science and Engineering',
+                    uni: university.name,
+                    batch: b.year,
+                    batchNumber: String(b.batchNumber ?? ''),
+                  })
+                }
+                className="card p-3.5 text-center hover:border-blue-400 hover:shadow-xs transition cursor-pointer group"
+              >
+                <span className="text-[10px] text-blue-600 font-bold block uppercase tracking-wider">
+                  {b.batchNumber !== undefined && b.batchNumber > 0 ? `Batch #${b.batchNumber}` : 'Cohort'}
+                </span>
+                <b className="text-lg navy block mt-0.5 group-hover:text-blue-600 transition">
+                  {b.year}
+                </b>
+                <span className="text-[10px] text-slate-400 block truncate mt-0.5">
+                  {b.sessionName ? `Session ${b.sessionName}` : b.batchName || 'View batch →'}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

@@ -22,7 +22,7 @@ const DEPARTMENT_GROUP_META: Record<string, { icon: string }> = {
 };
 
 export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate, onBack }) => {
-  const { news, departments } = useData();
+  const { news, departments, alumni, students } = useData();
   const [search, setSearch] = useState('');
   const [group, setGroup] = useState('All');
 
@@ -78,8 +78,26 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ onNavigate, on
       }
     });
 
+    alumni.forEach((a) => {
+      if (!a.department || !a.university) return;
+      const key = normalizeDepartmentName(a.department);
+      const existing = merged.get(key);
+      if (existing) {
+        existing.universities.add(a.university);
+      }
+    });
+
+    students.forEach((s) => {
+      if (!s.department || !s.university) return;
+      const key = normalizeDepartmentName(s.department);
+      const existing = merged.get(key);
+      if (existing) {
+        existing.universities.add(s.university);
+      }
+    });
+
     return Array.from(merged.values());
-  }, [departments]);
+  }, [departments, alumni, students]);
 
   const filtered = useMemo(() => {
     return directoryDepartments.filter((d) => {

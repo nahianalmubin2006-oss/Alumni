@@ -158,7 +158,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={() => onNavigate('universities')}
             className={`navbtn px-3 py-2 rounded-lg text-sm font-semibold transition ${
-              currentPage === 'universities' ? 'active' : 'text-slate-600 hover:text-slate-900'
+              currentPage === 'universities' || currentPage === 'universityDetail' ? 'active' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Universities
@@ -166,7 +166,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={() => onNavigate('department')}
             className={`navbtn px-3 py-2 rounded-lg text-sm font-semibold transition ${
-              currentPage === 'department' ? 'active' : 'text-slate-600 hover:text-slate-900'
+              currentPage === 'department' || currentPage === 'departmentUniversities' || currentPage === 'departmentProfile' || currentPage === 'departmentBatch' ? 'active' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Departments
@@ -174,7 +174,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={() => onNavigate('alumni')}
             className={`navbtn px-3 py-2 rounded-lg text-sm font-semibold transition ${
-              currentPage === 'alumni' ? 'active' : 'text-slate-600 hover:text-slate-900'
+              currentPage === 'alumni' || currentPage === 'alumniProfile' ? 'active' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Alumni
@@ -182,7 +182,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={() => onNavigate('news')}
             className={`navbtn px-3 py-2 rounded-lg text-sm font-semibold transition ${
-              currentPage === 'news' ? 'active' : 'text-slate-600 hover:text-slate-900'
+              currentPage === 'news' || currentPage === 'newsDetail' ? 'active' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Live News
@@ -191,13 +191,21 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right Actions */}
         <div className="flex items-center gap-2">
-          {/* Search Trigger */}
+          {/* Search Trigger (Desktop + Mobile) */}
           <button
             onClick={() => onNavigate('search')}
-            className="hidden sm:flex items-center gap-2 border border-soft bg-white px-3 py-2 rounded-xl text-sm text-slate-500 hover:border-slate-300 transition"
+            className="hidden sm:flex items-center gap-2 border border-soft bg-white px-3 py-2 rounded-xl text-sm text-slate-500 hover:border-slate-300 transition cursor-pointer"
           >
             <span className="text-slate-400">⌕</span>
             <span>Search</span>
+          </button>
+          <button
+            onClick={() => onNavigate('search')}
+            className="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl border border-soft bg-white text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+            title="Search network"
+            aria-label="Search"
+          >
+            <span className="text-lg">⌕</span>
           </button>
 
           {/* Notifications button if logged in */}
@@ -602,13 +610,48 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      <nav className="md:hidden border-t border-soft bg-white/80 px-3 py-2 overflow-x-auto">
+      <nav className="md:hidden border-t border-soft bg-white/95 backdrop-blur-md px-3 py-2 overflow-x-auto scrollbar-none shadow-xs">
         <div className="flex items-center gap-1.5 min-w-max">
-          <button onClick={() => onNavigate('home')} className="navbtn px-3 py-1.5 rounded-lg text-xs font-bold">Explore</button>
-          <button onClick={() => onNavigate('universities')} className="navbtn px-3 py-1.5 rounded-lg text-xs font-bold">Universities</button>
-          <button onClick={() => onNavigate('department')} className="navbtn px-3 py-1.5 rounded-lg text-xs font-bold">Departments</button>
-          <button onClick={() => onNavigate('alumni')} className="navbtn px-3 py-1.5 rounded-lg text-xs font-bold">Alumni</button>
-          <button onClick={() => onNavigate('news')} className="navbtn px-3 py-1.5 rounded-lg text-xs font-bold">Live News</button>
+          <button
+            onClick={() => onNavigate('home')}
+            className={`navbtn px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              currentPage === 'home' ? 'active bg-blue-50 text-blue-700' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Explore
+          </button>
+          <button
+            onClick={() => onNavigate('universities')}
+            className={`navbtn px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              currentPage === 'universities' || currentPage === 'universityDetail' ? 'active bg-blue-50 text-blue-700' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Universities
+          </button>
+          <button
+            onClick={() => onNavigate('department')}
+            className={`navbtn px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              currentPage === 'department' || currentPage === 'departmentUniversities' || currentPage === 'departmentProfile' || currentPage === 'departmentBatch' ? 'active bg-blue-50 text-blue-700' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Departments
+          </button>
+          <button
+            onClick={() => onNavigate('alumni')}
+            className={`navbtn px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              currentPage === 'alumni' || currentPage === 'alumniProfile' ? 'active bg-blue-50 text-blue-700' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Alumni
+          </button>
+          <button
+            onClick={() => onNavigate('news')}
+            className={`navbtn px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              currentPage === 'news' || currentPage === 'newsDetail' ? 'active bg-blue-50 text-blue-700' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Live News
+          </button>
         </div>
       </nav>
 

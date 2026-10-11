@@ -1,4 +1,17 @@
 import { University, Department, AlumniRecord, NewsArticle, Batch, PlatformSetting } from '../types';
+import { DU_CSE_ALUMNI, DU_CSE_BATCHES, DU_CSE_ANALYTICS } from './duCseData';
+
+export const normalizeDepartmentName = (name: string): string =>
+  (name || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+
+export const isDepartmentMatch = (dept1: string, dept2: string): boolean => {
+  if (!dept1 || !dept2) return false;
+  if (dept1.toLowerCase().trim() === dept2.toLowerCase().trim()) return true;
+  return normalizeDepartmentName(dept1) === normalizeDepartmentName(dept2);
+};
+
+export const INITIAL_BATCHES: Batch[] = DU_CSE_BATCHES;
+export { DU_CSE_ANALYTICS };
 
 export const PUBLIC_UNIVERSITIES = [
   "University of Dhaka", "University of Rajshahi", "Bangladesh Agricultural University",
@@ -149,6 +162,7 @@ export const RAW_DEPARTMENT_CATALOG = [
 ];
 
 export const INITIAL_ALUMNI: AlumniRecord[] = [
+  ...DU_CSE_ALUMNI,
   {
     id: 'alumni-tanvir-hasan',
     userId: 'usr-tanvir-hasan',

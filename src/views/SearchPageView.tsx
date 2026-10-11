@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { ALL_DIRECTORY_UNIVERSITIES, RAW_DEPARTMENT_CATALOG, universityInitials } from '../data/initialData';
@@ -18,6 +18,12 @@ export const SearchPageView: React.FC<SearchPageViewProps> = ({
 
   const [query, setQuery] = useState(initialQuery);
   const [activeCategory, setActiveCategory] = useState<'all' | 'universities' | 'departments' | 'alumni' | 'news'>('all');
+
+  useEffect(() => {
+    if (initialQuery !== undefined) {
+      setQuery(initialQuery);
+    }
+  }, [initialQuery]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -55,6 +61,10 @@ export const SearchPageView: React.FC<SearchPageViewProps> = ({
         a.batch || '',
         a.graduationYear || '',
         a.studentId || '',
+        a.sector || '',
+        a.specialization || '',
+        a.degree || '',
+        a.notes || '',
       ]
         .join(' ')
         .toLowerCase();

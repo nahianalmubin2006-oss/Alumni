@@ -44,7 +44,7 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
   onNavigate,
   onBack,
 }) => {
-  const { alumni, allUsers } = useData();
+  const { alumni, students, allUsers } = useData();
   const { currentUser, userProfile } = useAuth();
 
   // Find alumni record or generate rich fallback profile with live synchronization
@@ -105,6 +105,32 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
           updatedAt: userMatch.updatedAt,
         };
       }
+      const studentMatch = students?.find((s) => s.id === alumniId || s.userId === alumniId);
+      if (studentMatch) {
+        return {
+          id: studentMatch.id,
+          userId: studentMatch.userId || studentMatch.id,
+          name: studentMatch.name,
+          email: studentMatch.email,
+          university: studentMatch.university || 'University of Dhaka',
+          department: studentMatch.department || 'General Faculty',
+          batch: studentMatch.expectedGraduation || studentMatch.studentYear || 'Student',
+          graduationYear: studentMatch.expectedGraduation || 'Student',
+          studentId: studentMatch.studentId || '',
+          educationLevel: studentMatch.educationLevel || 'Undergraduate',
+          jobRole: studentMatch.studentYear ? `Student (${studentMatch.studentYear})` : 'Enrolled Student',
+          company: studentMatch.university,
+          country: 'Bangladesh',
+          city: 'Dhaka',
+          bio: studentMatch.bio || '',
+          photoUrl: studentMatch.photoUrl || '',
+          linkedin: '',
+          isVerified: false,
+          status: 'APPROVED',
+          createdAt: studentMatch.createdAt || new Date().toISOString(),
+          updatedAt: studentMatch.updatedAt || new Date().toISOString(),
+        };
+      }
     }
     if (alumniName) {
       const q = (alumniName || '').toLowerCase().trim();
@@ -136,6 +162,32 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
           updatedAt: userMatch.updatedAt,
         };
       }
+      const studentMatch = students?.find((s) => (s.name || '').toLowerCase().trim() === q);
+      if (studentMatch) {
+        return {
+          id: studentMatch.id,
+          userId: studentMatch.userId || studentMatch.id,
+          name: studentMatch.name,
+          email: studentMatch.email,
+          university: studentMatch.university || 'University of Dhaka',
+          department: studentMatch.department || 'General Faculty',
+          batch: studentMatch.expectedGraduation || studentMatch.studentYear || 'Student',
+          graduationYear: studentMatch.expectedGraduation || 'Student',
+          studentId: studentMatch.studentId || '',
+          educationLevel: studentMatch.educationLevel || 'Undergraduate',
+          jobRole: studentMatch.studentYear ? `Student (${studentMatch.studentYear})` : 'Enrolled Student',
+          company: studentMatch.university,
+          country: 'Bangladesh',
+          city: 'Dhaka',
+          bio: studentMatch.bio || '',
+          photoUrl: studentMatch.photoUrl || '',
+          linkedin: '',
+          isVerified: false,
+          status: 'APPROVED',
+          createdAt: studentMatch.createdAt || new Date().toISOString(),
+          updatedAt: studentMatch.updatedAt || new Date().toISOString(),
+        };
+      }
     }
 
     if (alumni.length > 0) return alumni[0];
@@ -160,7 +212,7 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     };
-  }, [alumni, alumniId, alumniName]);
+  }, [alumni, students, allUsers, currentUser, userProfile, alumniId, alumniName]);
 
   const initials = profile.name
     .split(' ')
@@ -313,14 +365,12 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
 
   // 4. Remove / Disconnect (Transition CONNECTED -> NOT_CONNECTED)
   const handleDisconnect = () => {
-    if (window.confirm(`Are you sure you want to remove your connection with ${profile.name}?`)) {
-      updateConnection({
-        status: 'NOT_CONNECTED',
-        connectedAt: undefined,
-        sentAt: undefined,
-      });
-      showToast(`Connection with ${profile.name} removed.`);
-    }
+    updateConnection({
+      status: 'NOT_CONNECTED',
+      connectedAt: undefined,
+      sentAt: undefined,
+    });
+    showToast(`Connection with ${profile.name} removed.`);
   };
 
   // 5. Send Chat Message in Connected state
@@ -483,8 +533,8 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
               <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-500 mt-2">
                 <span className="flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                  {profile.city ? `${profile.city}, ` : ''}
-                  {profile.country}
+                  <span>Residence / Location:</span>
+                  <b className="text-slate-700">{profile.city ? `${profile.city}, ` : ''}{profile.country}</b>
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-1">
@@ -494,7 +544,7 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
                 <span>•</span>
                 <span className="flex items-center gap-1">
                   <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
-                  {profile.department} ({profile.graduationYear || profile.batch})
+                  {profile.degree ? `${profile.degree} · ` : ''}{profile.department} ({profile.batch || profile.graduationYear})
                 </span>
               </div>
 
@@ -504,12 +554,28 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
                 </p>
               )}
 
-              {/* Expertise tags */}
+              {/* Specialization & Sector pills */}
               <div className="flex flex-wrap gap-1.5 mt-3.5">
-                <span className="pill text-xs">Software Engineering</span>
-                <span className="pill text-xs">Cloud Architecture</span>
-                <span className="pill text-xs">Distributed Systems</span>
-                <span className="pill text-xs">Mentorship Available</span>
+                {profile.sector && (
+                  <span className="pill text-xs bg-blue-50 text-blue-700 border-blue-200">
+                    {profile.sector}
+                  </span>
+                )}
+                {profile.specialization && (
+                  <span className="pill text-xs bg-indigo-50 text-indigo-700 border-indigo-200">
+                    {profile.specialization}
+                  </span>
+                )}
+                {profile.careerStatus && (
+                  <span className="pill text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                    {profile.careerStatus}
+                  </span>
+                )}
+                {profile.academicSession && (
+                  <span className="pill text-xs bg-slate-50 text-slate-700 border-slate-200">
+                    Session {profile.academicSession}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -784,12 +850,49 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
                 Graduated {profile.graduationYear || profile.batch || '2023'}
               </div>
               <b className="block mt-0.5 navy text-base">
-                BSc in {profile.department}
+                {profile.degree || `B.Sc. in ${profile.department}`}
               </b>
-              <p className="text-xs text-slate-500 mt-0.5">{profile.university}</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {profile.university} {profile.academicSession ? `· Session ${profile.academicSession}` : ''}
+              </p>
             </div>
           </div>
         </div>
+
+        {/* Verified Institutional Source Card */}
+        {profile.sourceUrl && (
+          <div className="mt-8 p-4 rounded-xl bg-slate-50 border border-slate-200/90 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div>
+                <p className="font-bold navy text-xs">
+                  Institutional Source & Verification Record
+                </p>
+                <p className="text-slate-500 text-[11px] mt-0.5">
+                  Verified Status: <b className="text-emerald-700">{profile.verificationStatus || 'Verified'}</b>
+                  {profile.confidence ? ` · Confidence: ${profile.confidence}` : ''}
+                  {profile.dateChecked ? ` · Date Checked: ${profile.dateChecked}` : ''}
+                </p>
+                {profile.notes && (
+                  <p className="text-slate-600 text-[11px] italic mt-1 bg-white p-2 rounded-lg border border-slate-100">
+                    "{profile.notes}"
+                  </p>
+                )}
+              </div>
+            </div>
+            <a
+              href={profile.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-blue-600 font-bold text-xs hover:bg-blue-50 transition shrink-0"
+            >
+              <span>View Primary Source</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        )}
       </div>
 
       {/* ========================================================= */}

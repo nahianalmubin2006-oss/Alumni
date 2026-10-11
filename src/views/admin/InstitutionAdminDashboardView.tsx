@@ -245,7 +245,6 @@ export const InstitutionAdminDashboardView: React.FC<InstitutionAdminDashboardVi
   };
 
   const deleteDepartment = async (department: DepartmentItem) => {
-    if (!window.confirm('Remove ' + department.name + ' from your institution catalogue?')) return;
     setSaving(true);
     setError('');
     setNotice('');

@@ -406,7 +406,7 @@ setInterval(async () => {
 // SECURE ADMIN ROLE-BASED ACCESS CONTROL (RBAC) & SESSION ENGINE
 // ==========================================
 
-export type AdminRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN' | 'CO_ADMIN' | 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN';
+export type AdminRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN' | 'CO_ADMIN' | 'UNIVERSITY_ADMIN' | 'DEPARTMENT_ADMIN' | 'STUDENT' | 'ALUMNI';
 
 export interface AdminUser {
   id: string;
@@ -424,9 +424,20 @@ export interface AdminUser {
   firebaseUid?: string;
   profileType?: string;
   studentId?: string;
+  educationLevel?: string;
+  studentYear?: string;
+  expectedGraduation?: string;
   graduationYear?: string;
+  batch?: string;
+  degree?: string;
   jobRole?: string;
   company?: string;
+  country?: string;
+  city?: string;
+  bio?: string;
+  photoUrl?: string;
+  linkedin?: string;
+  isVerifiedAlumni?: boolean;
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
@@ -1777,6 +1788,379 @@ app.post('/api/admin/auth/reset-password', (req, res) => {
   return res.json({
     success: true,
     message: 'Your administrator password has been reset successfully! You can now log in.',
+  });
+});
+
+// ------------------------------------------
+// INTERNAL SIGN-UP, DATA STORAGE & ACCOUNT OPENING SYSTEM
+// ------------------------------------------
+
+// Public helper to sanitize user for frontend consumption
+function publicUserDossier(user: AdminUser) {
+  const { passwordHash, ...safe } = user;
+  return safe;
+}
+
+// Check Email or Student ID availability live in internal database
+app.get('/api/auth/check-availability', (req, res) => {
+  const { email, studentId, university } = req.query;
+  const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+  const normalizedStudentId = typeof studentId === 'string' ? studentId.trim().toLowerCase() : '';
+  const normalizedUniversity = typeof university === 'string' ? university.trim().toLowerCase() : '';
+
+  let emailAvailable = true;
+  let studentIdAvailable = true;
+
+  if (normalizedEmail) {
+    emailAvailable = !adminStore.users.some(
+      (u) => u.email.toLowerCase() === normalizedEmail
+    );
+  }
+
+  if (normalizedStudentId && normalizedUniversity) {
+    studentIdAvailable = !adminStore.users.some(
+      (u) =>
+        (u.university || '').toLowerCase() === normalizedUniversity &&
+        (u.studentId || '').toLowerCase() === normalizedStudentId
+    );
+  }
+
+  return res.json({
+    success: true,
+    emailAvailable,
+    studentIdAvailable,
+    checkedAt: new Date().toISOString(),
+  });
+});
+
+// Presets and metadata for the New Account Opening Process
+app.get('/api/auth/account-opening-presets', (_req, res) => {
+  const defaultAvatars = [
+    { id: 'av-grad-cap', name: 'Academic Scholar', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=256&h=256&fit=crop&crop=faces' },
+    { id: 'av-tech-dev', name: 'Software Engineer', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=256&h=256&fit=crop&crop=faces' },
+    { id: 'av-researcher', name: 'Research Fellow', url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=256&h=256&fit=crop&crop=faces' },
+    { id: 'av-student-1', name: 'Campus Student', url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=256&h=256&fit=crop&crop=faces' },
+    { id: 'av-student-2', name: 'Graduate Scholar', url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=256&h=256&fit=crop&crop=faces' },
+    { id: 'av-faculty', name: 'Faculty Professor', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=256&h=256&fit=crop&crop=faces' },
+  ];
+
+  return res.json({
+    success: true,
+    educationLevels: [
+      'Undergraduate (Bachelor’s)',
+      'Postgraduate (Master’s)',
+      'MPhil (Master of Philosophy)',
+      'Doctoral (PhD / Postdoc)',
+      'Diploma / Executive Track',
+    ],
+    studentYears: [
+      '1st Year, 1st Semester',
+      '1st Year, 2nd Semester',
+      '2nd Year, 3rd Semester',
+      '2nd Year, 4th Semester',
+      '3rd Year, 5th Semester',
+      '3rd Year, 6th Semester',
+      '4th Year, 7th Semester',
+      '4th Year, 8th Semester',
+      'Final Year / Capstone Stage',
+    ],
+    defaultAvatars,
+    totalAccountsStored: adminStore.users.length,
+    persistenceEngine: 'JSON Document Store & Realtime Sync',
+    storageVersion: '2.5.0',
+  });
+});
+
+// Storage verification status
+app.get('/api/auth/storage-status', (_req, res) => {
+  const studentsCount = adminStore.users.filter((u) => u.profileType === 'Student' || u.role === 'STUDENT').length;
+  const alumniCount = adminStore.users.filter((u) => u.profileType === 'Alumni' || u.role === 'ALUMNI' || u.role === 'USER').length;
+  const adminCount = adminStore.users.filter((u) => ['SUPER_ADMIN', 'CO_ADMIN', 'UNIVERSITY_ADMIN', 'DEPARTMENT_ADMIN', 'ADMIN'].includes(u.role)).length;
+
+  return res.json({
+    success: true,
+    storageEngine: 'Internal Persistent Database',
+    databaseFile: 'admin-database.json',
+    totalRegisteredAccounts: adminStore.users.length,
+    breakdown: {
+      students: studentsCount,
+      alumni: alumniCount,
+      administrators: adminCount,
+    },
+    auditLogsRecorded: adminStore.auditLogs.length,
+    lastPersisted: new Date().toISOString(),
+    status: 'ACTIVE_AND_PERSISTENT',
+  });
+});
+
+// POST /api/auth/register-internal - Dedicated Internal Sign-Up & Account Opening System
+app.post('/api/auth/register-internal', (req, res) => {
+  const {
+    name,
+    email,
+    password,
+    profileType,
+    university,
+    department,
+    studentId,
+    educationLevel,
+    studentYear,
+    expectedGraduation,
+    graduationYear,
+    batch,
+    degree,
+    jobRole,
+    company,
+    country,
+    city,
+    bio,
+    photoUrl,
+    linkedin,
+    termsAccepted,
+  } = req.body || {};
+
+  const clientIp = getClientIp(req);
+
+  // Field validations
+  if (typeof name !== 'string' || name.trim().length < 2) {
+    return res.status(400).json({ error: 'Please enter your full name (minimum 2 characters).' });
+  }
+
+  if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    return res.status(400).json({ error: 'Please provide a valid email address.' });
+  }
+
+  if (typeof password !== 'string' || password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+  }
+
+  if (!university || typeof university !== 'string' || !university.trim()) {
+    return res.status(400).json({ error: 'Please specify your University institution.' });
+  }
+
+  if (!department || typeof department !== 'string' || !department.trim()) {
+    return res.status(400).json({ error: 'Please specify your Academic Department.' });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const targetProfileType = profileType === 'Alumni' ? 'Alumni' : 'Student';
+
+  // Check for duplicate registered accounts
+  const existingUser = adminStore.users.find((u) => u.email.toLowerCase() === normalizedEmail);
+  if (existingUser) {
+    return res.status(409).json({
+      error: 'An account with this email address is already registered. Please log in or use password recovery.',
+      code: 'auth/email-already-in-use',
+    });
+  }
+
+  const isMasterAdminEmail = [
+    'nahianalmubin2006@gmail.com',
+    'nahianalmubin212528@gmail.com',
+    'nahianalmubin2@gmail.com',
+  ].includes(normalizedEmail);
+
+  const initialRole: AdminRole = isMasterAdminEmail
+    ? 'SUPER_ADMIN'
+    : targetProfileType === 'Alumni'
+    ? 'ALUMNI'
+    : 'STUDENT';
+
+  const newUserId = `usr-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  const now = new Date().toISOString();
+
+  // Create persistent user record in internal database
+  const newUser: AdminUser = {
+    id: newUserId,
+    email: normalizedEmail,
+    passwordHash: hashPassword(password),
+    name: name.trim(),
+    role: initialRole,
+    status: 'APPROVED',
+    profileType: isMasterAdminEmail ? 'Super Admin' : targetProfileType,
+    university: university.trim(),
+    department: department.trim(),
+    studentId: typeof studentId === 'string' ? studentId.trim() : '',
+    educationLevel: typeof educationLevel === 'string' ? educationLevel.trim() : 'Undergraduate (Bachelor’s)',
+    studentYear: typeof studentYear === 'string' ? studentYear.trim() : '',
+    expectedGraduation: typeof expectedGraduation === 'string' ? expectedGraduation.trim() : '',
+    graduationYear: typeof graduationYear === 'string' ? graduationYear.trim() : (batch || '2024'),
+    batch: typeof batch === 'string' ? batch.trim() : (graduationYear || '2024'),
+    degree: typeof degree === 'string' ? degree.trim() : undefined,
+    jobRole: typeof jobRole === 'string' ? jobRole.trim() : '',
+    company: typeof company === 'string' ? company.trim() : '',
+    country: typeof country === 'string' && country.trim() ? country.trim() : 'Bangladesh',
+    city: typeof city === 'string' && city.trim() ? city.trim() : 'Dhaka',
+    bio: typeof bio === 'string' ? bio.trim() : '',
+    photoUrl: typeof photoUrl === 'string' ? photoUrl.trim() : '',
+    linkedin: typeof linkedin === 'string' ? linkedin.trim() : '',
+    isVerifiedAlumni: isMasterAdminEmail,
+    createdAt: now,
+    updatedAt: now,
+    lastLoginAt: now,
+  };
+
+  adminStore.users.push(newUser);
+  persistAdminStore();
+
+  // Audit log entry for data storage provenance
+  recordAuditLog({
+    actorId: newUserId,
+    actorEmail: normalizedEmail,
+    actorRole: initialRole,
+    action: 'USER_ACCOUNT_OPENED',
+    targetType: 'INTERNAL_USER',
+    targetId: newUserId,
+    details: `New ${targetProfileType} account opened: ${name.trim()} (${university.trim()} - ${department.trim()}). Saved to internal persistent database.`,
+    ip: clientIp,
+  });
+
+  // Issue persistent internal session token
+  const token = generateSessionToken();
+  const session: AdminSession = {
+    token,
+    userId: newUserId,
+    email: normalizedEmail,
+    name: name.trim(),
+    role: initialRole,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + SESSION_TTL_MS,
+    lastActivityAt: Date.now(),
+    ip: clientIp,
+  };
+  activeAdminSessions.set(token, session);
+
+  // Return full success dossier + durable storage receipt
+  return res.status(201).json({
+    success: true,
+    message: 'Account opened successfully! Your records are securely stored in the internal database.',
+    token,
+    user: publicUserDossier(newUser),
+    storageReceipt: {
+      storageEngine: 'Internal Persistent Database',
+      databaseFile: 'admin-database.json',
+      recordId: newUserId,
+      accountType: targetProfileType,
+      status: 'APPROVED',
+      institution: university.trim(),
+      facultyDepartment: department.trim(),
+      timestamp: now,
+      hashAlgorithm: 'scrypt-pbkdf2-salted',
+    },
+  });
+});
+
+// POST /api/auth/login-internal - Internal Account Login
+app.post('/api/auth/login-internal', (req, res) => {
+  const { email, password } = req.body || {};
+  const clientIp = getClientIp(req);
+
+  if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  // Reload store from disk if updated
+  try {
+    if (fs.existsSync(ADMIN_DB_PATH)) {
+      adminStore = JSON.parse(fs.readFileSync(ADMIN_DB_PATH, 'utf-8')) as AdminStoreData;
+      if (!Array.isArray(adminStore.adminApplications)) adminStore.adminApplications = [];
+    }
+  } catch (e) {}
+
+  const user = adminStore.users.find((u) => u.email.toLowerCase() === normalizedEmail);
+
+  if (!user || !user.passwordHash) {
+    recordFailedLogin(clientIp, normalizedEmail);
+    return res.status(401).json({
+      error: 'Invalid credentials. Please verify your email and password or open a new account.',
+      code: 'auth/invalid-credential',
+    });
+  }
+
+  if (user.status === 'SUSPENDED') {
+    return res.status(403).json({ error: 'This account has been suspended by administration.' });
+  }
+
+  const isValidPassword = verifyPassword(password, user.passwordHash);
+  if (!isValidPassword) {
+    recordFailedLogin(clientIp, normalizedEmail);
+    return res.status(401).json({
+      error: 'Incorrect password. Please verify your password or use password recovery.',
+      code: 'auth/wrong-password',
+    });
+  }
+
+  // Login successful
+  resetFailedLogin(clientIp, normalizedEmail);
+  user.lastLoginAt = new Date().toISOString();
+  persistAdminStore();
+
+  const token = generateSessionToken();
+  const session: AdminSession = {
+    token,
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + SESSION_TTL_MS,
+    lastActivityAt: Date.now(),
+    ip: clientIp,
+  };
+  activeAdminSessions.set(token, session);
+
+  recordAuditLog({
+    actorId: user.id,
+    actorEmail: user.email,
+    actorRole: user.role,
+    action: 'USER_LOGIN_INTERNAL',
+    targetType: 'SESSION',
+    targetId: token.substring(0, 8),
+    details: `User ${user.name} logged in via internal authentication.`,
+    ip: clientIp,
+  });
+
+  return res.json({
+    success: true,
+    message: 'Welcome back! Logged in via internal authentication.',
+    token,
+    user: publicUserDossier(user),
+  });
+});
+
+// POST /api/auth/verify-session - Session validation
+app.post('/api/auth/verify-session', (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = req.body?.token || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null);
+
+  if (!token) {
+    return res.status(401).json({ error: 'No authentication token provided.' });
+  }
+
+  const session = activeAdminSessions.get(token);
+  if (!session) {
+    return res.status(401).json({ error: 'Session has expired or is invalid.' });
+  }
+
+  if (Date.now() > session.expiresAt) {
+    activeAdminSessions.delete(token);
+    return res.status(401).json({ error: 'Session expired. Please log in again.' });
+  }
+
+  const user = adminStore.users.find((u) => u.id === session.userId);
+  if (!user) {
+    return res.status(401).json({ error: 'User account not found.' });
+  }
+
+  session.lastActivityAt = Date.now();
+  session.expiresAt = Date.now() + SESSION_TTL_MS;
+
+  return res.json({
+    success: true,
+    authenticated: true,
+    user: publicUserDossier(user),
   });
 });
 

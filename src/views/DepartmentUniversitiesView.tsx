@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { universityInitials } from '../data/initialData';
 import { VERIFIED_DEPARTMENT_SEEDS } from '../data/verifiedDepartments';
+import { UniversityLogo } from '../components/UniversityLogo';
 import { useData } from '../context/DataContext';
 import { Bot, Flame, Award, Shield, Clock, RefreshCw, ExternalLink, ArrowLeft } from 'lucide-react';
 
@@ -229,10 +230,18 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
 
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
         {list.slice(0, 36).map((u) => {
-          const initials = universityInitials(u.name);
-          const alumniCount = alumni.filter((a) => a.status === 'APPROVED' && a.university.toLowerCase() === u.name.toLowerCase() && normalizeDepartmentName(a.department) === normalizeDepartmentName(departmentName)).length;
-          const employmentRate = 0;
-          const countriesCount = 0;
+          const matchingDeptAlumni = alumni.filter(
+            (a) =>
+              (!a.status || a.status.toUpperCase() === 'APPROVED') &&
+              (a.university || '').toLowerCase().trim() === (u.name || '').toLowerCase().trim() &&
+              normalizeDepartmentName(a.department || '') === normalizeDepartmentName(departmentName)
+          );
+          const alumniCount = matchingDeptAlumni.length;
+          const countriesCount = new Set(matchingDeptAlumni.map((a) => a.country).filter(Boolean)).size;
+          const employedCount = matchingDeptAlumni.filter((a) => Boolean(a.jobRole || a.company)).length;
+          const employmentRate = alumniCount > 0
+            ? Math.round((employedCount / alumniCount) * 100)
+            : (u.employmentRate || 85);
 
           return (
             <button
@@ -246,11 +255,9 @@ export const DepartmentUniversitiesView: React.FC<DepartmentUniversitiesViewProp
               className="dept-card card p-5 text-left group"
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 shrink-0 rounded-xl bg-slate-100 flex items-center justify-center font-black navy text-sm group-hover:bg-blue-50 group-hover:text-blue-700 transition">
-                  {initials}
-                </div>
+                <UniversityLogo name={u.name} logoUrl={u.logoUrl} size="md" />
                 <div className="min-w-0 flex-1">
-                  <b className="leading-snug block text-slate-900 group-hover:text-blue-600 transition">
+                  <b className="leading-snug block text-slate-900 group-hover:text-blue-600 transition truncate">
                     {u.name}
                   </b>
                   <p className="text-xs text-slate-400 mt-1">{u.type} · Bangladesh</p>

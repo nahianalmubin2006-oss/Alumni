@@ -41,6 +41,8 @@ import {
   INITIAL_NEWS,
   INITIAL_PLATFORM_SETTINGS,
   INITIAL_POSTS,
+  INITIAL_BATCHES,
+  normalizeDepartmentName,
   getUniversityLogo,
   setCustomLogo,
 } from '../data/initialData';
@@ -208,9 +210,28 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return baseline;
   });
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const [departments, setDepartments] = useState<Department[]>(() => {
+    return VERIFIED_DEPARTMENT_SEEDS.map((s, idx) => ({
+      id: `dept-seed-${idx}-${s.university.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${s.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+      name: s.name,
+      university: s.university,
+      group: s.group,
+      faculty: s.group,
+      status: 'Active',
+      verified: true,
+      alumniCount: 0,
+      studentCount: 0,
+      employmentRate: 0,
+      higherStudiesRate: 0,
+      countriesCount: 0,
+      companiesCount: 0,
+      sourceUrl: s.sourceUrl,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }));
+  });
 
-  const [batches, setBatches] = useState<Batch[]>([]);
+  const [batches, setBatches] = useState<Batch[]>(INITIAL_BATCHES);
   const [alumni, setAlumni] = useState<AlumniRecord[]>(INITIAL_ALUMNI);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [news, setNews] = useState<NewsArticle[]>(INITIAL_NEWS);
@@ -493,6 +514,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
+    const unsubBatches = onSnapshot(
+      collection(db, 'batches'),
+      (snap) => {
+        const map = new Map<string, Batch>();
+        INITIAL_BATCHES.forEach((b) => map.set(b.id, b));
+        snap.forEach((d) => {
+          const item = d.data() as Batch;
+          map.set(d.id, { ...item, id: d.id });
+        });
+        setBatches(Array.from(map.values()));
+      },
+      (error) => {
+        console.warn('Batches listener warning:', error.message);
+      }
+    );
+
     const unsubStudents = onSnapshot(
       collection(db, 'students'),
       (snap) => {
@@ -753,6 +790,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubUniversities();
       unsubDepartments();
       unsubAlumni();
+      unsubBatches();
       unsubStudents();
       unsubNews();
       unsubSettings();

@@ -142,6 +142,14 @@ export interface Batch {
   higherStudyRate: number;
   internationalRate: number;
   entrepreneursRate: number;
+  batchNumber?: number;
+  batchName?: string;
+  sessionName?: string;
+  passingYearDisplay?: string;
+  degree?: string;
+  intakeCapacity?: number;
+  observedSample?: number;
+  historicalMilestones?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -166,6 +174,19 @@ export interface AlumniRecord {
   linkedin?: string;
   isVerified: boolean;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  degree?: string;
+  sector?: string;
+  specialization?: string;
+  careerStatus?: 'Employed' | 'Academic/Researcher' | 'Entrepreneur/Founder' | 'Pursuing Further Studies' | string;
+  highestQualification?: string;
+  sourceUrl?: string;
+  verificationStatus?: 'Verified' | 'Community Reported' | 'Pending' | string;
+  confidence?: 'High' | 'Medium' | 'Low' | string;
+  notes?: string;
+  dateChecked?: string;
+  batchNumber?: number;
+  academicSession?: string;
+  passingYear?: string;
   createdAt: string;
   updatedAt: string;
 }
