@@ -5,6 +5,7 @@ import { useAuth, SUPER_ADMIN_EMAIL } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { ALL_DIRECTORY_UNIVERSITIES, RAW_DEPARTMENT_CATALOG, getUniversityLogo, universityInitials } from '../data/initialData';
 import { ProfileType, PostReactionType, StorageReceipt, AccountOpeningPresets } from '../types';
+import { DigitalIDCard } from '../components/DigitalIDCard';
 import {
   Image as ImageIcon,
   Heart,
@@ -43,6 +44,16 @@ import {
   BadgeCheck,
   Award,
   BookOpen,
+  Share2,
+  QrCode,
+  Download,
+  Compass,
+  Printer,
+  CreditCard,
+  Palette,
+  Sliders,
+  Layers,
+  Flame,
 } from 'lucide-react';
 
 interface AccountViewProps {
@@ -218,8 +229,22 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
     }
   };
 
-  // Profile sub-tabs: 'dossier' | 'posts' | 'followed' | 'storage'
-  const [profileTab, setProfileTab] = useState<'dossier' | 'posts' | 'followed' | 'storage'>('dossier');
+  // Profile sub-tabs: 'dossier' | 'idcard' | 'peers' | 'posts' | 'followed' | 'storage'
+  const [profileTab, setProfileTab] = useState<'dossier' | 'idcard' | 'peers' | 'posts' | 'followed' | 'storage'>('dossier');
+
+  // Executive profile decoration and customization states
+  const [coverTheme, setCoverTheme] = useState<'classic' | 'modern' | 'sapphire' | 'emerald' | 'royal' | 'midnight' | 'crimson' | 'aurora'>('sapphire');
+  const [showCoverSelector, setShowCoverSelector] = useState(false);
+  const [mentorshipOpen, setMentorshipOpen] = useState(true);
+  const [publicDirectoryVisible, setPublicDirectoryVisible] = useState(true);
+  const [skills, setSkills] = useState<string[]>([]);
+  const [newSkillInput, setNewSkillInput] = useState('');
+  const [copiedDossier, setCopiedDossier] = useState(false);
+  const [copiedProfileLink, setCopiedProfileLink] = useState(false);
+  const [idCardFlipped, setIdCardFlipped] = useState(false);
+  const [degreeTitle, setDegreeTitle] = useState('');
+  const [portfolioUrl, setPortfolioUrl] = useState('');
+  const [editTab, setEditTab] = useState<'visuals' | 'academic' | 'career' | 'skills' | 'bio'>('visuals');
 
   // Post creation states
   const [newPostContent, setNewPostContent] = useState('');
@@ -277,6 +302,12 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
       setCity(userProfile.city || 'Dhaka');
       setBio(userProfile.bio || '');
       setLinkedin(userProfile.linkedin || '');
+      setCoverTheme(userProfile.coverTheme || 'sapphire');
+      setMentorshipOpen(userProfile.mentorshipOpen !== false);
+      setPublicDirectoryVisible(userProfile.publicDirectoryVisible !== false);
+      setSkills(Array.isArray(userProfile.skills) ? userProfile.skills : []);
+      setDegreeTitle(userProfile.degreeTitle || '');
+      setPortfolioUrl(userProfile.portfolioUrl || '');
 
       const currentUni = userProfile.university || '';
       const currentDept = userProfile.department || '';
@@ -300,6 +331,173 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
       }
     }
   }, [userProfile]);
+
+  const COVER_THEMES = [
+    {
+      id: 'sapphire' as const,
+      name: 'Midnight Royal Sapphire',
+      desc: 'Deep cosmic collegiate mesh with silver accents',
+      imageUrl: '',
+      gradient: 'from-slate-950 via-blue-950 to-indigo-950',
+      accent: '#38bdf8',
+      ring: 'ring-blue-500/50',
+      badge: 'bg-blue-500/20 text-blue-200 border-blue-400/30',
+    },
+    {
+      id: 'emerald' as const,
+      name: 'Archival Heritage Emerald',
+      desc: 'Historic academic botanical gardens & prestige',
+      imageUrl: '',
+      gradient: 'from-slate-950 via-emerald-950 to-teal-950',
+      accent: '#34d399',
+      ring: 'ring-emerald-500/50',
+      badge: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30',
+    },
+    {
+      id: 'crimson' as const,
+      name: 'Oxford Crimson & Nobel Ruby',
+      desc: 'Imperial velvet crest & golden collegiate trim',
+      imageUrl: '',
+      gradient: 'from-stone-950 via-rose-950 to-slate-950',
+      accent: '#fb7185',
+      ring: 'ring-rose-500/50',
+      badge: 'bg-rose-500/20 text-rose-200 border-rose-400/30',
+    },
+    {
+      id: 'royal' as const,
+      name: 'Imperial Navy & Amber Gold',
+      desc: 'Noble convocation robe gold with cobalt radiance',
+      imageUrl: '',
+      gradient: 'from-blue-950 via-slate-900 to-amber-950/90',
+      accent: '#fbbf24',
+      ring: 'ring-amber-500/50',
+      badge: 'bg-amber-500/20 text-amber-200 border-amber-400/30',
+    },
+    {
+      id: 'midnight' as const,
+      name: 'Obsidian Cyber Quad',
+      desc: 'Modern tech quad with laser mesh & cyan luminescence',
+      imageUrl: '',
+      gradient: 'from-zinc-950 via-neutral-900 to-slate-950',
+      accent: '#22d3ee',
+      ring: 'ring-cyan-500/50',
+      badge: 'bg-cyan-500/20 text-cyan-200 border-cyan-400/30',
+    },
+    {
+      id: 'aurora' as const,
+      name: 'Borealis Celestial Luminescence',
+      desc: 'Ethereal turquoise, violet & cosmic starlight',
+      imageUrl: '',
+      gradient: 'from-teal-950 via-indigo-950 to-purple-950',
+      accent: '#a78bfa',
+      ring: 'ring-purple-500/50',
+      badge: 'bg-purple-500/20 text-purple-200 border-purple-400/30',
+    },
+    {
+      id: 'classic' as const,
+      name: 'Collegiate Gothic Quad',
+      desc: 'Grand stone colonnades & warm afternoon light',
+      imageUrl: '/banners/campus_classic.jpg',
+      gradient: 'from-amber-950/75 via-slate-900/80 to-blue-950/85',
+      accent: '#d97706',
+      ring: 'ring-amber-500/50',
+      badge: 'bg-amber-500/20 text-amber-200 border-amber-400/30',
+    },
+    {
+      id: 'modern' as const,
+      name: 'Institute of Science & Engineering',
+      desc: 'Contemporary glass quad facade & twilight reflection',
+      imageUrl: '/banners/campus_modern.jpg',
+      gradient: 'from-blue-950/80 via-slate-900/85 to-indigo-950/85',
+      accent: '#3b82f6',
+      ring: 'ring-blue-500/50',
+      badge: 'bg-blue-500/20 text-blue-200 border-blue-400/30',
+    },
+  ];
+
+  const currentCoverTheme = COVER_THEMES.find((t) => t.id === coverTheme) || COVER_THEMES[0];
+
+  const cohortPeers = React.useMemo(() => {
+    if (!userProfile?.university) return [];
+    const myUni = userProfile.university.toLowerCase().trim();
+    const myDept = (userProfile.department || '').toLowerCase().trim();
+    const myUid = currentUser?.uid || userProfile.id;
+    return alumni.filter((record) => {
+      const recUid = record.userId || record.id;
+      if (recUid === myUid) return false;
+      const rUni = (record.university || '').toLowerCase().trim();
+      const rDept = (record.department || '').toLowerCase().trim();
+      if (rUni !== myUni) return false;
+      if (myDept && rDept && rDept !== myDept) return false;
+      return true;
+    });
+  }, [alumni, userProfile, currentUser]);
+
+  const profileCompletionScore = React.useMemo(() => {
+    if (!userProfile) return 0;
+    let score = 20; // baseline
+    if (userProfile.photoUrl) score += 20;
+    if (userProfile.university && userProfile.department) score += 25;
+    if (userProfile.bio && userProfile.bio.trim().length > 10) score += 15;
+    if (userProfile.jobRole || userProfile.studentYear) score += 10;
+    if (userProfile.linkedin || userProfile.studentId) score += 10;
+    return Math.min(100, score);
+  }, [userProfile]);
+
+  const handleToggleMentorship = async () => {
+    const nextVal = !mentorshipOpen;
+    setMentorshipOpen(nextVal);
+    try {
+      await updateProfileData({ mentorshipOpen: nextVal });
+      setSuccessMsg(nextVal ? 'You are now marked as available to mentor students!' : 'Mentorship status updated.');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (e: any) {
+      setErrorMsg('Could not update mentorship status.');
+    }
+  };
+
+  const handleToggleDirectoryVisibility = async () => {
+    const nextVal = !publicDirectoryVisible;
+    setPublicDirectoryVisible(nextVal);
+    try {
+      await updateProfileData({ publicDirectoryVisible: nextVal });
+      setSuccessMsg(nextVal ? 'Profile is publicly discoverable in the directory.' : 'Profile visibility set to private.');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (e: any) {
+      setErrorMsg('Could not update directory visibility.');
+    }
+  };
+
+  const handleSelectCoverTheme = async (themeId: 'classic' | 'modern' | 'sapphire' | 'emerald') => {
+    setCoverTheme(themeId);
+    setShowCoverSelector(false);
+    try {
+      await updateProfileData({ coverTheme: themeId });
+      setSuccessMsg('Campus cover theme updated successfully!');
+      setTimeout(() => setSuccessMsg(''), 2500);
+    } catch (e: any) {
+      setErrorMsg('Could not update cover theme.');
+    }
+  };
+
+  const handleAddSkill = async () => {
+    const trimmed = newSkillInput.trim();
+    if (!trimmed || skills.includes(trimmed)) return;
+    const nextSkills = [...skills, trimmed];
+    setSkills(nextSkills);
+    setNewSkillInput('');
+    try {
+      await updateProfileData({ skills: nextSkills });
+    } catch (e) {}
+  };
+
+  const handleRemoveSkill = async (skillToRemove: string) => {
+    const nextSkills = skills.filter((s) => s !== skillToRemove);
+    setSkills(nextSkills);
+    try {
+      await updateProfileData({ skills: nextSkills });
+    } catch (e) {}
+  };
 
   const handleGoogleSignIn = async () => {
     setErrorMsg('');
@@ -499,6 +697,13 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
     setCity(userProfile.city || 'Dhaka');
     setBio(userProfile.bio || '');
     setLinkedin(userProfile.linkedin || '');
+    setDegreeTitle(userProfile.degreeTitle || '');
+    setPortfolioUrl(userProfile.portfolioUrl || '');
+    setCoverTheme(userProfile.coverTheme || 'sapphire');
+    setMentorshipOpen(userProfile.mentorshipOpen !== false);
+    setPublicDirectoryVisible(userProfile.publicDirectoryVisible !== false);
+    setSkills(Array.isArray(userProfile.skills) ? userProfile.skills : []);
+    setEditTab('visuals');
     setViewState('edit');
   };
 
@@ -666,6 +871,12 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
         city,
         bio,
         linkedin,
+        degreeTitle,
+        portfolioUrl,
+        coverTheme,
+        skills,
+        mentorshipOpen,
+        publicDirectoryVisible,
       });
       setSuccessMsg('Profile updated successfully!');
       setViewState('default');
@@ -804,53 +1015,213 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
       {currentUser && userProfile && viewState !== 'edit' && (
         <div className="mt-8 space-y-6">
           {/* Top Profile Card with Campus Cover Banner */}
-          <div className="card overflow-hidden shadow-xl border-soft">
-            {/* Cover Banner */}
-            <div className="h-36 sm:h-48 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 relative">
-              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px]"></div>
-              <div className="absolute top-4 right-4 flex items-center gap-2">
-                <span className="text-[11px] font-bold text-blue-200 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
-                  {userProfile.profileType} Identity
-                </span>
-                {userProfile.university && (
-                  <span className="text-[11px] font-bold text-emerald-200 bg-emerald-500/20 backdrop-blur-md px-3 py-1 rounded-full border border-emerald-400/30 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                    <span>UGC Verified Affiliation</span>
+          <div className="card overflow-hidden shadow-2xl border-soft rounded-3xl bg-white">
+            {/* Luxury Cover Banner with Ambient Lighting & Watermark */}
+            <div className={`h-48 sm:h-64 bg-gradient-to-br ${currentCoverTheme.gradient} relative overflow-hidden transition-all duration-500`}>
+              {/* Theme Ambient Radial Glow Orbs */}
+              <div
+                className="absolute -top-16 -right-16 w-96 h-96 rounded-full blur-3xl opacity-40 pointer-events-none"
+                style={{ backgroundColor: currentCoverTheme.accent }}
+              />
+              <div className="absolute -bottom-16 -left-16 w-80 h-80 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
+
+              {/* Starlight / Guilloche grid overlay */}
+              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+
+              {/* University Crest / Emblem Watermark */}
+              {userProfile.university && (
+                <div className="absolute right-6 -bottom-6 opacity-15 pointer-events-none select-none">
+                  {getUniversityLogo(userProfile.university) ? (
+                    <img
+                      src={getUniversityLogo(userProfile.university)}
+                      alt=""
+                      className="w-44 h-44 object-contain brightness-200 contrast-125"
+                    />
+                  ) : (
+                    <span className="text-8xl font-black text-white/40 tracking-tighter font-serif">
+                      {universityInitials(userProfile.university)}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Cover Top Badges */}
+              <div className="absolute top-4 left-4 right-4 flex flex-wrap items-center justify-between gap-2 z-10">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-black text-white bg-black/35 backdrop-blur-md px-3 py-1 rounded-full border border-white/20 shadow-xs flex items-center gap-1.5">
+                    <Award className="w-3.5 h-3.5 text-amber-300" />
+                    <span>{userProfile.profileType} Identity</span>
                   </span>
-                )}
+
+                  {userProfile.university && (
+                    <span className="text-[11px] font-bold text-emerald-200 bg-emerald-950/50 backdrop-blur-md px-3 py-1 rounded-full border border-emerald-400/40 flex items-center gap-1.5 shadow-xs">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>UGC Verified Affiliation</span>
+                    </span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleToggleDirectoryVisibility}
+                    className="text-[11px] font-bold text-slate-200 bg-black/35 hover:bg-black/50 backdrop-blur-md px-3 py-1 rounded-full border border-white/20 transition flex items-center gap-1.5 cursor-pointer"
+                    title="Click to toggle public directory discovery"
+                  >
+                    <Globe className={`w-3.5 h-3.5 ${publicDirectoryVisible ? 'text-blue-400' : 'text-slate-400'}`} />
+                    <span>{publicDirectoryVisible ? 'Public in Directory' : 'Private Profile'}</span>
+                  </button>
+                </div>
+
+                {/* Top-Right Cover Toolbar */}
+                <div className="flex items-center gap-2 relative">
+                  {/* Cover Theme Changer */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowCoverSelector((prev) => !prev)}
+                      className="text-[11px] font-bold text-white bg-black/40 hover:bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/25 transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                      title="Customize campus cover banner style"
+                    >
+                      <Palette className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Theme: {currentCoverTheme.name.split(' ')[0]}</span>
+                    </button>
+
+                    {showCoverSelector && (
+                      <div className="absolute right-0 top-9 w-64 p-3 bg-slate-900/95 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl z-30 space-y-2 text-xs">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-white/10 text-slate-300 text-[11px] font-bold">
+                          <span>Choose Cover Theme</span>
+                          <button
+                            type="button"
+                            onClick={() => setShowCoverSelector(false)}
+                            className="text-slate-400 hover:text-white"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="space-y-1.5">
+                          {COVER_THEMES.map((theme) => (
+                            <button
+                              key={theme.id}
+                              type="button"
+                              onClick={() => handleSelectCoverTheme(theme.id)}
+                              className={`w-full text-left p-2 rounded-xl transition flex items-center justify-between gap-2 cursor-pointer ${
+                                coverTheme === theme.id
+                                  ? 'bg-white/20 text-white font-bold ring-1 ring-white/30'
+                                  : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  className="w-3 h-3 rounded-full shrink-0 shadow-xs"
+                                  style={{ backgroundColor: theme.accent }}
+                                />
+                                <span className="truncate text-xs">{theme.name}</span>
+                              </div>
+                              {coverTheme === theme.id && <Check className="w-3 h-3 text-emerald-400 shrink-0" />}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Share Profile button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const shareUrl = window.location.origin + '/account';
+                      navigator.clipboard.writeText(shareUrl);
+                      setCopiedProfileLink(true);
+                      setTimeout(() => setCopiedProfileLink(false), 2200);
+                    }}
+                    className="text-[11px] font-bold text-white bg-black/40 hover:bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/25 transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    title="Copy profile link"
+                  >
+                    {copiedProfileLink ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-300">Link Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="w-3.5 h-3.5 text-slate-200" />
+                        <span>Share</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Fast Pass Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setProfileTab('idcard')}
+                    className="text-[11px] font-bold text-amber-200 bg-amber-950/60 hover:bg-amber-900/80 backdrop-blur-md px-3 py-1 rounded-full border border-amber-400/40 transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    title="Open Digital Campus Identity Pass"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-amber-300" />
+                    <span>ID Pass</span>
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Profile Avatar & Primary Info Row */}
             <div className="px-6 pb-6 pt-0 sm:px-8 relative">
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-14 sm:-mt-16 mb-4">
-                <div className="flex items-end gap-4">
-                  <div className="relative">
-                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white p-1 shadow-xl ring-4 ring-white border border-slate-200 overflow-hidden flex items-center justify-center font-black text-3xl text-blue-700 bg-gradient-to-tr from-blue-50 to-indigo-50 relative group">
-                      {isUploadingPhoto ? (
-                        <div className="flex flex-col items-center justify-center gap-1.5 text-blue-600 p-2 text-center">
-                          <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                          <span className="text-[10px] font-bold tracking-tight">Saving...</span>
-                        </div>
-                      ) : (userProfile.photoUrl || photoUrl || defaultProfilePictures[0]?.url) ? (
-                        <img
-                          src={userProfile.photoUrl || photoUrl || defaultProfilePictures[0]?.url || ''}
-                          alt={userProfile.name}
-                          className="w-full h-full object-cover rounded-xl"
-                        />
-                      ) : (
-                        userProfile.name
-                          ? userProfile.name
-                              .split(' ')
-                              .map((w) => w[0])
-                              .join('')
-                              .slice(0, 2)
-                          : 'U'
-                      )}
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-16 sm:-mt-20 mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-end gap-5">
+                  {/* 3D Metallic Foil Avatar Frame */}
+                  <div className="relative group self-start">
+                    <div
+                      className={`w-28 h-28 sm:w-36 sm:h-36 rounded-3xl p-1.5 shadow-2xl transition duration-300 ${
+                        userProfile.isVerifiedAlumni || userProfile.profileType === 'Alumni'
+                          ? 'bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600 ring-4 ring-amber-400/40 shadow-amber-900/25'
+                          : 'bg-gradient-to-tr from-blue-600 via-indigo-400 to-cyan-400 ring-4 ring-blue-500/30 shadow-blue-900/25'
+                      }`}
+                    >
+                      <div className="w-full h-full rounded-2xl bg-white overflow-hidden flex items-center justify-center font-black text-4xl text-blue-700 bg-gradient-to-tr from-blue-50 to-indigo-50 relative">
+                        {isUploadingPhoto ? (
+                          <div className="flex flex-col items-center justify-center gap-1.5 text-blue-600 p-2 text-center">
+                            <div className="w-7 h-7 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                            <span className="text-[10px] font-bold tracking-tight">Saving…</span>
+                          </div>
+                        ) : (userProfile.photoUrl || photoUrl || defaultProfilePictures[0]?.url) ? (
+                          <img
+                            src={userProfile.photoUrl || photoUrl || defaultProfilePictures[0]?.url || ''}
+                            alt={userProfile.name}
+                            className="w-full h-full object-cover rounded-2xl group-hover:scale-103 transition duration-300"
+                          />
+                        ) : (
+                          userProfile.name
+                            ? userProfile.name
+                                .split(' ')
+                                .map((w) => w[0])
+                                .join('')
+                                .slice(0, 2)
+                            : 'U'
+                        )}
+                      </div>
                     </div>
+
+                    {/* Verified Alumni Hologram / Shield Badge Overlay */}
+                    {userProfile.isVerifiedAlumni && (
+                      <div
+                        className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-500 border-2 border-white shadow-lg flex items-center justify-center text-amber-950"
+                        title="Official Verified Degree Holder"
+                      >
+                        <BadgeCheck className="w-5 h-5 text-amber-950 fill-amber-300" />
+                      </div>
+                    )}
+
+                    {/* Online / Active Beacon */}
+                    <div
+                      className="absolute -bottom-1 -left-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white shadow-md flex items-center justify-center"
+                      title="Active Member"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                    </div>
+
+                    {/* Camera Upload Button */}
                     <label
-                      className="absolute -bottom-2 -right-2 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition"
-                      title="Upload profile picture"
+                      className="absolute -bottom-2 -right-2 z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-2xl border-2 border-white bg-blue-600 text-white shadow-xl hover:bg-blue-700 hover:scale-105 transition"
+                      title="Upload or change profile picture"
                       aria-label="Upload profile picture"
                     >
                       <Camera className="w-4 h-4" />
@@ -869,42 +1240,110 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                     </label>
                   </div>
 
-                  <div className="pb-1">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-2xl sm:text-3xl font-black navy">{userProfile.name}</h2>
-                      {userProfile.isVerifiedAlumni && (
+                  {/* Name, Credentials, and Institutional Pill */}
+                  <div className="pb-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-2xl sm:text-4xl font-black navy tracking-tight">
+                        {userProfile.name}
+                      </h2>
+                      {userProfile.isVerifiedAlumni ? (
                         <span
-                          className="p-1 rounded-full bg-blue-100 text-blue-700"
+                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-xs font-black shadow-xs"
                           title="Verified Alumni Badge"
                         >
-                          <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                          <BadgeCheck className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Verified Graduate</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200 text-xs font-bold shadow-xs">
+                          <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
+                          <span>{userProfile.profileType}</span>
+                        </span>
+                      )}
+
+                      {/* Mentorship Status Pill */}
+                      <button
+                        type="button"
+                        onClick={handleToggleMentorship}
+                        className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                          mentorshipOpen
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                            : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200'
+                        }`}
+                        title="Click to toggle mentorship availability"
+                      >
+                        <span className={`w-2 h-2 rounded-full ${mentorshipOpen ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                        <span>{mentorshipOpen ? '🤝 Open for Mentorship' : 'Mentorship Inactive'}</span>
+                      </button>
+                    </div>
+
+                    {/* Role & Company or Student Standing */}
+                    <p className="text-sm sm:text-base text-slate-600 font-semibold leading-snug">
+                      {userProfile.jobRole ? (
+                        <span>
+                          <b className="navy">{userProfile.jobRole}</b>
+                          {userProfile.company && <span> at <b className="navy">{userProfile.company}</b></span>}
+                          {userProfile.department && <span className="text-slate-400 font-normal"> · {userProfile.department}</span>}
+                        </span>
+                      ) : (
+                        <span>
+                          <b className="navy">{userProfile.educationLevel || 'Undergraduate'}</b> · {userProfile.department || 'General Faculty'}
+                          {userProfile.studentYear && <span className="text-slate-400 font-normal"> ({userProfile.studentYear})</span>}
+                        </span>
+                      )}
+                    </p>
+
+                    {/* University & City Row */}
+                    <div className="flex flex-wrap items-center gap-3 text-xs pt-1">
+                      {userProfile.university && (
+                        <button
+                          type="button"
+                          onClick={() => onNavigate('universityDetail', { name: userProfile.university || '' })}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50/80 hover:bg-blue-100 text-blue-800 font-bold border border-blue-200/80 transition cursor-pointer shadow-xs"
+                          title="Explore institution profile"
+                        >
+                          {getUniversityLogo(userProfile.university) && (
+                            <img
+                              src={getUniversityLogo(userProfile.university)}
+                              alt=""
+                              className="w-4 h-4 object-contain shrink-0"
+                            />
+                          )}
+                          <span>{userProfile.university}</span>
+                          <ExternalLink className="w-3 h-3 opacity-60" />
+                        </button>
+                      )}
+
+                      {(userProfile.city || userProfile.country) && (
+                        <span className="text-slate-500 font-medium flex items-center gap-1 text-xs">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                          <span>
+                            {userProfile.city ? `${userProfile.city}, ` : ''}{userProfile.country || 'Bangladesh'}
+                          </span>
+                        </span>
+                      )}
+
+                      {userProfile.studentId && (
+                        <span className="font-mono text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+                          ID: {userProfile.studentId}
                         </span>
                       )}
                     </div>
-
-                    <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-                      {userProfile.jobRole
-                        ? `${userProfile.jobRole} ${userProfile.company ? `at ${userProfile.company}` : ''}`
-                        : `${userProfile.profileType} · ${userProfile.department || 'General Faculty'}`}
-                    </p>
-
-                    {userProfile.university && (
-                      <div className="flex items-center gap-1.5 text-xs text-blue-700 font-bold mt-1">
-                        {getUniversityLogo(userProfile.university) && (
-                          <img
-                            src={getUniversityLogo(userProfile.university)}
-                            alt=""
-                            className="w-4 h-4 object-contain inline"
-                          />
-                        )}
-                        <span>{userProfile.university}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
                 {/* Profile Action Buttons */}
-                <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto pt-2 sm:pt-0">
+                  <button
+                    type="button"
+                    onClick={() => setProfileTab('idcard')}
+                    className="inline-flex items-center gap-1.5 border border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 px-3.5 py-2 rounded-xl text-xs font-black text-amber-900 transition shadow-xs cursor-pointer"
+                    title="View your official smart university digital identity pass"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Digital Pass</span>
+                  </button>
+
                   {userProfile.university && (
                     <button
                       onClick={() => onNavigate('alumniProfile', { id: userProfile.id, name: userProfile.name })}
@@ -912,27 +1351,30 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                       title="View how your profile appears to the public in the live directory"
                     >
                       <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Live Directory Profile</span>
+                      <span>Live Directory</span>
                     </button>
                   )}
+
                   <button
                     onClick={enterEditMode}
-                    className="inline-flex items-center gap-2 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl text-xs font-bold text-blue-700 transition shadow-xs cursor-pointer"
-                    aria-label="Change profile picture or edit profile"
+                    className="inline-flex items-center gap-2 border border-blue-200 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-md cursor-pointer"
+                    aria-label="Edit Profile"
                   >
-                    <Camera className="w-4 h-4" />
-                    Change Picture / Edit Profile
+                    <Sliders className="w-3.5 h-3.5" />
+                    <span>Edit Profile</span>
                   </button>
+
                   <button
                     onClick={logout}
-                    className="bg-navy text-white hover:bg-slate-800 px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+                    className="bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+                    title="Sign out of account"
                   >
                     Log Out
                   </button>
                 </div>
               </div>
 
-              {/* Status and Institutional Affiliation Setup */}
+              {/* Status and Institutional Affiliation Setup (if not complete) */}
               {(!userProfile.university || userProfile.university === '') && (
                 <div className="mt-4 p-5 rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50/60 to-white border border-blue-200 text-slate-800 shadow-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-blue-100">
@@ -1072,56 +1514,176 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                 </div>
               )}
 
-              {userProfile.status === 'PENDING' && userProfile.profileType !== 'Student' && userProfile.profileType !== 'Alumni' && (
-                <div className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-                  <b>Account Pending Admin Review:</b> Your administrative application is currently awaiting review
-                  by administrators.
-                </div>
-              )}
+              {/* Profile Strength & Completion Progress Meter */}
+              <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-slate-50 via-blue-50/40 to-indigo-50/40 border border-slate-200/80 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-11 h-11 shrink-0 flex items-center justify-center">
+                      <svg className="w-11 h-11 transform -rotate-90" viewBox="0 0 36 36">
+                        <path
+                          className="text-slate-200"
+                          strokeWidth="3.5"
+                          stroke="currentColor"
+                          fill="none"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        />
+                        <path
+                          className={profileCompletionScore >= 80 ? 'text-emerald-500' : profileCompletionScore >= 50 ? 'text-blue-600' : 'text-amber-500'}
+                          strokeDasharray={`${profileCompletionScore}, 100`}
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                          stroke="currentColor"
+                          fill="none"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        />
+                      </svg>
+                      <span className="absolute text-[11px] font-black navy">
+                        {profileCompletionScore}%
+                      </span>
+                    </div>
 
-              {(userProfile.profileType === 'Student' || userProfile.profileType === 'Alumni') && (
-                <div className="mt-4 p-3.5 rounded-xl bg-emerald-50/90 border border-emerald-200/90 text-emerald-900 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>
-                      <b>Active {userProfile.profileType} Profile:</b> You are a confirmed member of {userProfile.university || 'your university'}. No administrative approval is required to participate in the directory.
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <b className="navy text-xs font-black">
+                          {profileCompletionScore >= 90
+                            ? 'Distinguished Academic Profile'
+                            : profileCompletionScore >= 70
+                            ? 'Strong Campus Standing'
+                            : 'Profile Strength In Progress'}
+                        </b>
+                        <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-blue-100 text-blue-700">
+                          {profileCompletionScore >= 90 ? 'Level 5' : profileCompletionScore >= 70 ? 'Level 4' : 'Level 2'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Complete all verification criteria to elevate your network standing and discovery priority.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Checklist Pills */}
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                    <span className={`px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 ${userProfile.university ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                      {userProfile.university ? '✓ University' : '+ University'}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 ${userProfile.studentId ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                      {userProfile.studentId ? '✓ Roll ID' : '+ Roll ID'}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 ${skills.length > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                      {skills.length > 0 ? `✓ ${skills.length} Skills` : '+ Add Skills'}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 ${userProfile.bio ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                      {userProfile.bio ? '✓ Bio' : '+ Add Bio'}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 ${userProfile.linkedin ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                      {userProfile.linkedin ? '✓ LinkedIn' : '+ LinkedIn'}
                     </span>
                   </div>
-                  {userProfile.profileType === 'Alumni' && !userProfile.isVerifiedAlumni && (
-                    <button
-                      onClick={() => setVerificationModalOpen(true)}
-                      className="bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition shrink-0 cursor-pointer shadow-xs"
-                    >
-                      Request Degree Badge →
-                    </button>
-                  )}
                 </div>
-              )}
+              </div>
+
+              {/* 4-Tile Executive KPI Dashboard */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+                {/* Tile 1: Standing */}
+                <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-xs flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                    <GraduationCap className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">
+                      {isAlumni ? 'Convocated Batch' : 'Current Standing'}
+                    </span>
+                    <b className="text-sm navy font-black block truncate mt-0.5">
+                      {isAlumni ? `Class of ${userProfile.graduationYear || '2024'}` : (userProfile.studentYear || 'Active Student')}
+                    </b>
+                  </div>
+                </div>
+
+                {/* Tile 2: Network */}
+                <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-xs flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">
+                      Followed Campuses
+                    </span>
+                    <b className="text-sm navy font-black block truncate mt-0.5">
+                      {userProfile.followedUniversities?.length || 0} Universities
+                    </b>
+                  </div>
+                </div>
+
+                {/* Tile 3: Posts & Community */}
+                <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-xs flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">
+                      Community Feed
+                    </span>
+                    <b className="text-sm navy font-black block truncate mt-0.5">
+                      {posts.length} Shared Updates
+                    </b>
+                  </div>
+                </div>
+
+                {/* Tile 4: Storage */}
+                <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-xs flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">
+                      Security Ledger
+                    </span>
+                    <b className="text-sm text-emerald-700 font-black block truncate mt-0.5">
+                      Salted & Persistent
+                    </b>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Profile Navigation Tabs Bar */}
-            <div className="flex items-center gap-2 px-6 sm:px-8 border-t border-soft bg-slate-50/70 pt-2 pb-2 text-xs overflow-x-auto">
+            <div className="flex items-center gap-2 px-6 sm:px-8 border-t border-soft bg-slate-50/80 pt-2.5 pb-2.5 text-xs overflow-x-auto">
               <button
+                type="button"
                 onClick={() => setProfileTab('dossier')}
-                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer shrink-0 ${
                   profileTab === 'dossier'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-blue-600 text-white shadow-md'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white'
                 }`}
               >
-                <GraduationCap className="w-3.5 h-3.5" />
-                <span>Academic Credentials & Info</span>
+                <GraduationCap className="w-4 h-4" />
+                <span>Executive Dossier & Credentials</span>
               </button>
 
               <button
-                onClick={() => setProfileTab('posts')}
-                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer ${
-                  profileTab === 'posts'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                type="button"
+                onClick={() => setProfileTab('idcard')}
+                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer shrink-0 ${
+                  profileTab === 'idcard'
+                    ? 'bg-blue-600 text-white shadow-md'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white'
                 }`}
               >
-                <MessageSquare className="w-3.5 h-3.5" />
+                <QrCode className="w-4 h-4 text-amber-500" />
+                <span>Digital Identity Pass</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setProfileTab('posts')}
+                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer shrink-0 ${
+                  profileTab === 'posts'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+                }`}
+              >
+                <MessageSquare className="w-4 h-4" />
                 <span>Posts & Campus Feed</span>
                 <span
                   className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
@@ -1133,14 +1695,15 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
               </button>
 
               <button
+                type="button"
                 onClick={() => setProfileTab('followed')}
-                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer shrink-0 ${
                   profileTab === 'followed'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-blue-600 text-white shadow-md'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white'
                 }`}
               >
-                <Building2 className="w-3.5 h-3.5" />
+                <Building2 className="w-4 h-4" />
                 <span>Followed Universities</span>
                 <span
                   className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
@@ -1154,21 +1717,54 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
               </button>
 
               <button
+                type="button"
                 onClick={() => {
                   setProfileTab('storage');
                   if (!activeReceipt) getStorageReceipt();
                 }}
-                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer shrink-0 ${
                   profileTab === 'storage'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-blue-600 text-white shadow-md'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white'
                 }`}
               >
-                <Database className="w-3.5 h-3.5" />
+                <Database className="w-4 h-4" />
                 <span>Data Storage & Security Receipt</span>
               </button>
             </div>
           </div>
+
+          {/* ========================================================= */}
+          {/* TAB 0: INTERACTIVE DIGITAL CAMPUS PASS (SMART CARD)       */}
+          {/* ========================================================= */}
+          {profileTab === 'idcard' && (
+            <div className="space-y-6">
+              <div className="card p-6 sm:p-8 shadow-xl border-soft">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-soft">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center justify-center font-black shadow-xs">
+                      <QrCode className="w-6 h-6 text-amber-700" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black navy">Official Digital Campus Pass & Credentials</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Interactive cryptographic student/alumni passport. Flip, customize theme, or print pass.
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 self-start sm:self-auto">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>UGC ACCREDITED ID</span>
+                  </span>
+                </div>
+
+                <div className="mt-6">
+                  <DigitalIDCard userProfile={userProfile} onNavigate={onNavigate} />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ========================================================= */}
           {/* TAB 1: POSTS & CAMPUS FEED (WITH IMAGE & LIVE REACTIONS) */}

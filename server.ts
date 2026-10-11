@@ -2221,6 +2221,103 @@ app.get('/api/auth/recent-account-openings', (_req, res) => {
   });
 });
 
+// POST /api/auth/update-profile - Update logged-in user profile in internal database
+app.post('/api/auth/update-profile', (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = req.body?.token || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null);
+  const identifier = req.body?.userId || req.body?.email;
+
+  let user: AdminUser | undefined;
+
+  if (token) {
+    const session = activeAdminSessions.get(token);
+    if (session) {
+      user = adminStore.users.find((u) => u.id === session.userId);
+    }
+  }
+
+  if (!user && identifier) {
+    user = adminStore.users.find(
+      (u) =>
+        u.id === identifier ||
+        u.firebaseUid === identifier ||
+        u.email.toLowerCase() === String(identifier).trim().toLowerCase()
+    );
+  }
+
+  if (!user) {
+    return res.status(401).json({ error: 'User account not found or session expired.' });
+  }
+
+  const {
+    name,
+    profileType,
+    university,
+    department,
+    studentId,
+    educationLevel,
+    studentYear,
+    expectedGraduation,
+    graduationYear,
+    batch,
+    jobRole,
+    company,
+    country,
+    city,
+    bio,
+    photoUrl,
+    coverTheme,
+    coverUrl,
+    skills,
+    mentorshipOpen,
+    publicDirectoryVisible,
+    linkedin,
+    degreeTitle,
+    portfolioUrl,
+  } = req.body || {};
+
+  if (typeof name === 'string' && name.trim()) user.name = name.trim();
+  if (profileType && ['Student', 'Alumni', 'Admin'].includes(profileType)) {
+    user.profileType = profileType;
+    if (user.role === 'STUDENT' && profileType === 'Alumni') user.role = 'ALUMNI';
+    if (user.role === 'ALUMNI' && profileType === 'Student') user.role = 'STUDENT';
+  }
+  if (university !== undefined) user.university = String(university).trim();
+  if (department !== undefined) user.department = String(department).trim();
+  if (studentId !== undefined) user.studentId = String(studentId).trim();
+  if (educationLevel !== undefined) user.educationLevel = String(educationLevel).trim();
+  if (studentYear !== undefined) user.studentYear = String(studentYear).trim();
+  if (expectedGraduation !== undefined) user.expectedGraduation = String(expectedGraduation).trim();
+  if (graduationYear !== undefined) user.graduationYear = String(graduationYear).trim();
+  if (batch !== undefined) user.batch = String(batch).trim();
+  if (jobRole !== undefined) user.jobRole = String(jobRole).trim();
+  if (company !== undefined) user.company = String(company).trim();
+  if (country !== undefined) user.country = String(country).trim();
+  if (city !== undefined) user.city = String(city).trim();
+  if (bio !== undefined) user.bio = String(bio).trim();
+  if (photoUrl !== undefined) user.photoUrl = String(photoUrl).trim();
+  if (linkedin !== undefined) user.linkedin = String(linkedin).trim();
+
+  // Extended premium profile attributes
+  const userAny = user as any;
+  if (coverTheme !== undefined) userAny.coverTheme = coverTheme;
+  if (coverUrl !== undefined) userAny.coverUrl = coverUrl;
+  if (Array.isArray(skills)) userAny.skills = skills.map((s: any) => String(s).trim()).filter(Boolean);
+  if (mentorshipOpen !== undefined) userAny.mentorshipOpen = Boolean(mentorshipOpen);
+  if (publicDirectoryVisible !== undefined) userAny.publicDirectoryVisible = Boolean(publicDirectoryVisible);
+  if (degreeTitle !== undefined) userAny.degreeTitle = String(degreeTitle).trim();
+  if (portfolioUrl !== undefined) userAny.portfolioUrl = String(portfolioUrl).trim();
+
+  user.updatedAt = new Date().toISOString();
+  persistAdminStore();
+
+  return res.json({
+    success: true,
+    message: 'Profile updated successfully in internal database.',
+    user: publicUserDossier(user),
+  });
+});
+
 // ------------------------------------------
 // UNIVERSITY & DEPARTMENT MANAGEMENT APIS
 // ------------------------------------------

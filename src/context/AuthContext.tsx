@@ -1056,7 +1056,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (e) {}
 
-    // 4. Dispatch browser custom events for instant zero-latency updates on all open views
+    // 4. Also synchronize to internal database endpoint
+    try {
+      const internalToken = typeof window !== 'undefined' ? localStorage.getItem('alumni_internal_token') : null;
+      await fetch('/api/auth/update-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(internalToken ? { Authorization: `Bearer ${internalToken}` } : {}),
+        },
+        body: JSON.stringify({
+          userId: currentUser.uid,
+          email: currentUser.email,
+          ...safeUpdates,
+        }),
+      }).catch(() => {});
+    } catch (e) {}
+
+    // 5. Dispatch browser custom events for instant zero-latency updates on all open views
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('alumni-profile-updated', { detail: updated }));
       window.dispatchEvent(new CustomEvent('alumni-directory-updated', { detail: updated }));

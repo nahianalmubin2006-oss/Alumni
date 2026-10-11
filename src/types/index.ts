@@ -45,6 +45,14 @@ export interface UserProfile {
   city?: string;
   bio?: string;
   photoUrl?: string;
+  coverUrl?: string;
+  coverTheme?: 'classic' | 'modern' | 'sapphire' | 'emerald' | 'royal' | 'midnight' | 'crimson' | 'aurora' | 'cyber';
+  mentorshipOpen?: boolean;
+  skills?: string[];
+  publicDirectoryVisible?: boolean;
+  degreeTitle?: string;
+  portfolioUrl?: string;
+  achievements?: string;
   linkedin?: string;
   isVerifiedAlumni?: boolean;
   assignedUniversity?: string;
