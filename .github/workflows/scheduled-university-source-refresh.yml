@@ -1,0 +1,52 @@
+name: Scheduled university data and logo source refresh
+
+on:
+  schedule:
+    # Weekly, Monday at 03:20 UTC (09:20 Bangladesh time).
+    - cron: "20 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: university-source-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh-candidates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: automation/real-university-logos
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm ci
+      - name: Refresh university logo candidates and provenance manifest
+        run: npx tsx scripts/download_real_university_logos.ts
+      - name: Upload source manifest for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: university-source-review-${{ github.run_number }}
+          path: |
+            src/data/official-logo-manifest.json
+            public/logos/official-candidates/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Commit refreshed candidate data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/official-logo-manifest.json public/logos/official-candidates/
+          if git diff --cached --quiet; then
+            echo "No candidate or manifest changes."
+            exit 0
+          fi
+          git commit -m "chore: refresh university source candidates"
+          git push origin HEAD:automation/real-university-logos
