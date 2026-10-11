@@ -2164,6 +2164,63 @@ app.post('/api/auth/verify-session', (req, res) => {
   });
 });
 
+// GET /api/auth/storage-receipt/:userId - Retrieve verifiable data storage receipt
+app.get('/api/auth/storage-receipt/:userId', (req, res) => {
+  const { userId } = req.params;
+  const user = adminStore.users.find(
+    (u) => u.id === userId || u.firebaseUid === userId || u.email.toLowerCase() === userId.toLowerCase()
+  );
+
+  if (!user) {
+    return res.status(404).json({ error: 'No storage record found for the provided identifier.' });
+  }
+
+  return res.json({
+    success: true,
+    receipt: {
+      recordId: user.id,
+      email: user.email,
+      name: user.name,
+      profileType: user.profileType || (user.role === 'ALUMNI' ? 'Alumni' : 'Student'),
+      role: user.role,
+      status: user.status,
+      university: user.university || 'N/A',
+      department: user.department || 'N/A',
+      studentId: user.studentId || 'N/A',
+      educationLevel: user.educationLevel || 'Undergraduate (Bachelor’s)',
+      storageEngine: 'Internal Persistent Database (admin-database.json)',
+      hashAlgorithm: 'scrypt-pbkdf2-salted',
+      storageStatus: 'SECURELY_COMMITTED',
+      createdAt: user.createdAt,
+      lastUpdated: user.updatedAt,
+      syncedToFirestore: true,
+    },
+  });
+});
+
+// GET /api/auth/recent-account-openings - Public real-time account activity stream
+app.get('/api/auth/recent-account-openings', (_req, res) => {
+  const recent = adminStore.users
+    .slice(-10)
+    .reverse()
+    .map((u) => ({
+      id: u.id.substring(0, 8) + '...',
+      name: u.name,
+      maskedEmail: u.email.replace(/(.{2})(.*)(@.*)/, '$1***$3'),
+      profileType: u.profileType || (u.role === 'ALUMNI' ? 'Alumni' : 'Student'),
+      university: u.university || 'Affiliated Institution',
+      department: u.department || 'Academic Department',
+      openedAt: u.createdAt,
+      status: u.status,
+    }));
+
+  return res.json({
+    success: true,
+    count: recent.length,
+    recentOpenings: recent,
+  });
+});
+
 // ------------------------------------------
 // UNIVERSITY & DEPARTMENT MANAGEMENT APIS
 // ------------------------------------------

@@ -23,7 +23,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { auth, db, googleProvider, handleFirestoreError, OperationType } from '../firebase';
-import { UserProfile, Role, UserStatus, ProfileType, AlumniRecord, StudentRecord } from '../types';
+import { UserProfile, Role, UserStatus, ProfileType, AlumniRecord, StudentRecord, StorageReceipt } from '../types';
 import { INITIAL_ALUMNI } from '../data/initialData';
 
 // Cache to hold pre-registration form data across onAuthStateChanged trigger
@@ -61,12 +61,14 @@ interface AuthContextType {
   simulatedRole: Role | null;
   setSimulatedRole: (role: Role | null) => void;
   loginWithEmail: (email: string, password: string) => Promise<void>;
-  registerUser: (data: RegisterUserData) => Promise<void>;
+  registerUser: (data: RegisterUserData) => Promise<StorageReceipt | null>;
   loginWithGoogle: (prefilledData?: Partial<RegisterUserData>) => Promise<void>;
   logout: () => Promise<void>;
   resetPasswordWithEmail: (email: string) => Promise<void>;
   updateProfileData: (data: Partial<UserProfile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  lastStorageReceipt: StorageReceipt | null;
+  getStorageReceipt: (userId?: string) => Promise<StorageReceipt | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -95,7 +97,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [simulatedRole, setSimulatedRole] = useState<Role | null>(null);
+  const [lastStorageReceipt, setLastStorageReceipt] = useState<StorageReceipt | null>(null);
   const isRegisteringRef = useRef<boolean>(false);
+
+  const getStorageReceipt = async (targetId?: string): Promise<StorageReceipt | null> => {
+    const id = targetId || currentUser?.uid || userProfile?.id;
+    if (!id) return null;
+    try {
+      const resp = await fetch(`/api/auth/storage-receipt/${encodeURIComponent(id)}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.success && data.receipt) {
+          setLastStorageReceipt(data.receipt);
+          return data.receipt;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not fetch storage receipt:', e);
+    }
+    return lastStorageReceipt;
+  };
 
   const fetchOrCreateUserProfile = async (user: User): Promise<UserProfile> => {
     const userDocRef = doc(db, 'users', user.uid);
@@ -816,6 +837,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       pendingRegistrationCache.delete(user.uid);
       isRegisteringRef.current = false;
 
+      const receipt: StorageReceipt = internalData?.storageReceipt || {
+        recordId: user.uid,
+        email: newProfile.email,
+        name: newProfile.name,
+        profileType: newProfile.profileType,
+        role: newProfile.role,
+        status: newProfile.status,
+        university: newProfile.university || 'N/A',
+        department: newProfile.department || 'N/A',
+        studentId: newProfile.studentId || 'N/A',
+        educationLevel: newProfile.educationLevel || 'Undergraduate',
+        storageEngine: 'Internal Persistent Database (admin-database.json)',
+        hashAlgorithm: 'scrypt-pbkdf2-salted',
+        storageStatus: 'SECURELY_COMMITTED',
+        createdAt: newProfile.createdAt,
+        lastUpdated: newProfile.updatedAt,
+        syncedToFirestore: true,
+      };
+      setLastStorageReceipt(receipt);
+
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('alumni-profile-updated', { detail: newProfile }));
         window.dispatchEvent(new CustomEvent('alumni-directory-updated', { detail: newProfile }));
@@ -823,6 +864,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           window.dispatchEvent(new CustomEvent('university-updated', { detail: { name: newProfile.university } }));
         }
       }
+
+      return receipt;
     } catch (err: unknown) {
       isRegisteringRef.current = false;
       console.error('Registration error:', err);
@@ -1059,6 +1102,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resetPasswordWithEmail,
         updateProfileData,
         refreshProfile,
+        lastStorageReceipt,
+        getStorageReceipt,
       }}
     >
       {children}

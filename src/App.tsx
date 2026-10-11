@@ -365,7 +365,13 @@ export default function App() {
                 />
               )}
 
-              {currentPage === 'account' && <AccountView onNavigate={handleNavigate} onBack={handleBack} />}
+              {currentPage === 'account' && (
+                <AccountView
+                  onNavigate={handleNavigate}
+                  onBack={handleBack}
+                  pageParams={pageParams}
+                />
+              )}
 
               {currentPage === 'terms' && <TermsView onNavigate={handleNavigate} onBack={handleBack} />}
 

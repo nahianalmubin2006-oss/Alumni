@@ -384,3 +384,31 @@ export interface AlumniConnectionRecord {
   senderName?: string;
   senderRole?: string;
 }
+
+export interface StorageReceipt {
+  recordId: string;
+  email: string;
+  name: string;
+  profileType: string;
+  role: string;
+  status?: string;
+  university: string;
+  department: string;
+  studentId: string;
+  educationLevel: string;
+  storageEngine: string;
+  hashAlgorithm: string;
+  storageStatus: string;
+  createdAt: string;
+  lastUpdated?: string;
+  syncedToFirestore: boolean;
+}
+
+export interface AccountOpeningPresets {
+  educationLevels: string[];
+  studentYears: string[];
+  defaultAvatars: Array<{ id: string; name: string; url: string }>;
+  totalAccountsStored: number;
+  persistenceEngine: string;
+  storageVersion: string;
+}

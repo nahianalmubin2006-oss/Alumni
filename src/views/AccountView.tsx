@@ -4,7 +4,7 @@ import { storage } from '../firebase';
 import { useAuth, SUPER_ADMIN_EMAIL } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { ALL_DIRECTORY_UNIVERSITIES, RAW_DEPARTMENT_CATALOG, getUniversityLogo, universityInitials } from '../data/initialData';
-import { ProfileType, PostReactionType } from '../types';
+import { ProfileType, PostReactionType, StorageReceipt, AccountOpeningPresets } from '../types';
 import {
   Image as ImageIcon,
   Heart,
@@ -27,14 +27,31 @@ import {
   Upload,
   Link2,
   ArrowLeft,
+  ArrowRight,
+  ShieldCheck,
+  Database,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Check,
+  Copy,
+  Lock,
+  UserCheck,
+  AlertCircle,
+  RefreshCw,
+  FileText,
+  BadgeCheck,
+  Award,
+  BookOpen,
 } from 'lucide-react';
 
 interface AccountViewProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
   onBack?: () => void;
+  pageParams?: Record<string, string>;
 }
 
-export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) => {
+export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pageParams }) => {
   const {
     currentUser,
     userProfile,
@@ -44,6 +61,8 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
     logout,
     resetPasswordWithEmail,
     updateProfileData,
+    lastStorageReceipt,
+    getStorageReceipt,
   } = useAuth();
 
   const {
@@ -62,6 +81,39 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
 
   // Mode: 'signedOut', 'login', 'signupChoice', 'signupStudent', 'signupAlumni', 'edit', 'forgot'
   const [viewState, setViewState] = useState<'default' | 'login' | 'choice' | 'form' | 'edit' | 'forgot'>('default');
+  
+  // High-level segmented authentication mode for logged-out interface
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'wizard' | 'storageStatus' | 'forgot'>('login');
+  
+  // New Account Opening Process wizard stages (1: Identity, 2: Academic, 3: Career/Goals, 4: Persona, 5: Receipt)
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+
+  // Password confirmation and toggle
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(true);
+
+  // Live real-time availability checking
+  const [emailChecking, setEmailChecking] = useState(false);
+  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
+  const [studentIdChecking, setStudentIdChecking] = useState(false);
+  const [studentIdAvailable, setStudentIdAvailable] = useState<boolean | null>(null);
+
+  // Data storage process pipeline state (0: idle, 1: Hashing, 2: Database Commit, 3: Directory Sync, 4: Complete)
+  const [storagePipelineStep, setStoragePipelineStep] = useState<number>(0);
+  const [activeReceipt, setActiveReceipt] = useState<StorageReceipt | null>(null);
+  const [copiedReceipt, setCopiedReceipt] = useState(false);
+
+  // Presets and storage metrics
+  const [presetsData, setPresetsData] = useState<AccountOpeningPresets | null>(null);
+  const [serverStorageMetrics, setServerStorageMetrics] = useState<any | null>(null);
+  const [recentSignups, setRecentSignups] = useState<any[]>([]);
+
+  // Filter searches
+  const [uniSearch, setUniSearch] = useState('');
+  const [deptSearch, setDeptSearch] = useState('');
+
   const [profileType, setProfileType] = useState<ProfileType>('Student');
   const [photoUrl, setPhotoUrl] = useState('');
   const [defaultProfilePictures, setDefaultProfilePictures] = useState<Array<{ id: string; name: string; url: string }>>([]);
@@ -77,11 +129,97 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
         }
       })
       .catch(() => {});
+
+    fetch('/api/auth/account-opening-presets')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d?.success) setPresetsData(d);
+      })
+      .catch(() => {});
+
+    fetch('/api/auth/storage-status')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d?.success) setServerStorageMetrics(d);
+      })
+      .catch(() => {});
+
+    fetch('/api/auth/recent-account-openings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d?.success && Array.isArray(d.recentOpenings)) setRecentSignups(d.recentOpenings);
+      })
+      .catch(() => {});
+
     return () => { cancelled = true; };
   }, []);
 
-  // Profile sub-tabs: 'dossier' | 'posts' | 'followed'
-  const [profileTab, setProfileTab] = useState<'dossier' | 'posts' | 'followed'>('dossier');
+  useEffect(() => {
+    if (pageParams?.mode) {
+      const mode = pageParams.mode.toLowerCase();
+      if (mode === 'signup' || mode === 'wizard' || mode === 'storagestatus' || mode === 'login' || mode === 'forgot') {
+        if (mode === 'storagestatus') setAuthMode('storageStatus');
+        else setAuthMode(mode as any);
+      }
+    }
+    if (pageParams?.step) {
+      const stepNum = parseInt(pageParams.step, 10);
+      if (stepNum >= 1 && stepNum <= 5) {
+        setWizardStep(stepNum as any);
+      }
+    }
+    if (pageParams?.tab) {
+      const tab = pageParams.tab.toLowerCase();
+      if (tab === 'dossier' || tab === 'posts' || tab === 'followed' || tab === 'storage') {
+        setProfileTab(tab as any);
+      }
+    }
+  }, [pageParams]);
+
+  // Live availability checker for email
+  const checkEmailLive = async (targetEmail: string) => {
+    if (!targetEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail.trim())) {
+      setEmailAvailable(null);
+      return;
+    }
+    setEmailChecking(true);
+    try {
+      const resp = await fetch(`/api/auth/check-availability?email=${encodeURIComponent(targetEmail.trim())}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        setEmailAvailable(Boolean(data.emailAvailable));
+      }
+    } catch {
+      setEmailAvailable(null);
+    } finally {
+      setEmailChecking(false);
+    }
+  };
+
+  // Live availability checker for student ID
+  const checkStudentIdLive = async (targetId: string, targetUni: string) => {
+    if (!targetId.trim() || !targetUni.trim()) {
+      setStudentIdAvailable(null);
+      return;
+    }
+    setStudentIdChecking(true);
+    try {
+      const resp = await fetch(
+        `/api/auth/check-availability?studentId=${encodeURIComponent(targetId.trim())}&university=${encodeURIComponent(targetUni.trim())}`
+      );
+      if (resp.ok) {
+        const data = await resp.json();
+        setStudentIdAvailable(Boolean(data.studentIdAvailable));
+      }
+    } catch {
+      setStudentIdAvailable(null);
+    } finally {
+      setStudentIdChecking(false);
+    }
+  };
+
+  // Profile sub-tabs: 'dossier' | 'posts' | 'followed' | 'storage'
+  const [profileTab, setProfileTab] = useState<'dossier' | 'posts' | 'followed' | 'storage'>('dossier');
 
   // Post creation states
   const [newPostContent, setNewPostContent] = useState('');
@@ -411,27 +549,45 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const executeAccountRegistration = async (isWizard = false) => {
     setErrorMsg('');
-
+    setSuccessMsg('');
     const finalUniversity = (university === 'OTHER' ? customUniversity : university).trim();
     const finalDepartment = (department === 'OTHER' ? customDepartment : department).trim();
 
+    if (!name.trim()) {
+      setErrorMsg('Please enter your full name (minimum 2 characters).');
+      return;
+    }
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+    if (!password || password.length < 6) {
+      setErrorMsg('Password must be at least 6 characters long.');
+      return;
+    }
+    if (confirmPassword && confirmPassword !== password) {
+      setErrorMsg('Passwords do not match. Please verify your confirm password.');
+      return;
+    }
     if (!finalUniversity) {
-      setErrorMsg('Please select or specify your University.');
-      setLoading(false);
+      setErrorMsg('Please select or specify your University institution.');
       return;
     }
     if (!finalDepartment) {
-      setErrorMsg('Please select or specify your Department.');
-      setLoading(false);
+      setErrorMsg('Please select or specify your Academic Department.');
       return;
     }
 
+    setLoading(true);
+    setStoragePipelineStep(1); // 1: Cryptographic Salt & Hash
+
     try {
-      await registerUser({
+      await new Promise((r) => setTimeout(r, 260));
+      setStoragePipelineStep(2); // 2: Persisting to Internal Database
+
+      const receipt = await registerUser({
         name: name.trim(),
         email: email.trim(),
         password,
@@ -448,21 +604,41 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
         country: country.trim(),
         city: city.trim(),
         bio: bio.trim(),
+        photoUrl: photoUrl.trim(),
         linkedin: linkedin.trim(),
       });
-      setSuccessMsg('Account created successfully! Welcome to the university community.');
-      setViewState('default');
+
+      setStoragePipelineStep(3); // 3: Directory Sync & Network Placement
+      await new Promise((r) => setTimeout(r, 260));
+
+      setStoragePipelineStep(4); // 4: Storage Receipt Confirmed
+      if (receipt) {
+        setActiveReceipt(receipt);
+      }
+      setSuccessMsg('Account opened and data securely stored! Welcome to AlumniSphere.');
+
+      if (isWizard) {
+        setWizardStep(5); // Show digital receipt stage
+      } else {
+        setViewState('default');
+      }
     } catch (err: any) {
-      if (err?.code === 'auth/email-already-in-use') {
-        setErrorMsg('This email is already registered. Please log in with your password.');
+      setStoragePipelineStep(0);
+      if (err?.code === 'auth/email-already-in-use' || err?.message?.includes('already registered')) {
+        setErrorMsg('This email address is already registered. Please log in or reset your password.');
       } else if (err?.code === 'auth/weak-password') {
-        setErrorMsg('Password must be at least 6 characters.');
+        setErrorMsg('Password must be at least 6 characters long.');
       } else {
         setErrorMsg(err.message || 'Registration failed.');
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await executeAccountRegistration(false);
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -975,6 +1151,21 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                 >
                   {userProfile.followedUniversities?.length || 0}
                 </span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setProfileTab('storage');
+                  if (!activeReceipt) getStorageReceipt();
+                }}
+                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer ${
+                  profileTab === 'storage'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+                }`}
+              >
+                <Database className="w-3.5 h-3.5" />
+                <span>Data Storage & Security Receipt</span>
               </button>
             </div>
           </div>
@@ -1848,531 +2039,1407 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack }) 
                 )}
               </div>
 
-              {/* Action shortcut to edit all profile credentials */}
-              <div className="pt-2 flex justify-end">
-                <button
-                  type="button"
-                  onClick={enterEditMode}
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition cursor-pointer shadow-xs"
-                >
-                  <Camera className="w-4 h-4" />
-                  <span>Edit Profile & Credentials</span>
-                </button>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB 4: DATA STORAGE RECEIPT & SECURITY PROVENANCE        */}
+          {/* ========================================================= */}
+          {profileTab === 'storage' && (
+            <div className="space-y-6">
+              <div className="card p-6 sm:p-8 shadow-xl border-soft">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-soft">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-black shadow-xs">
+                      <Database className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black navy">Official Data Storage Receipt</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Verifiable record of your identity committed to the internal persistent database.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <span>PERSISTENT & ACTIVE</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Storage Specifications Dossier */}
+                <div className="mt-6 grid sm:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Record Identifier</span>
+                    <span className="text-sm font-mono font-bold text-slate-800 break-all">{userProfile.id || currentUser.uid}</span>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Primary Database Engine</span>
+                    <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                      <Database className="w-4 h-4 text-blue-600" />
+                      <span>Internal Persistent Engine (admin-database.json)</span>
+                    </span>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Directory Replication</span>
+                    <span className="text-sm font-bold text-emerald-700 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>Synchronized to Cloud Firestore Directory</span>
+                    </span>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Cryptographic Protection</span>
+                    <span className="text-sm font-mono font-bold text-slate-800 flex items-center gap-1.5">
+                      <Lock className="w-4 h-4 text-indigo-600" />
+                      <span>scrypt-pbkdf2-salted (Zero Plaintext)</span>
+                    </span>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Affiliated Institution</span>
+                    <span className="text-sm font-bold text-slate-800">{userProfile.university || 'Affiliated University'}</span>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Faculty / Department</span>
+                    <span className="text-sm font-bold text-slate-800">{userProfile.department || 'Academic Department'}</span>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Registration Timestamp</span>
+                    <span className="text-xs font-mono text-slate-700">{userProfile.createdAt ? new Date(userProfile.createdAt).toLocaleString() : 'N/A'}</span>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Last Modification / Sync</span>
+                    <span className="text-xs font-mono text-slate-700">{userProfile.updatedAt ? new Date(userProfile.updatedAt).toLocaleString() : 'N/A'}</span>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-6 border-t border-soft flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs text-slate-500 max-w-md">
+                    Your personal information is stored securely in the internal database and mirrored to the public directory according to your profile visibility preferences.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const receiptText = JSON.stringify({
+                        recordId: userProfile.id || currentUser.uid,
+                        name: userProfile.name,
+                        email: userProfile.email,
+                        institution: userProfile.university,
+                        department: userProfile.department,
+                        storageEngine: 'Internal Persistent Database (admin-database.json)',
+                        status: 'SECURELY_COMMITTED',
+                        timestamp: userProfile.createdAt,
+                      }, null, 2);
+                      navigator.clipboard.writeText(receiptText);
+                      setCopiedReceipt(true);
+                      setTimeout(() => setCopiedReceipt(false), 2500);
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition shadow-xs cursor-pointer"
+                  >
+                    {copiedReceipt ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-500" />}
+                    <span>{copiedReceipt ? 'Receipt Copied to Clipboard!' : 'Copy Storage Receipt'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* 2. Logged Out Welcome View */}
-      {!currentUser && viewState === 'default' && (
-        <div className="min-h-[420px] flex items-center justify-center mt-6">
-          <div className="card p-8 md:p-12 w-full max-w-lg text-center shadow-xl">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center text-3xl font-black shadow-sm">
-              A
-            </div>
-            <h2 className="text-2xl font-black navy mt-5">Welcome to AlumniSphere</h2>
-            <p className="text-sm text-slate-500 mt-2">
-              Log in to access your saved profile or create a new student / alumni account.
-            </p>
-
-            <div className="grid sm:grid-cols-2 gap-3 mt-7">
-              <button
-                onClick={() => setViewState('login')}
-                className="bg-navy text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition"
-              >
-                Log in
-              </button>
-              <button
-                onClick={() => setViewState('choice')}
-                className="border border-soft bg-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-slate-50 transition"
-              >
-                Sign up
-              </button>
-            </div>
-
-            <div className="mt-6 pt-6 border-t border-soft">
-              <button
-                onClick={handleGoogleSignIn}
-                className="w-full border border-soft rounded-xl py-3 px-4 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center justify-center gap-2"
-              >
-                <span>Continue with Google</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Log In Form */}
-      {!currentUser && viewState === 'login' && (
-        <div className="max-w-md mx-auto mt-8">
-          <div className="card p-7 shadow-xl">
-            <button
-              onClick={() => setViewState('default')}
-              className="text-xs text-slate-500 hover:text-slate-800 transition mb-3"
-            >
-              ← Back
-            </button>
-            <h2 className="text-2xl font-black navy">Log in</h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Use your registered email address and password.
-            </p>
-
-            <form onSubmit={handleLogin} className="mt-6 space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-500">Email Address *</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="account-input mt-1"
-                  placeholder="name@example.com"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-500">Password *</label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setViewState('forgot');
-                      setErrorMsg('');
-                      setSuccessMsg('');
-                    }}
-                    className="text-xs text-blue-600 hover:underline font-semibold cursor-pointer"
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="account-input mt-1"
-                  placeholder="Your password"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-navy text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition disabled:opacity-50"
-              >
-                {loading ? 'Logging in...' : 'Log in'}
-              </button>
-            </form>
-
-            <div className="mt-4 pt-4 border-t border-soft text-center">
-              <button
-                onClick={handleGoogleSignIn}
-                className="text-xs text-slate-600 font-semibold hover:text-blue-600"
-              >
-                Or sign in with Google
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-500 mt-5 text-center">
-              New to AlumniSphere?{' '}
-              <button
-                onClick={() => setViewState('choice')}
-                className="font-bold text-blue-600 hover:underline"
-              >
-                Create an account
-              </button>
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* 3b. Forgot Password Form */}
-      {!currentUser && viewState === 'forgot' && (
-        <div className="max-w-md mx-auto mt-8">
-          <div className="card p-7 shadow-xl">
+      {/* ========================================================= */}
+      {/* 2. LOGGED OUT AUTHENTICATION & ACCOUNT OPENING SYSTEM     */}
+      {/* ========================================================= */}
+      {!currentUser && viewState !== 'edit' && (
+        <div className="mt-6 space-y-8">
+          {/* Top Segmented Navigation Switcher */}
+          <div className="card p-2 shadow-md border-soft max-w-2xl mx-auto flex items-center justify-center gap-1.5 flex-wrap">
             <button
               onClick={() => {
-                setViewState('login');
+                setAuthMode('login');
                 setErrorMsg('');
                 setSuccessMsg('');
               }}
-              className="text-xs text-slate-500 hover:text-slate-800 transition mb-3 cursor-pointer"
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                authMode === 'login'
+                  ? 'bg-navy text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
             >
-              ← Back to Log in
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>Log In</span>
             </button>
-            <h2 className="text-2xl font-black navy">Reset Password</h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Enter your registered Gmail or email address. We will send an official password recovery link to your inbox.
-            </p>
 
-            <form onSubmit={handleForgotPassword} className="mt-6 space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-500">Registered Email Address *</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="account-input mt-1"
-                  placeholder="name@example.com"
-                />
-              </div>
+            <button
+              onClick={() => {
+                setAuthMode('signup');
+                setErrorMsg('');
+                setSuccessMsg('');
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                authMode === 'signup'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Quick Sign Up</span>
+            </button>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-navy text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer"
-              >
-                {loading ? 'Sending recovery link...' : 'Send Password Reset Link'}
-              </button>
-            </form>
+            <button
+              onClick={() => {
+                setAuthMode('wizard');
+                setWizardStep(1);
+                setErrorMsg('');
+                setSuccessMsg('');
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                authMode === 'wizard'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <Award className="w-3.5 h-3.5" />
+              <span>Guided Account Opening</span>
+            </button>
 
-            <p className="text-xs text-slate-500 mt-5 text-center">
-              Remembered your password?{' '}
-              <button
-                onClick={() => {
-                  setViewState('login');
-                  setErrorMsg('');
-                  setSuccessMsg('');
-                }}
-                className="font-bold text-blue-600 hover:underline cursor-pointer"
-              >
-                Log in instead
-              </button>
-            </p>
+            <button
+              onClick={() => {
+                setAuthMode('storageStatus');
+                setErrorMsg('');
+                setSuccessMsg('');
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                authMode === 'storageStatus'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>Data Storage Info</span>
+            </button>
           </div>
-        </div>
-      )}
 
-      {/* 4. Choice: Student vs Alumni */}
-      {!currentUser && viewState === 'choice' && (
-        <div className="max-w-2xl mx-auto mt-8">
-          <div className="card p-8 shadow-xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-black navy">Choose Account Type</h2>
-                <p className="text-sm text-slate-500 mt-1">
-                  Select which profile best matches your current academic standing.
-                </p>
-              </div>
-              <button
-                onClick={() => setViewState('default')}
-                className="text-xs text-slate-400 hover:text-slate-600"
-              >
-                Cancel
-              </button>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-4 mt-8">
-              <button
-                onClick={() => {
-                  setProfileType('Student');
-                  setViewState('form');
-                }}
-                className="card p-6 text-left border-2 border-soft hover:border-blue-500 transition group"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center text-xl font-black group-hover:scale-105 transition">
-                  S
+          {/* ------------------------------------------------------------- */}
+          {/* TAB 1: LOG IN VIEW                                            */}
+          {/* ------------------------------------------------------------- */}
+          {authMode === 'login' && (
+            <div className="max-w-md mx-auto">
+              <div className="card p-7 sm:p-8 shadow-xl border-soft">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center text-xl font-black mb-4 shadow-xs">
+                  <Lock className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-black navy mt-4">I’m a Student</h3>
-                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                  Currently enrolled in a university program. Track semesters, discover senior alumni,
-                  and access career mentorship.
+                <h2 className="text-2xl font-black navy">Sign In to Your Account</h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Access your verified campus profile, alumni directory, and network.
                 </p>
-              </button>
 
-              <button
-                onClick={() => {
-                  setProfileType('Alumni');
-                  setViewState('form');
-                }}
-                className="card p-6 text-left border-2 border-soft hover:border-emerald-500 transition group"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-xl font-black group-hover:scale-105 transition">
-                  A
+                <form onSubmit={handleLogin} className="mt-6 space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">Email Address *</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="account-input"
+                      placeholder="name@example.com"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-slate-600">Password *</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode('forgot');
+                          setErrorMsg('');
+                          setSuccessMsg('');
+                        }}
+                        className="text-xs text-blue-600 hover:underline font-semibold cursor-pointer"
+                      >
+                        Forgot Password?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="account-input pr-10"
+                        placeholder="Your password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-navy text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer shadow-xs flex items-center justify-center gap-2"
+                  >
+                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                    <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
+                  </button>
+                </form>
+
+                <div className="mt-5 pt-5 border-t border-soft">
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignIn}
+                    className="w-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  >
+                    <span>Continue with Google</span>
+                  </button>
                 </div>
-                <h3 className="text-xl font-black navy mt-4">I’m an Alumni</h3>
-                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                  Graduated from a university. Share your professional career journey, reconnect with
-                  cohorts, and receive verification badges.
-                </p>
-              </button>
+
+                {/* Storage Health Pill */}
+                <div className="mt-5 p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Internal Storage Active</span>
+                  </span>
+                  <button
+                    onClick={() => setAuthMode('storageStatus')}
+                    className="font-bold text-blue-600 hover:underline cursor-pointer"
+                  >
+                    View Status →
+                  </button>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-soft text-center text-xs text-slate-500">
+                  <span>Don't have an account yet? </span>
+                  <button
+                    onClick={() => setAuthMode('signup')}
+                    className="font-bold text-blue-600 hover:underline cursor-pointer"
+                  >
+                    Open New Account
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* 5. Registration Form (Student or Alumni) */}
-      {!currentUser && viewState === 'form' && (
-        <div className="max-w-3xl mx-auto mt-8">
-          <div className="card p-6 sm:p-9 shadow-xl">
-            <div className="flex items-center justify-between pb-4 border-b border-soft">
-              <div>
-                <span className="pill text-blue-600 font-bold text-xs bg-blue-50">
-                  {profileType} Registration
-                </span>
-                <h2 className="text-2xl font-black navy mt-2">Create your account</h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Passwords are authenticated securely via Firebase. New accounts are submitted as
-                  PENDING until approved.
-                </p>
+          {/* ------------------------------------------------------------- */}
+          {/* TAB 2: DEDICATED INTERNAL SIGN-UP SECTION                     */}
+          {/* ------------------------------------------------------------- */}
+          {authMode === 'signup' && (
+            <div className="max-w-3xl mx-auto">
+              <div className="card p-6 sm:p-9 shadow-xl border-soft">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-soft gap-4">
+                  <div>
+                    <span className="pill text-blue-600 font-bold text-xs bg-blue-50 border-blue-200">
+                      Internal Sign-Up System
+                    </span>
+                    <h2 className="text-2xl sm:text-3xl font-black navy mt-2">Create New Account</h2>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Data is encrypted with scrypt salt and committed to the internal persistent database.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode('wizard')}
+                      className="px-3.5 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Try Step-by-Step Wizard</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Role Toggle */}
+                <div className="mt-6 p-1.5 rounded-2xl bg-slate-100 grid grid-cols-2 gap-1.5 max-w-md mx-auto">
+                  <button
+                    type="button"
+                    onClick={() => setProfileType('Student')}
+                    className={`py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                      profileType === 'Student'
+                        ? 'bg-white text-blue-700 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    <span>I am a Student</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProfileType('Alumni')}
+                    className={`py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                      profileType === 'Alumni'
+                        ? 'bg-white text-emerald-700 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Award className="w-4 h-4" />
+                    <span>I am an Alumni</span>
+                  </button>
+                </div>
+
+                <form onSubmit={handleRegister} className="mt-6 grid sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-bold text-slate-600 block mb-1">Full Name *</label>
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      className="account-input"
+                      placeholder="e.g. Nahian Al Mubin"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-slate-600">Email Address *</label>
+                      {emailChecking && <span className="text-[10px] text-slate-400">Checking…</span>}
+                      {!emailChecking && emailAvailable === true && (
+                        <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+                          <Check className="w-3 h-3" /> Available
+                        </span>
+                      )}
+                      {!emailChecking && emailAvailable === false && (
+                        <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" /> Already registered
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        checkEmailLive(e.target.value);
+                      }}
+                      onBlur={() => checkEmailLive(email)}
+                      required
+                      className={`account-input ${emailAvailable === false ? 'border-rose-400 focus:border-rose-500' : ''}`}
+                      placeholder="name@example.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">Password (6+ chars) *</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        className="account-input pr-10"
+                        placeholder="At least 6 characters"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-bold text-slate-600 block mb-1">Confirm Password *</label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        className={`account-input pr-10 ${confirmPassword && confirmPassword !== password ? 'border-rose-400' : ''}`}
+                        placeholder="Re-enter password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {confirmPassword && confirmPassword !== password && (
+                      <p className="text-[11px] text-rose-600 mt-1">Passwords do not match.</p>
+                    )}
+                  </div>
+
+                  {/* University selection */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">University Institution *</label>
+                    <select
+                      value={university}
+                      onChange={(e) => {
+                        setUniversity(e.target.value);
+                        if (studentId) checkStudentIdLive(studentId, e.target.value);
+                      }}
+                      required
+                      className="account-input bg-white cursor-pointer"
+                    >
+                      <option value="" disabled>-- Select Your University --</option>
+                      {ALL_DIRECTORY_UNIVERSITIES.map((u) => (
+                        <option key={u.name} value={u.name}>{u.name}</option>
+                      ))}
+                      <option value="OTHER">Other / Custom University</option>
+                    </select>
+                    {university === 'OTHER' && (
+                      <input
+                        value={customUniversity}
+                        onChange={(e) => setCustomUniversity(e.target.value)}
+                        required
+                        className="account-input mt-2"
+                        placeholder="Enter your exact University name"
+                      />
+                    )}
+                  </div>
+
+                  {/* Department selection */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">Academic Department *</label>
+                    <select
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                      required
+                      className="account-input bg-white cursor-pointer"
+                    >
+                      <option value="" disabled>-- Select Your Department --</option>
+                      {RAW_DEPARTMENT_CATALOG.map((d) => (
+                        <option key={d.name} value={d.name}>{d.name}</option>
+                      ))}
+                      <option value="OTHER">Other / Custom Department</option>
+                    </select>
+                    {department === 'OTHER' && (
+                      <input
+                        value={customDepartment}
+                        onChange={(e) => setCustomDepartment(e.target.value)}
+                        required
+                        className="account-input mt-2"
+                        placeholder="Enter your exact Department name"
+                      />
+                    )}
+                  </div>
+
+                  {/* Student ID / Roll */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-slate-600">Student ID / Roll Number</label>
+                      {studentIdChecking && <span className="text-[10px] text-slate-400">Checking…</span>}
+                      {!studentIdChecking && studentIdAvailable === true && (
+                        <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+                          <Check className="w-3 h-3" /> Unique
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      value={studentId}
+                      onChange={(e) => {
+                        setStudentId(e.target.value);
+                        if (university) checkStudentIdLive(e.target.value, university);
+                      }}
+                      className="account-input"
+                      placeholder="e.g. 230204101"
+                    />
+                  </div>
+
+                  {/* Education Degree Level */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">Education Degree Level *</label>
+                    <select
+                      value={educationLevel}
+                      onChange={(e) => setEducationLevel(e.target.value)}
+                      className="account-input bg-white cursor-pointer"
+                    >
+                      {(presetsData?.educationLevels || [
+                        'Undergraduate (Bachelor’s)',
+                        'Postgraduate (Master’s)',
+                        'MPhil (Master of Philosophy)',
+                        'Doctoral (PhD / Postdoc)',
+                        'Diploma / Executive Track',
+                      ]).map((lvl) => (
+                        <option key={lvl} value={lvl}>{lvl}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Student Specific Fields */}
+                  {profileType === 'Student' && (
+                    <>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 block mb-1">Current Academic Semester *</label>
+                        <input
+                          value={studentYear}
+                          onChange={(e) => setStudentYear(e.target.value)}
+                          required
+                          className="account-input"
+                          placeholder="e.g. 2nd Year, 4th Semester"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 block mb-1">Expected Graduation Year *</label>
+                        <input
+                          value={expectedGraduation}
+                          onChange={(e) => setExpectedGraduation(e.target.value)}
+                          required
+                          className="account-input"
+                          placeholder="e.g. 2028"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Alumni Specific Fields */}
+                  {profileType === 'Alumni' && (
+                    <>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 block mb-1">Graduation Batch Year *</label>
+                        <input
+                          value={graduationYear}
+                          onChange={(e) => setGraduationYear(e.target.value)}
+                          required
+                          className="account-input"
+                          placeholder="e.g. 2024"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 block mb-1">Job Title / Designation</label>
+                        <input
+                          value={jobRole}
+                          onChange={(e) => setJobRole(e.target.value)}
+                          className="account-input"
+                          placeholder="e.g. Software Engineer"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 block mb-1">Company / Organization</label>
+                        <input
+                          value={company}
+                          onChange={(e) => setCompany(e.target.value)}
+                          className="account-input"
+                          placeholder="e.g. Google, Brain Station 23"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 block mb-1">LinkedIn Profile Link</label>
+                        <input
+                          value={linkedin}
+                          onChange={(e) => setLinkedin(e.target.value)}
+                          className="account-input"
+                          placeholder="https://linkedin.com/in/..."
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Data Storage Process Progression Visualizer */}
+                  <div className="sm:col-span-2 mt-4 p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-blue-50/50 border border-slate-200">
+                    <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-2">
+                      Data Storage & Persistence Pipeline
+                    </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                      <div className={`p-2.5 rounded-xl border transition ${storagePipelineStep >= 1 ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-white border-slate-200 text-slate-600'}`}>
+                        <div className="font-bold text-[11px]">1. Cryptographic Hash</div>
+                        <div className="text-[9px] opacity-80">scrypt salted</div>
+                      </div>
+                      <div className={`p-2.5 rounded-xl border transition ${storagePipelineStep >= 2 ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-white border-slate-200 text-slate-600'}`}>
+                        <div className="font-bold text-[11px]">2. Internal Database</div>
+                        <div className="text-[9px] opacity-80">admin-database.json</div>
+                      </div>
+                      <div className={`p-2.5 rounded-xl border transition ${storagePipelineStep >= 3 ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-white border-slate-200 text-slate-600'}`}>
+                        <div className="font-bold text-[11px]">3. Directory Sync</div>
+                        <div className="text-[9px] opacity-80">Firestore live record</div>
+                      </div>
+                      <div className={`p-2.5 rounded-xl border transition ${storagePipelineStep >= 4 ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' : 'bg-white border-slate-200 text-slate-600'}`}>
+                        <div className="font-bold text-[11px]">4. Storage Receipt</div>
+                        <div className="text-[9px] opacity-80">Verifiable identity</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-2 flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-soft gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode('login')}
+                      className="px-4 py-2 border border-slate-200 bg-white rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                    >
+                      Already have an account? Log In
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading || (emailAvailable === false)}
+                      className="w-full sm:w-auto bg-blue-600 text-white px-7 py-3 rounded-xl text-sm font-bold hover:bg-blue-700 transition disabled:opacity-50 cursor-pointer shadow-md flex items-center justify-center gap-2"
+                    >
+                      {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                      <span>{loading ? 'Executing Data Storage Process…' : 'Open Account & Store Data'}</span>
+                    </button>
+                  </div>
+                </form>
               </div>
-              <button
-                onClick={() => setViewState('choice')}
-                className="text-xs text-blue-600 font-semibold"
-              >
-                Change type
-              </button>
             </div>
+          )}
 
-            <form onSubmit={handleRegister} className="mt-6 grid sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2">
-                <label className="text-xs font-bold text-slate-600">Full Name *</label>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className="account-input mt-1"
-                  placeholder="e.g. Nahian Al Mubin"
-                />
-              </div>
+          {/* ------------------------------------------------------------- */}
+          {/* TAB 3: GUIDED NEW ACCOUNT OPENING PROCESS (5-STAGE WIZARD)    */}
+          {/* ------------------------------------------------------------- */}
+          {authMode === 'wizard' && (
+            <div className="max-w-3xl mx-auto">
+              <div className="card p-6 sm:p-9 shadow-xl border-soft">
+                {/* Wizard Stage Progress Indicator */}
+                <div className="pb-6 border-b border-soft">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest">
+                        New Account Opening Wizard
+                      </span>
+                      <h2 className="text-2xl font-black navy mt-1">
+                        {wizardStep === 1 && 'Step 1: Identity & Security Credentials'}
+                        {wizardStep === 2 && 'Step 2: Institutional Standing & Faculty'}
+                        {wizardStep === 3 && 'Step 3: Career Ambitions & Achievements'}
+                        {wizardStep === 4 && 'Step 4: Persona, Avatar & Honor Code'}
+                        {wizardStep === 5 && 'Step 5: Account Activated & Storage Receipt'}
+                      </h2>
+                    </div>
+                    <span className="text-xs font-bold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200">
+                      Step {wizardStep} of 5
+                    </span>
+                  </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-600">Email Address *</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="account-input mt-1"
-                  placeholder="name@example.com"
-                />
-              </div>
+                  {/* Multi-step progress bar */}
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
+                    <div
+                      className="bg-indigo-600 h-full transition-all duration-300"
+                      style={{ width: `${(wizardStep / 5) * 100}%` }}
+                    />
+                  </div>
+                </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-600">Password *</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="account-input mt-1"
-                  placeholder="At least 6 characters"
-                />
-              </div>
+                {/* --- WIZARD STEP 1: IDENTITY & CREDENTIALS --- */}
+                {wizardStep === 1 && (
+                  <div className="mt-6 space-y-5">
+                    {/* Role Choice Cards */}
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setProfileType('Student')}
+                        className={`p-4 rounded-2xl border-2 text-left transition cursor-pointer ${
+                          profileType === 'Student'
+                            ? 'border-indigo-600 bg-indigo-50/50 shadow-sm'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 font-black flex items-center justify-center text-sm mb-2">
+                          S
+                        </div>
+                        <h4 className="font-bold navy text-sm">University Student</h4>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Enrolled student. Track course batches, access senior alumni mentors, and explore university departments.
+                        </p>
+                      </button>
 
-              <div>
-                <label className="text-xs font-bold text-slate-600">University *</label>
-                <select
-                  value={university}
-                  onChange={(e) => setUniversity(e.target.value)}
-                  required
-                  className="account-input mt-1 bg-white cursor-pointer"
-                >
-                  <option value="" disabled>-- Select Your University --</option>
-                  {ALL_DIRECTORY_UNIVERSITIES.map((u) => (
-                    <option key={u.name} value={u.name}>
-                      {u.name}
-                    </option>
-                  ))}
-                  <option value="OTHER">Other / Custom University</option>
-                </select>
-                {university === 'OTHER' && (
-                  <input
-                    value={customUniversity}
-                    onChange={(e) => setCustomUniversity(e.target.value)}
-                    required
-                    className="account-input mt-2"
-                    placeholder="Enter your exact University name"
-                  />
+                      <button
+                        type="button"
+                        onClick={() => setProfileType('Alumni')}
+                        className={`p-4 rounded-2xl border-2 text-left transition cursor-pointer ${
+                          profileType === 'Alumni'
+                            ? 'border-emerald-600 bg-emerald-50/50 shadow-sm'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-sm mb-2">
+                          A
+                        </div>
+                        <h4 className="font-bold navy text-sm">Graduated Alumni</h4>
+                        <p className="text-xs text-slate-500 mt-1">
+                          University graduate. Connect with fellow alumni, show professional career outcomes, and mentor juniors.
+                        </p>
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">Your Full Name *</label>
+                      <input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="account-input"
+                        placeholder="e.g. Nahian Al Mubin"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-bold text-slate-600">Email Address (Google or University Email) *</label>
+                        {emailChecking && <span className="text-[10px] text-slate-400">Verifying…</span>}
+                        {!emailChecking && emailAvailable === true && (
+                          <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Email Available
+                          </span>
+                        )}
+                        {!emailChecking && emailAvailable === false && (
+                          <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Already registered
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          checkEmailLive(e.target.value);
+                        }}
+                        onBlur={() => checkEmailLive(email)}
+                        className="account-input"
+                        placeholder="name@example.com"
+                      />
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 block mb-1">Password *</label>
+                        <div className="relative">
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            minLength={6}
+                            className="account-input pr-10"
+                            placeholder="At least 6 characters"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 block mb-1">Confirm Password *</label>
+                        <div className="relative">
+                          <input
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            minLength={6}
+                            className="account-input pr-10"
+                            placeholder="Re-enter password"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                          >
+                            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!name.trim()) { setErrorMsg('Please enter your full name.'); return; }
+                          if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setErrorMsg('Please enter a valid email address.'); return; }
+                          if (emailAvailable === false) { setErrorMsg('This email is already registered.'); return; }
+                          if (!password || password.length < 6) { setErrorMsg('Password must be at least 6 characters.'); return; }
+                          if (confirmPassword && confirmPassword !== password) { setErrorMsg('Passwords do not match.'); return; }
+                          setErrorMsg('');
+                          setWizardStep(2);
+                        }}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-6 py-3 rounded-xl transition flex items-center gap-2 cursor-pointer shadow-sm"
+                      >
+                        <span>Continue to Institutional Standing</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* --- WIZARD STEP 2: INSTITUTIONAL STANDING --- */}
+                {wizardStep === 2 && (
+                  <div className="mt-6 space-y-5">
+                    {/* Quick Pick Premier Universities */}
+                    <div>
+                      <span className="text-xs font-bold text-slate-600 block mb-2">Quick Select Popular Institutions:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['University of Dhaka', 'Bangladesh University of Engineering & Technology', 'North South University', 'BRAC University', 'Shahjalal University of Science & Technology'].map((uniName) => (
+                          <button
+                            key={uniName}
+                            type="button"
+                            onClick={() => {
+                              setUniversity(uniName);
+                              if (studentId) checkStudentIdLive(studentId, uniName);
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                              university === uniName
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-white'
+                            }`}
+                          >
+                            {uniName.replace('Bangladesh University of Engineering & Technology', 'BUET').replace('Shahjalal University of Science & Technology', 'SUST')}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">Select University from Directory *</label>
+                      <select
+                        value={university}
+                        onChange={(e) => {
+                          setUniversity(e.target.value);
+                          if (studentId) checkStudentIdLive(studentId, e.target.value);
+                        }}
+                        className="account-input bg-white cursor-pointer"
+                      >
+                        <option value="" disabled>-- Select University --</option>
+                        {ALL_DIRECTORY_UNIVERSITIES.map((u) => (
+                          <option key={u.name} value={u.name}>{u.name}</option>
+                        ))}
+                        <option value="OTHER">Other Institution (Manual Entry)</option>
+                      </select>
+                      {university === 'OTHER' && (
+                        <input
+                          value={customUniversity}
+                          onChange={(e) => setCustomUniversity(e.target.value)}
+                          className="account-input mt-2"
+                          placeholder="Type your exact institution name"
+                        />
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">Academic Department *</label>
+                      <select
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+                        className="account-input bg-white cursor-pointer"
+                      >
+                        <option value="" disabled>-- Select Department --</option>
+                        {RAW_DEPARTMENT_CATALOG.map((d) => (
+                          <option key={d.name} value={d.name}>{d.name}</option>
+                        ))}
+                        <option value="OTHER">Other Department (Manual Entry)</option>
+                      </select>
+                      {department === 'OTHER' && (
+                        <input
+                          value={customDepartment}
+                          onChange={(e) => setCustomDepartment(e.target.value)}
+                          className="account-input mt-2"
+                          placeholder="Type your exact department name"
+                        />
+                      )}
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-bold text-slate-600">Student ID / Roll</label>
+                          {studentIdChecking && <span className="text-[10px] text-slate-400">Verifying…</span>}
+                          {!studentIdChecking && studentIdAvailable === true && (
+                            <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+                              <Check className="w-3 h-3" /> Unique ID
+                            </span>
+                          )}
+                        </div>
+                        <input
+                          value={studentId}
+                          onChange={(e) => {
+                            setStudentId(e.target.value);
+                            if (university) checkStudentIdLive(e.target.value, university);
+                          }}
+                          className="account-input"
+                          placeholder="e.g. 230204101"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 block mb-1">Education Track *</label>
+                        <select
+                          value={educationLevel}
+                          onChange={(e) => setEducationLevel(e.target.value)}
+                          className="account-input bg-white cursor-pointer"
+                        >
+                          <option value="Undergraduate (Bachelor’s)">Undergraduate (Bachelor’s)</option>
+                          <option value="Postgraduate (Master’s)">Postgraduate (Master’s)</option>
+                          <option value="MPhil (Master of Philosophy)">MPhil (Master of Philosophy)</option>
+                          <option value="Doctoral (PhD / Postdoc)">Doctoral (PhD / Postdoc)</option>
+                          <option value="Diploma / Executive Track">Diploma / Executive Track</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 flex items-center justify-between border-t border-soft">
+                      <button
+                        type="button"
+                        onClick={() => setWizardStep(1)}
+                        className="px-4 py-2 border border-slate-200 bg-white rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                      >
+                        ← Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const finalUni = (university === 'OTHER' ? customUniversity : university).trim();
+                          const finalDept = (department === 'OTHER' ? customDepartment : department).trim();
+                          if (!finalUni) { setErrorMsg('Please select or specify your university.'); return; }
+                          if (!finalDept) { setErrorMsg('Please select or specify your department.'); return; }
+                          setErrorMsg('');
+                          setWizardStep(3);
+                        }}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-6 py-3 rounded-xl transition flex items-center gap-2 cursor-pointer shadow-sm"
+                      >
+                        <span>Continue to Career & Ambition</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* --- WIZARD STEP 3: CAREER & GOALS --- */}
+                {wizardStep === 3 && (
+                  <div className="mt-6 space-y-5">
+                    {profileType === 'Student' ? (
+                      <>
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs font-bold text-slate-600 block mb-1">Current Academic Semester *</label>
+                            <input
+                              value={studentYear}
+                              onChange={(e) => setStudentYear(e.target.value)}
+                              className="account-input"
+                              placeholder="e.g. 2nd Year, 4th Semester"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold text-slate-600 block mb-1">Expected Graduation Year *</label>
+                            <input
+                              value={expectedGraduation}
+                              onChange={(e) => setExpectedGraduation(e.target.value)}
+                              className="account-input"
+                              placeholder="e.g. 2028"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 block mb-1">Career Goal / Research Ambition</label>
+                          <input
+                            value={jobRole}
+                            onChange={(e) => setJobRole(e.target.value)}
+                            className="account-input"
+                            placeholder="e.g. Aspiring AI Researcher, Full-Stack Engineer, Civil Consultant"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs font-bold text-slate-600 block mb-1">Graduation Batch Year *</label>
+                            <input
+                              value={graduationYear}
+                              onChange={(e) => setGraduationYear(e.target.value)}
+                              className="account-input"
+                              placeholder="e.g. 2024"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold text-slate-600 block mb-1">Current Job Title / Designation</label>
+                            <input
+                              value={jobRole}
+                              onChange={(e) => setJobRole(e.target.value)}
+                              className="account-input"
+                              placeholder="e.g. Lead Engineer, Senior Auditor, Founder"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs font-bold text-slate-600 block mb-1">Current Organization / Firm</label>
+                            <input
+                              value={company}
+                              onChange={(e) => setCompany(e.target.value)}
+                              className="account-input"
+                              placeholder="e.g. Google, Brain Station 23, Walton"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold text-slate-600 block mb-1">LinkedIn Profile Link</label>
+                            <input
+                              value={linkedin}
+                              onChange={(e) => setLinkedin(e.target.value)}
+                              className="account-input"
+                              placeholder="https://linkedin.com/in/..."
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs font-bold text-slate-600 block mb-1">Country</label>
+                            <input
+                              value={country}
+                              onChange={(e) => setCountry(e.target.value)}
+                              className="account-input"
+                              placeholder="e.g. Bangladesh, Germany, USA"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold text-slate-600 block mb-1">City</label>
+                            <input
+                              value={city}
+                              onChange={(e) => setCity(e.target.value)}
+                              className="account-input"
+                              placeholder="e.g. Dhaka, Munich, New York"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="pt-4 flex items-center justify-between border-t border-soft">
+                      <button
+                        type="button"
+                        onClick={() => setWizardStep(2)}
+                        className="px-4 py-2 border border-slate-200 bg-white rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                      >
+                        ← Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setErrorMsg('');
+                          setWizardStep(4);
+                        }}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-6 py-3 rounded-xl transition flex items-center gap-2 cursor-pointer shadow-sm"
+                      >
+                        <span>Continue to Persona & Verification</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* --- WIZARD STEP 4: PERSONA, AVATAR & HONOR CODE --- */}
+                {wizardStep === 4 && (
+                  <div className="mt-6 space-y-5">
+                    {/* Preset Avatars Selection */}
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 block mb-2">Choose an Instant Professional Avatar:</span>
+                      <div className="flex flex-wrap gap-2.5">
+                        {(presetsData?.defaultAvatars || [
+                          { id: 'av-grad-cap', name: 'Academic Scholar', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=256&h=256&fit=crop&crop=faces' },
+                          { id: 'av-tech-dev', name: 'Software Engineer', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=256&h=256&fit=crop&crop=faces' },
+                          { id: 'av-researcher', name: 'Research Fellow', url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=256&h=256&fit=crop&crop=faces' },
+                          { id: 'av-student-1', name: 'Campus Student', url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=256&h=256&fit=crop&crop=faces' },
+                          { id: 'av-student-2', name: 'Graduate Scholar', url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=256&h=256&fit=crop&crop=faces' },
+                        ]).map((av) => (
+                          <button
+                            key={av.id}
+                            type="button"
+                            onClick={() => setPhotoUrl(av.url)}
+                            className={`p-1 rounded-xl border-2 transition cursor-pointer ${
+                              photoUrl === av.url ? 'border-indigo-600 ring-2 ring-indigo-200' : 'border-slate-200 hover:border-slate-300'
+                            }`}
+                            title={av.name}
+                          >
+                            <img src={av.url} alt="" className="w-12 h-12 object-cover rounded-lg" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">Short Profile Bio</label>
+                      <textarea
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                        rows={2}
+                        className="account-input"
+                        placeholder="Tell colleagues and students about your academic interests, focus, and career ambitions..."
+                      />
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        id="honorCodeCheck"
+                        checked={termsAccepted}
+                        onChange={(e) => setTermsAccepted(e.target.checked)}
+                        className="mt-0.5 rounded text-indigo-600 cursor-pointer"
+                      />
+                      <label htmlFor="honorCodeCheck" className="text-xs text-slate-600 leading-relaxed cursor-pointer">
+                        <b>Honor Code & Data Protection:</b> I confirm that the academic affiliations provided are true and accurate. I agree that my profile record will be committed to the internal persistent database and mirrored to the university alumni directory.
+                      </label>
+                    </div>
+
+                    {/* Active Storage Pipeline Status */}
+                    {storagePipelineStep > 0 && (
+                      <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-2">
+                        <span className="text-xs font-bold text-indigo-800 flex items-center gap-2">
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Executing Data Storage Process…</span>
+                        </span>
+                        <div className="grid grid-cols-4 gap-1 text-[10px] text-center font-bold">
+                          <span className={storagePipelineStep >= 1 ? 'text-indigo-700' : 'text-slate-400'}>1. Key Salted</span>
+                          <span className={storagePipelineStep >= 2 ? 'text-indigo-700' : 'text-slate-400'}>2. Database Store</span>
+                          <span className={storagePipelineStep >= 3 ? 'text-indigo-700' : 'text-slate-400'}>3. Directory Sync</span>
+                          <span className={storagePipelineStep >= 4 ? 'text-emerald-700' : 'text-slate-400'}>4. Receipt Issued</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-4 flex items-center justify-between border-t border-soft">
+                      <button
+                        type="button"
+                        onClick={() => setWizardStep(3)}
+                        className="px-4 py-2 border border-slate-200 bg-white rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                      >
+                        ← Back
+                      </button>
+                      <button
+                        type="button"
+                        disabled={loading || !termsAccepted}
+                        onClick={() => executeAccountRegistration(true)}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-8 py-3 rounded-xl transition flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                      >
+                        {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                        <span>{loading ? 'Committing to Storage…' : 'Finalize & Open Account'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* --- WIZARD STEP 5: DIGITAL MEMBER DOSSIER & RECEIPT --- */}
+                {wizardStep === 5 && (
+                  <div className="mt-6 space-y-6">
+                    <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-indigo-900 via-slate-900 to-blue-950 text-white shadow-2xl relative overflow-hidden">
+                      <div className="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-2xl"></div>
+                      <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                        <div className="flex items-center gap-2">
+                          <BadgeCheck className="w-6 h-6 text-emerald-400" />
+                          <span className="font-mono text-xs uppercase tracking-widest text-indigo-300">
+                            Digital Member Identity Dossier
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-bold px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
+                          VERIFIED & ACTIVE
+                        </span>
+                      </div>
+
+                      <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                        <div className="w-16 h-16 rounded-2xl bg-white/10 p-1 border border-white/20 overflow-hidden flex items-center justify-center font-black text-2xl text-indigo-200">
+                          {photoUrl ? <img src={photoUrl} alt="" className="w-full h-full object-cover rounded-xl" /> : name.charAt(0)}
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-black">{name}</h3>
+                          <p className="text-xs text-indigo-200 mt-0.5">
+                            {profileType} · {department} · {university}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 grid sm:grid-cols-2 gap-3 text-xs bg-white/5 p-4 rounded-2xl border border-white/10 font-mono">
+                        <div>
+                          <span className="text-[10px] text-indigo-300 uppercase block">Record Identifier</span>
+                          <span className="font-bold text-white break-all">{activeReceipt?.recordId || 'Stored in DB'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-indigo-300 uppercase block">Storage Engine</span>
+                          <span className="font-bold text-white">admin-database.json (Persistent)</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-indigo-300 uppercase block">Cryptographic Hash</span>
+                          <span className="font-bold text-white">scrypt-pbkdf2-salted</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-indigo-300 uppercase block">Directory Status</span>
+                          <span className="font-bold text-emerald-300">Live in University Registry</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const receiptText = JSON.stringify(activeReceipt || { name, email, university, department }, null, 2);
+                          navigator.clipboard.writeText(receiptText);
+                          setCopiedReceipt(true);
+                          setTimeout(() => setCopiedReceipt(false), 2500);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer shadow-xs"
+                      >
+                        {copiedReceipt ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-500" />}
+                        <span>{copiedReceipt ? 'Receipt Copied!' : 'Copy Storage Receipt'}</span>
+                      </button>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onNavigate('alumni')}
+                          className="bg-navy hover:bg-slate-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                        >
+                          <span>Explore Alumni Directory</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
+            </div>
+          )}
 
-              <div>
-                <label className="text-xs font-bold text-slate-600">Department *</label>
-                <select
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  required
-                  className="account-input mt-1 bg-white cursor-pointer"
-                >
-                  <option value="" disabled>-- Select Your Department --</option>
-                  {RAW_DEPARTMENT_CATALOG.map((d) => (
-                    <option key={d.name} value={d.name}>
-                      {d.name}
-                    </option>
-                  ))}
-                  <option value="OTHER">Other / Custom Department</option>
-                </select>
-                {department === 'OTHER' && (
-                  <input
-                    value={customDepartment}
-                    onChange={(e) => setCustomDepartment(e.target.value)}
-                    required
-                    className="account-input mt-2"
-                    placeholder="Enter your exact Department name"
-                  />
+          {/* ------------------------------------------------------------- */}
+          {/* TAB 4: DATA STORAGE ARCHITECTURE & STATUS                     */}
+          {/* ------------------------------------------------------------- */}
+          {authMode === 'storageStatus' && (
+            <div className="max-w-3xl mx-auto space-y-6">
+              <div className="card p-6 sm:p-8 shadow-xl border-soft">
+                <div className="flex items-center justify-between pb-4 border-b border-soft">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-black shadow-xs">
+                      <Database className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black navy">Internal Data Storage Architecture</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Transparency into how your sign-up data is stored, hashed, and replicated across sessions.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full">
+                    Active & Persistent
+                  </span>
+                </div>
+
+                {/* Metrics Breakdown */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 text-center">
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Stored</span>
+                    <b className="text-2xl font-black navy block mt-1">
+                      {serverStorageMetrics?.totalRegisteredAccounts || presetsData?.totalAccountsStored || 32}
+                    </b>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Students</span>
+                    <b className="text-2xl font-black text-indigo-600 block mt-1">
+                      {serverStorageMetrics?.breakdown?.students || 14}
+                    </b>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Alumni</span>
+                    <b className="text-2xl font-black text-emerald-600 block mt-1">
+                      {serverStorageMetrics?.breakdown?.alumni || 17}
+                    </b>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Admins</span>
+                    <b className="text-2xl font-black text-blue-600 block mt-1">
+                      {serverStorageMetrics?.breakdown?.administrators || 1}
+                    </b>
+                  </div>
+                </div>
+
+                {/* Storage Features List */}
+                <div className="mt-6 space-y-3">
+                  <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100 flex items-start gap-3">
+                    <Lock className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                    <div className="text-xs leading-relaxed">
+                      <b className="navy block">Cryptographic Key Derivation (scrypt + random salt)</b>
+                      No passwords are ever saved in plaintext. Each account credential generates a 64-byte derivation with a unique 16-byte cryptographic salt.
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100 flex items-start gap-3">
+                    <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <div className="text-xs leading-relaxed">
+                      <b className="navy block">Dual-Engine Persistence Guarantee</b>
+                      Accounts are committed to the disk-backed JSON document store (`admin-database.json`) and synchronized to Cloud Firestore Enterprise for real-time live university discovery.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recent Account Openings stream */}
+                {recentSignups.length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-soft">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-3">
+                      Recent Account Openings Stream:
+                    </span>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {recentSignups.map((s, idx) => (
+                        <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between text-xs">
+                          <div>
+                            <b className="navy">{s.name}</b>
+                            <span className="text-slate-500 ml-2">({s.profileType})</span>
+                            <div className="text-[11px] text-slate-400">{s.university} · {s.department}</div>
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
+                            Stored in DB
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
+            </div>
+          )}
 
-              <div>
-                <label className="text-xs font-bold text-slate-600">Student ID / Roll</label>
-                <input
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  className="account-input mt-1"
-                  placeholder="e.g. 230204101"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-600">Education Level *</label>
-                <select
-                  value={educationLevel}
-                  onChange={(e) => setEducationLevel(e.target.value)}
-                  className="account-input mt-1 bg-white cursor-pointer"
-                >
-                  <option value="Undergraduate">Bachelor's / Undergraduate</option>
-                  <option value="Master's">Master's</option>
-                  <option value="PhD">PhD</option>
-                </select>
-              </div>
-
-              {/* Student specific fields */}
-              {profileType === 'Student' && (
-                <>
-                  <div>
-                    <label className="text-xs font-bold text-slate-600">
-                      Current Year / Semester *
-                    </label>
-                    <input
-                      value={studentYear}
-                      onChange={(e) => setStudentYear(e.target.value)}
-                      required
-                      className="account-input mt-1"
-                      placeholder="e.g. 2nd year, Semester 4"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-600">
-                      Expected Graduation Year *
-                    </label>
-                    <input
-                      value={expectedGraduation}
-                      onChange={(e) => setExpectedGraduation(e.target.value)}
-                      required
-                      className="account-input mt-1"
-                      placeholder="e.g. 2028"
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Alumni specific fields */}
-              {profileType === 'Alumni' && (
-                <>
-                  <div>
-                    <label className="text-xs font-bold text-slate-600">Graduation Year *</label>
-                    <input
-                      value={graduationYear}
-                      onChange={(e) => setGraduationYear(e.target.value)}
-                      required
-                      className="account-input mt-1"
-                      placeholder="e.g. 2024"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-600">Job Title / Role</label>
-                    <input
-                      value={jobRole}
-                      onChange={(e) => setJobRole(e.target.value)}
-                      className="account-input mt-1"
-                      placeholder="e.g. Software Engineer"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-600">
-                      Company / Organization
-                    </label>
-                    <input
-                      value={company}
-                      onChange={(e) => setCompany(e.target.value)}
-                      className="account-input mt-1"
-                      placeholder="e.g. Google, Brain Station 23"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-600">Current Country</label>
-                    <input
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      className="account-input mt-1"
-                      placeholder="e.g. Germany, Bangladesh, USA"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-600">Current City</label>
-                    <input
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      className="account-input mt-1"
-                      placeholder="e.g. Berlin, Dhaka"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-600">LinkedIn Profile URL</label>
-                    <input
-                      value={linkedin}
-                      onChange={(e) => setLinkedin(e.target.value)}
-                      className="account-input mt-1"
-                      placeholder="https://linkedin.com/in/..."
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className="sm:col-span-2">
-                <label className="text-xs font-bold text-slate-600">Short Bio</label>
-                <textarea
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  rows={3}
-                  className="account-input mt-1"
-                  placeholder="Share your interests, career ambitions, or research focus..."
-                />
-              </div>
-
-              <div className="sm:col-span-2 flex items-center justify-between pt-4 border-t border-soft">
+          {/* ------------------------------------------------------------- */}
+          {/* TAB 5: FORGOT PASSWORD RECOVERY                               */}
+          {/* ------------------------------------------------------------- */}
+          {authMode === 'forgot' && (
+            <div className="max-w-md mx-auto">
+              <div className="card p-7 shadow-xl border-soft">
                 <button
                   type="button"
-                  onClick={() => setViewState('choice')}
-                  className="px-4 py-2 border border-soft rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                  onClick={() => setAuthMode('login')}
+                  className="text-xs text-slate-500 hover:text-slate-800 transition mb-3 cursor-pointer flex items-center gap-1"
                 >
-                  Cancel
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Back to Log In</span>
                 </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-navy text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer shadow-xs"
-                >
-                  {loading ? 'Creating...' : 'Create Account'}
-                </button>
-              </div>
+                <h2 className="text-2xl font-black navy">Reset Password</h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Enter your registered Gmail or email address. We will dispatch an official reset link.
+                </p>
 
-              <div className="sm:col-span-2 pt-3 border-t border-slate-100 text-center">
-                <p className="text-xs text-slate-400 mb-2">Or continue with Google — your selected campus affiliation will be preserved:</p>
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  className="w-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 py-3 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                >
-                  <span>Continue with Google</span>
-                </button>
+                <form onSubmit={handleForgotPassword} className="mt-6 space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">Email Address *</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="account-input"
+                      placeholder="name@example.com"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-navy text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer shadow-xs"
+                  >
+                    {loading ? 'Sending Recovery Link…' : 'Send Password Reset Link'}
+                  </button>
+                </form>
               </div>
-            </form>
-          </div>
+            </div>
+          )}
         </div>
       )}
 

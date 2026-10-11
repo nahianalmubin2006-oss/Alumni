@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { GlobalGraph } from '../components/GlobalGraph';
 import { UniversityLogo } from '../components/UniversityLogo';
@@ -38,6 +39,7 @@ interface HomeViewProps {
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
+  const { currentUser, userProfile } = useAuth();
   const { universities, departments, alumni, students, batches, news, triggerAINewsBotScan } = useData();
   const [searchInput, setSearchInput] = useState('');
   const [isScanning, setIsScanning] = useState(false);
@@ -375,6 +377,51 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
                 >
                   PhD Scholars
                 </button>
+              </div>
+
+              {/* Account Opening & Sign In Gateway */}
+              <div className="mt-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-slate-50 border border-blue-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 max-w-2xl">
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-blue-700">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Join the Official University Network</span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1">
+                    {!currentUser 
+                      ? 'Open your verified student or alumni account, or sign in to synchronize your profile.'
+                      : `Welcome back, ${userProfile?.name || 'Member'}! Your campus credentials are active.`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  {!currentUser ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('account', { mode: 'wizard' })}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                      >
+                        <span>Open Account</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('account', { mode: 'login' })}
+                        className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-xs cursor-pointer"
+                      >
+                        Log In
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('account', { tab: 'dossier' })}
+                      className="bg-navy hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                    >
+                      <span>View Profile & Dossier</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
