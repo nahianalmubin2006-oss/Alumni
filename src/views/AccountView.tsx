@@ -6,6 +6,12 @@ import { useData } from '../context/DataContext';
 import { ALL_DIRECTORY_UNIVERSITIES, RAW_DEPARTMENT_CATALOG, getUniversityLogo, universityInitials } from '../data/initialData';
 import { ProfileType, PostReactionType, StorageReceipt, AccountOpeningPresets } from '../types';
 import { DigitalIDCard } from '../components/DigitalIDCard';
+import oxfordGothicBanner from '../assets/images/campus_oxford_gothic_1791743675787.jpg';
+import techQuadBanner from '../assets/images/campus_tech_quad_1791743699365.jpg';
+import goldCrestMedallion from '../assets/images/academic_crest_gold_1791743732343.jpg';
+import emeraldHeritageBanner from '../assets/images/campus_heritage_emerald_1791744473729.jpg';
+import crimsonQuadBanner from '../assets/images/campus_crimson_quad_1791744501154.jpg';
+import nightSapphireBanner from '../assets/images/campus_night_sapphire_1791744524534.jpg';
 import {
   Image as ImageIcon,
   Heart,
@@ -233,7 +239,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
   const [profileTab, setProfileTab] = useState<'dossier' | 'idcard' | 'peers' | 'posts' | 'followed' | 'storage'>('dossier');
 
   // Executive profile decoration and customization states
-  const [coverTheme, setCoverTheme] = useState<'classic' | 'modern' | 'sapphire' | 'emerald' | 'royal' | 'midnight' | 'crimson' | 'aurora'>('sapphire');
+  const [coverTheme, setCoverTheme] = useState<'classic' | 'modern' | 'sapphire' | 'emerald' | 'royal' | 'midnight' | 'crimson' | 'aurora' | 'cyber'>('sapphire');
   const [showCoverSelector, setShowCoverSelector] = useState(false);
   const [mentorshipOpen, setMentorshipOpen] = useState(true);
   const [publicDirectoryVisible, setPublicDirectoryVisible] = useState(true);
@@ -241,6 +247,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
   const [newSkillInput, setNewSkillInput] = useState('');
   const [copiedDossier, setCopiedDossier] = useState(false);
   const [copiedProfileLink, setCopiedProfileLink] = useState(false);
+  const [copiedStudentId, setCopiedStudentId] = useState(false);
   const [idCardFlipped, setIdCardFlipped] = useState(false);
   const [degreeTitle, setDegreeTitle] = useState('');
   const [portfolioUrl, setPortfolioUrl] = useState('');
@@ -334,20 +341,50 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
 
   const COVER_THEMES = [
     {
+      id: 'classic' as const,
+      name: 'Collegiate Oxford Gothic Quad',
+      desc: 'Grand stone colonnades, twilight library spires & manicured lawn',
+      imageUrl: oxfordGothicBanner,
+      gradient: 'from-amber-950/85 via-slate-900/90 to-blue-950/95',
+      accent: '#f59e0b',
+      ring: 'ring-amber-500/50',
+      badge: 'bg-amber-500/20 text-amber-200 border-amber-400/30',
+    },
+    {
+      id: 'modern' as const,
+      name: 'Institute of Science & Technology',
+      desc: 'Contemporary architectural glass facade & sunset reflecting pool',
+      imageUrl: techQuadBanner,
+      gradient: 'from-blue-950/90 via-slate-900/90 to-indigo-950/95',
+      accent: '#38bdf8',
+      ring: 'ring-sky-500/50',
+      badge: 'bg-sky-500/20 text-sky-200 border-sky-400/30',
+    },
+    {
       id: 'sapphire' as const,
       name: 'Midnight Royal Sapphire',
-      desc: 'Deep cosmic collegiate mesh with silver accents',
-      imageUrl: '',
+      desc: 'Deep cosmic collegiate mesh with silver accents & starry Guilloche',
+      imageUrl: nightSapphireBanner,
       gradient: 'from-slate-950 via-blue-950 to-indigo-950',
       accent: '#38bdf8',
       ring: 'ring-blue-500/50',
       badge: 'bg-blue-500/20 text-blue-200 border-blue-400/30',
     },
     {
+      id: 'royal' as const,
+      name: 'Imperial Convocation Gold',
+      desc: 'Noble convocation robe gold with cobalt radiance & embossed seal',
+      imageUrl: oxfordGothicBanner,
+      gradient: 'from-blue-950/90 via-slate-900/90 to-amber-950/90',
+      accent: '#fbbf24',
+      ring: 'ring-amber-500/50',
+      badge: 'bg-amber-500/20 text-amber-200 border-amber-400/30',
+    },
+    {
       id: 'emerald' as const,
       name: 'Archival Heritage Emerald',
       desc: 'Historic academic botanical gardens & prestige',
-      imageUrl: '',
+      imageUrl: emeraldHeritageBanner,
       gradient: 'from-slate-950 via-emerald-950 to-teal-950',
       accent: '#34d399',
       ring: 'ring-emerald-500/50',
@@ -357,27 +394,17 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
       id: 'crimson' as const,
       name: 'Oxford Crimson & Nobel Ruby',
       desc: 'Imperial velvet crest & golden collegiate trim',
-      imageUrl: '',
+      imageUrl: crimsonQuadBanner,
       gradient: 'from-stone-950 via-rose-950 to-slate-950',
       accent: '#fb7185',
       ring: 'ring-rose-500/50',
       badge: 'bg-rose-500/20 text-rose-200 border-rose-400/30',
     },
     {
-      id: 'royal' as const,
-      name: 'Imperial Navy & Amber Gold',
-      desc: 'Noble convocation robe gold with cobalt radiance',
-      imageUrl: '',
-      gradient: 'from-blue-950 via-slate-900 to-amber-950/90',
-      accent: '#fbbf24',
-      ring: 'ring-amber-500/50',
-      badge: 'bg-amber-500/20 text-amber-200 border-amber-400/30',
-    },
-    {
       id: 'midnight' as const,
       name: 'Obsidian Cyber Quad',
       desc: 'Modern tech quad with laser mesh & cyan luminescence',
-      imageUrl: '',
+      imageUrl: techQuadBanner,
       gradient: 'from-zinc-950 via-neutral-900 to-slate-950',
       accent: '#22d3ee',
       ring: 'ring-cyan-500/50',
@@ -387,31 +414,21 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
       id: 'aurora' as const,
       name: 'Borealis Celestial Luminescence',
       desc: 'Ethereal turquoise, violet & cosmic starlight',
-      imageUrl: '',
+      imageUrl: nightSapphireBanner,
       gradient: 'from-teal-950 via-indigo-950 to-purple-950',
       accent: '#a78bfa',
       ring: 'ring-purple-500/50',
       badge: 'bg-purple-500/20 text-purple-200 border-purple-400/30',
     },
     {
-      id: 'classic' as const,
-      name: 'Collegiate Gothic Quad',
-      desc: 'Grand stone colonnades & warm afternoon light',
-      imageUrl: '/banners/campus_classic.jpg',
-      gradient: 'from-amber-950/75 via-slate-900/80 to-blue-950/85',
-      accent: '#d97706',
-      ring: 'ring-amber-500/50',
-      badge: 'bg-amber-500/20 text-amber-200 border-amber-400/30',
-    },
-    {
-      id: 'modern' as const,
-      name: 'Institute of Science & Engineering',
-      desc: 'Contemporary glass quad facade & twilight reflection',
-      imageUrl: '/banners/campus_modern.jpg',
-      gradient: 'from-blue-950/80 via-slate-900/85 to-indigo-950/85',
-      accent: '#3b82f6',
-      ring: 'ring-blue-500/50',
-      badge: 'bg-blue-500/20 text-blue-200 border-blue-400/30',
+      id: 'cyber' as const,
+      name: 'Metropolitan High-Tech Quad',
+      desc: 'Reflective water facade, glass architecture & evening twilight',
+      imageUrl: techQuadBanner,
+      gradient: 'from-slate-950 via-cyan-950/80 to-blue-950',
+      accent: '#06b6d4',
+      ring: 'ring-cyan-500/50',
+      badge: 'bg-cyan-500/20 text-cyan-200 border-cyan-400/30',
     },
   ];
 
@@ -444,6 +461,8 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
     return Math.min(100, score);
   }, [userProfile]);
 
+  const isAlumni = userProfile?.profileType === 'Alumni';
+
   const handleToggleMentorship = async () => {
     const nextVal = !mentorshipOpen;
     setMentorshipOpen(nextVal);
@@ -468,7 +487,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
     }
   };
 
-  const handleSelectCoverTheme = async (themeId: 'classic' | 'modern' | 'sapphire' | 'emerald') => {
+  const handleSelectCoverTheme = async (themeId: 'classic' | 'modern' | 'sapphire' | 'emerald' | 'royal' | 'midnight' | 'crimson' | 'aurora' | 'cyber') => {
     setCoverTheme(themeId);
     setShowCoverSelector(false);
     try {
@@ -659,10 +678,13 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
     }
   };
 
-  // Pre-fill for edit mode
-  const enterEditMode = () => {
+  // Pre-fill for edit mode with optional deep-link tab
+  const enterEditMode = (targetTab: 'visuals' | 'academic' | 'career' | 'skills' | 'bio' = 'visuals') => {
     if (!userProfile) return;
+    setErrorMsg('');
+    setSuccessMsg('');
     setName(userProfile.name || '');
+    setProfileType(userProfile.profileType || 'Student');
     setPhotoUrl(userProfile.photoUrl || '');
     const currentUni = userProfile.university || '';
     const currentDept = userProfile.department || '';
@@ -703,7 +725,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
     setMentorshipOpen(userProfile.mentorshipOpen !== false);
     setPublicDirectoryVisible(userProfile.publicDirectoryVisible !== false);
     setSkills(Array.isArray(userProfile.skills) ? userProfile.skills : []);
-    setEditTab('visuals');
+    setEditTab(targetTab);
     setViewState('edit');
   };
 
@@ -979,24 +1001,40 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
 
   return (
     <div className="max-w-5xl mx-auto px-5 py-10">
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <div className="text-xs font-bold text-blue-600 uppercase tracking-widest">
-            Private Account
+          <div className="flex items-center gap-2 text-xs font-bold text-blue-600 uppercase tracking-widest">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <span>Academic Executive Portfolio</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black navy mt-2">Profile & Account</h1>
-          <p className="text-slate-500 mt-2 text-sm">
-            Manage your personal profile, institutional affiliations, and verification credentials.
+          <h1 className="text-3xl sm:text-4xl font-black navy mt-1.5 tracking-tight">
+            {currentUser && userProfile ? `Welcome, ${userProfile.name.split(' ')[0]}` : 'Profile & Account'}
+          </h1>
+          <p className="text-slate-500 mt-1 text-sm max-w-xl">
+            {currentUser && userProfile
+              ? `Manage your higher education affiliation, verified credentials, and digital presence across university networks.`
+              : `Access your verified alumni identity, manage credentials, and join university discovery.`}
           </p>
         </div>
-        <button
-          onClick={() => (onBack ? onBack() : onNavigate('home'))}
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-xs hover:border-blue-400 hover:text-blue-600 transition group cursor-pointer"
-          title="Back to previous / upper page"
-        >
-          <ArrowLeft className="w-3.5 h-3.5 transition group-hover:-translate-x-0.5 text-slate-500 group-hover:text-blue-600" />
-          <span>← Back to Home</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {currentUser && userProfile && viewState !== 'edit' && (
+            <button
+              onClick={() => enterEditMode()}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition cursor-pointer"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Edit Profile</span>
+            </button>
+          )}
+          <button
+            onClick={() => (onBack ? onBack() : onNavigate('home'))}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-xs hover:border-blue-400 hover:text-blue-600 transition group cursor-pointer"
+            title="Back to previous / upper page"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 transition group-hover:-translate-x-0.5 text-slate-500 group-hover:text-blue-600" />
+            <span>← Home</span>
+          </button>
+        </div>
       </div>
 
       {/* Notifications / Alerts */}
@@ -1017,25 +1055,53 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
           {/* Top Profile Card with Campus Cover Banner */}
           <div className="card overflow-hidden shadow-2xl border-soft rounded-3xl bg-white">
             {/* Luxury Cover Banner with Ambient Lighting & Watermark */}
-            <div className={`h-48 sm:h-64 bg-gradient-to-br ${currentCoverTheme.gradient} relative overflow-hidden transition-all duration-500`}>
+            <div className={`h-60 sm:h-72 lg:h-80 relative overflow-hidden transition-all duration-700 bg-slate-950`}>
+              {/* Background Campus Image (if available in theme) */}
+              {currentCoverTheme.imageUrl ? (
+                <img
+                  src={currentCoverTheme.imageUrl}
+                  alt={currentCoverTheme.name}
+                  className="absolute inset-0 w-full h-full object-cover object-center filter brightness-90 contrast-105 transition-opacity duration-700"
+                />
+              ) : null}
+
+              {/* Multi-stop dramatic cinematic scrim */}
+              <div
+                className={`absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-black/35 backdrop-blur-[0.5px] transition-all`}
+              />
+
+              {/* Dynamic Theme Gradient fallback / ambient tint */}
+              <div
+                className={`absolute inset-0 bg-gradient-to-br ${currentCoverTheme.gradient} opacity-50 mix-blend-overlay`}
+              />
+
               {/* Theme Ambient Radial Glow Orbs */}
               <div
-                className="absolute -top-16 -right-16 w-96 h-96 rounded-full blur-3xl opacity-40 pointer-events-none"
+                className="absolute -top-20 -right-20 w-96 h-96 rounded-full blur-3xl opacity-40 pointer-events-none"
                 style={{ backgroundColor: currentCoverTheme.accent }}
               />
               <div className="absolute -bottom-16 -left-16 w-80 h-80 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
 
               {/* Starlight / Guilloche grid overlay */}
-              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+              <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none" />
+
+              {/* Gold Crest Medallion Watermark (Decorative Luxury Seal) */}
+              <div className="absolute right-6 -bottom-6 opacity-30 hover:opacity-50 transition-opacity duration-500 pointer-events-none select-none hidden sm:block">
+                <img
+                  src={goldCrestMedallion}
+                  alt="Academic Seal"
+                  className="w-48 h-48 lg:w-56 lg:h-56 object-contain filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.7)] brightness-110"
+                />
+              </div>
 
               {/* University Crest / Emblem Watermark */}
               {userProfile.university && (
-                <div className="absolute right-6 -bottom-6 opacity-15 pointer-events-none select-none">
+                <div className="absolute right-48 -bottom-4 opacity-15 pointer-events-none select-none hidden md:block">
                   {getUniversityLogo(userProfile.university) ? (
                     <img
                       src={getUniversityLogo(userProfile.university)}
                       alt=""
-                      className="w-44 h-44 object-contain brightness-200 contrast-125"
+                      className="w-36 h-36 object-contain brightness-200 contrast-125"
                     />
                   ) : (
                     <span className="text-8xl font-black text-white/40 tracking-tighter font-serif">
@@ -1048,22 +1114,22 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
               {/* Cover Top Badges */}
               <div className="absolute top-4 left-4 right-4 flex flex-wrap items-center justify-between gap-2 z-10">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] font-black text-white bg-black/35 backdrop-blur-md px-3 py-1 rounded-full border border-white/20 shadow-xs flex items-center gap-1.5">
+                  <span className="text-[11px] font-black text-white bg-black/45 backdrop-blur-md px-3.5 py-1 rounded-full border border-white/25 shadow-md flex items-center gap-1.5">
                     <Award className="w-3.5 h-3.5 text-amber-300" />
-                    <span>{userProfile.profileType} Identity</span>
+                    <span>{userProfile.profileType === 'Alumni' ? 'Alumni Scholar' : 'Student Scholar'}</span>
                   </span>
 
                   {userProfile.university && (
-                    <span className="text-[11px] font-bold text-emerald-200 bg-emerald-950/50 backdrop-blur-md px-3 py-1 rounded-full border border-emerald-400/40 flex items-center gap-1.5 shadow-xs">
+                    <span className="text-[11px] font-bold text-emerald-200 bg-emerald-950/65 backdrop-blur-md px-3.5 py-1 rounded-full border border-emerald-400/40 flex items-center gap-1.5 shadow-md">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>UGC Verified Affiliation</span>
+                      <span>UGC Accredited University</span>
                     </span>
                   )}
 
                   <button
                     type="button"
                     onClick={handleToggleDirectoryVisibility}
-                    className="text-[11px] font-bold text-slate-200 bg-black/35 hover:bg-black/50 backdrop-blur-md px-3 py-1 rounded-full border border-white/20 transition flex items-center gap-1.5 cursor-pointer"
+                    className="text-[11px] font-bold text-slate-200 bg-black/45 hover:bg-black/60 backdrop-blur-md px-3.5 py-1 rounded-full border border-white/20 transition flex items-center gap-1.5 cursor-pointer shadow-md"
                     title="Click to toggle public directory discovery"
                   >
                     <Globe className={`w-3.5 h-3.5 ${publicDirectoryVisible ? 'text-blue-400' : 'text-slate-400'}`} />
@@ -1078,7 +1144,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                     <button
                       type="button"
                       onClick={() => setShowCoverSelector((prev) => !prev)}
-                      className="text-[11px] font-bold text-white bg-black/40 hover:bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/25 transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                      className="text-[11px] font-bold text-white bg-black/50 hover:bg-black/70 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/30 transition shadow-lg flex items-center gap-1.5 cursor-pointer"
                       title="Customize campus cover banner style"
                     >
                       <Palette className="w-3.5 h-3.5 text-amber-300" />
@@ -1086,37 +1152,54 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                     </button>
 
                     {showCoverSelector && (
-                      <div className="absolute right-0 top-9 w-64 p-3 bg-slate-900/95 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl z-30 space-y-2 text-xs">
-                        <div className="flex items-center justify-between pb-1.5 border-b border-white/10 text-slate-300 text-[11px] font-bold">
-                          <span>Choose Cover Theme</span>
+                      <div className="absolute right-0 top-11 w-80 sm:w-96 p-3.5 bg-slate-950/95 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl z-40 space-y-2.5 text-xs animate-in fade-in zoom-in-95 duration-150">
+                        <div className="flex items-center justify-between pb-2 border-b border-white/10 text-slate-200 font-bold">
+                          <div className="flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Campus Atmosphere & Theme</span>
+                          </div>
                           <button
                             type="button"
                             onClick={() => setShowCoverSelector(false)}
-                            className="text-slate-400 hover:text-white"
+                            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
                           {COVER_THEMES.map((theme) => (
                             <button
                               key={theme.id}
                               type="button"
                               onClick={() => handleSelectCoverTheme(theme.id)}
-                              className={`w-full text-left p-2 rounded-xl transition flex items-center justify-between gap-2 cursor-pointer ${
+                              className={`w-full text-left p-2 rounded-2xl transition flex items-center justify-between gap-3 cursor-pointer ${
                                 coverTheme === theme.id
-                                  ? 'bg-white/20 text-white font-bold ring-1 ring-white/30'
+                                  ? 'bg-white/20 text-white font-bold ring-2 ring-amber-400 shadow-md'
                                   : 'text-slate-300 hover:bg-white/10 hover:text-white'
                               }`}
                             >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span
-                                  className="w-3 h-3 rounded-full shrink-0 shadow-xs"
-                                  style={{ backgroundColor: theme.accent }}
-                                />
-                                <span className="truncate text-xs">{theme.name}</span>
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-12 h-9 rounded-xl overflow-hidden shrink-0 border border-white/20 bg-slate-900 shadow-xs relative">
+                                  {theme.imageUrl ? (
+                                    <img src={theme.imageUrl} alt="" className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full" style={{ backgroundColor: theme.accent }} />
+                                  )}
+                                  <span
+                                    className="absolute bottom-1 right-1 w-2 h-2 rounded-full shadow-xs ring-1 ring-white/50"
+                                    style={{ backgroundColor: theme.accent }}
+                                  />
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="truncate text-xs font-bold block text-white">{theme.name}</span>
+                                  <span className="text-[10px] text-slate-400 truncate block mt-0.5">{theme.desc}</span>
+                                </div>
                               </div>
-                              {coverTheme === theme.id && <Check className="w-3 h-3 text-emerald-400 shrink-0" />}
+                              {coverTheme === theme.id ? (
+                                <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-400/40 flex items-center justify-center shrink-0">
+                                  <Check className="w-3 h-3 text-emerald-300" />
+                                </div>
+                              ) : null}
                             </button>
                           ))}
                         </div>
@@ -1133,13 +1216,13 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                       setCopiedProfileLink(true);
                       setTimeout(() => setCopiedProfileLink(false), 2200);
                     }}
-                    className="text-[11px] font-bold text-white bg-black/40 hover:bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/25 transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    className="text-[11px] font-bold text-white bg-black/50 hover:bg-black/70 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/30 transition shadow-lg flex items-center gap-1.5 cursor-pointer"
                     title="Copy profile link"
                   >
                     {copiedProfileLink ? (
                       <>
                         <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-emerald-300">Link Copied!</span>
+                        <span className="text-emerald-300 font-bold">Copied!</span>
                       </>
                     ) : (
                       <>
@@ -1153,13 +1236,21 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                   <button
                     type="button"
                     onClick={() => setProfileTab('idcard')}
-                    className="text-[11px] font-bold text-amber-200 bg-amber-950/60 hover:bg-amber-900/80 backdrop-blur-md px-3 py-1 rounded-full border border-amber-400/40 transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    className="text-[11px] font-bold text-amber-200 bg-amber-950/70 hover:bg-amber-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-amber-400/50 transition shadow-lg flex items-center gap-1.5 cursor-pointer"
                     title="Open Digital Campus Identity Pass"
                   >
                     <QrCode className="w-3.5 h-3.5 text-amber-300" />
-                    <span>ID Pass</span>
+                    <span>Digital ID</span>
                   </button>
                 </div>
+              </div>
+
+              {/* Bottom Latin Motto / Campus Accreditation Kicker */}
+              <div className="absolute left-6 bottom-4 sm:left-8 sm:bottom-6 text-white/90 z-10 hidden sm:flex items-center gap-2">
+                <span className="text-[10px] font-bold tracking-widest uppercase text-amber-300/90 flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/15 shadow-sm">
+                  <Sparkles className="w-3 h-3 text-amber-300" />
+                  <span>Veritas & Scientia · Official Academic Registry</span>
+                </span>
               </div>
             </div>
 
@@ -1172,8 +1263,8 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                     <div
                       className={`w-28 h-28 sm:w-36 sm:h-36 rounded-3xl p-1.5 shadow-2xl transition duration-300 ${
                         userProfile.isVerifiedAlumni || userProfile.profileType === 'Alumni'
-                          ? 'bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600 ring-4 ring-amber-400/40 shadow-amber-900/25'
-                          : 'bg-gradient-to-tr from-blue-600 via-indigo-400 to-cyan-400 ring-4 ring-blue-500/30 shadow-blue-900/25'
+                          ? 'bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600 ring-4 ring-amber-400/40 shadow-amber-950/30'
+                          : 'bg-gradient-to-tr from-blue-600 via-sky-300 to-indigo-600 ring-4 ring-blue-500/30 shadow-blue-950/30'
                       }`}
                     >
                       <div className="w-full h-full rounded-2xl bg-white overflow-hidden flex items-center justify-center font-black text-4xl text-blue-700 bg-gradient-to-tr from-blue-50 to-indigo-50 relative">
@@ -1186,7 +1277,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                           <img
                             src={userProfile.photoUrl || photoUrl || defaultProfilePictures[0]?.url || ''}
                             alt={userProfile.name}
-                            className="w-full h-full object-cover rounded-2xl group-hover:scale-103 transition duration-300"
+                            className="w-full h-full object-cover rounded-2xl group-hover:scale-105 transition duration-500"
                           />
                         ) : (
                           userProfile.name
@@ -1203,7 +1294,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                     {/* Verified Alumni Hologram / Shield Badge Overlay */}
                     {userProfile.isVerifiedAlumni && (
                       <div
-                        className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-500 border-2 border-white shadow-lg flex items-center justify-center text-amber-950"
+                        className="absolute -top-2 -right-2 w-9 h-9 rounded-full bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-600 border-2 border-white shadow-xl flex items-center justify-center text-amber-950"
                         title="Official Verified Degree Holder"
                       >
                         <BadgeCheck className="w-5 h-5 text-amber-950 fill-amber-300" />
@@ -1241,21 +1332,21 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                   </div>
 
                   {/* Name, Credentials, and Institutional Pill */}
-                  <div className="pb-1 space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-2xl sm:text-4xl font-black navy tracking-tight">
+                  <div className="pb-1 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <h2 className="text-2xl sm:text-4xl font-extrabold navy tracking-tight">
                         {userProfile.name}
                       </h2>
                       {userProfile.isVerifiedAlumni ? (
                         <span
-                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-xs font-black shadow-xs"
+                          className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-300 text-xs font-black shadow-xs"
                           title="Verified Alumni Badge"
                         >
                           <BadgeCheck className="w-3.5 h-3.5 text-amber-600" />
                           <span>Verified Graduate</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200 text-xs font-bold shadow-xs">
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold shadow-xs">
                           <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
                           <span>{userProfile.profileType}</span>
                         </span>
@@ -1265,7 +1356,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                       <button
                         type="button"
                         onClick={handleToggleMentorship}
-                        className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                        className={`text-[11px] font-bold px-3 py-1 rounded-full border transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
                           mentorshipOpen
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
                             : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200'
@@ -1324,9 +1415,19 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                       )}
 
                       {userProfile.studentId && (
-                        <span className="font-mono text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
-                          ID: {userProfile.studentId}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(userProfile.studentId || '');
+                            setCopiedStudentId(true);
+                            setTimeout(() => setCopiedStudentId(false), 2000);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-[11px] font-bold border border-slate-200 transition cursor-pointer"
+                          title="Click to copy Student Roll ID"
+                        >
+                          <span>ID: {userProfile.studentId}</span>
+                          {copiedStudentId ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-slate-400" />}
+                        </button>
                       )}
                     </div>
                   </div>
@@ -1337,7 +1438,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                   <button
                     type="button"
                     onClick={() => setProfileTab('idcard')}
-                    className="inline-flex items-center gap-1.5 border border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 px-3.5 py-2 rounded-xl text-xs font-black text-amber-900 transition shadow-xs cursor-pointer"
+                    className="inline-flex items-center gap-1.5 border border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 px-4 py-2 rounded-xl text-xs font-black text-amber-900 transition shadow-xs cursor-pointer"
                     title="View your official smart university digital identity pass"
                   >
                     <QrCode className="w-3.5 h-3.5 text-amber-700" />
@@ -1356,7 +1457,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                   )}
 
                   <button
-                    onClick={enterEditMode}
+                    onClick={() => enterEditMode()}
                     className="inline-flex items-center gap-2 border border-blue-200 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-md cursor-pointer"
                     aria-label="Edit Profile"
                   >
@@ -1561,23 +1662,68 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                     </div>
                   </div>
 
-                  {/* Checklist Pills */}
+                  {/* Checklist Pills (Interactive Jump) */}
                   <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                    <span className={`px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 ${userProfile.university ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
-                      {userProfile.university ? '✓ University' : '+ University'}
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 ${userProfile.studentId ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
-                      {userProfile.studentId ? '✓ Roll ID' : '+ Roll ID'}
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 ${skills.length > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                    <button
+                      type="button"
+                      onClick={() => enterEditMode('academic')}
+                      className={`px-2.5 py-1 rounded-xl font-bold flex items-center gap-1 transition cursor-pointer ${
+                        userProfile.university
+                          ? 'bg-emerald-100/90 text-emerald-800 hover:bg-emerald-200'
+                          : 'bg-amber-100 text-amber-800 hover:bg-amber-200 ring-1 ring-amber-300'
+                      }`}
+                      title={userProfile.university ? 'University registered' : 'Click to add University'}
+                    >
+                      {userProfile.university ? '✓ University' : '+ Add University'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => enterEditMode('academic')}
+                      className={`px-2.5 py-1 rounded-xl font-bold flex items-center gap-1 transition cursor-pointer ${
+                        userProfile.studentId
+                          ? 'bg-emerald-100/90 text-emerald-800 hover:bg-emerald-200'
+                          : 'bg-amber-100 text-amber-800 hover:bg-amber-200 ring-1 ring-amber-300'
+                      }`}
+                      title={userProfile.studentId ? 'Student Roll ID saved' : 'Click to add Student Roll ID'}
+                    >
+                      {userProfile.studentId ? '✓ Roll ID' : '+ Add Roll ID'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => enterEditMode('skills')}
+                      className={`px-2.5 py-1 rounded-xl font-bold flex items-center gap-1 transition cursor-pointer ${
+                        skills.length > 0
+                          ? 'bg-emerald-100/90 text-emerald-800 hover:bg-emerald-200'
+                          : 'bg-amber-100 text-amber-800 hover:bg-amber-200 ring-1 ring-amber-300'
+                      }`}
+                      title={skills.length > 0 ? `${skills.length} skills recorded` : 'Click to add Skills'}
+                    >
                       {skills.length > 0 ? `✓ ${skills.length} Skills` : '+ Add Skills'}
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 ${userProfile.bio ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => enterEditMode('bio')}
+                      className={`px-2.5 py-1 rounded-xl font-bold flex items-center gap-1 transition cursor-pointer ${
+                        userProfile.bio
+                          ? 'bg-emerald-100/90 text-emerald-800 hover:bg-emerald-200'
+                          : 'bg-amber-100 text-amber-800 hover:bg-amber-200 ring-1 ring-amber-300'
+                      }`}
+                      title={userProfile.bio ? 'Bio completed' : 'Click to add Bio'}
+                    >
                       {userProfile.bio ? '✓ Bio' : '+ Add Bio'}
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 ${userProfile.linkedin ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
-                      {userProfile.linkedin ? '✓ LinkedIn' : '+ LinkedIn'}
-                    </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => enterEditMode('career')}
+                      className={`px-2.5 py-1 rounded-xl font-bold flex items-center gap-1 transition cursor-pointer ${
+                        userProfile.linkedin
+                          ? 'bg-emerald-100/90 text-emerald-800 hover:bg-emerald-200'
+                          : 'bg-amber-100 text-amber-800 hover:bg-amber-200 ring-1 ring-amber-300'
+                      }`}
+                      title={userProfile.linkedin ? 'LinkedIn linked' : 'Click to add LinkedIn'}
+                    >
+                      {userProfile.linkedin ? '✓ LinkedIn' : '+ Add LinkedIn'}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -2232,6 +2378,45 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
           {/* ========================================================= */}
           {profileTab === 'dossier' && (
             <div className="space-y-6">
+              {/* ACCREDITATIONS & INSTITUTIONAL SUMMARY STRIP */}
+              <div className="p-4 sm:p-5 rounded-3xl bg-linear-to-r from-slate-950 via-slate-900 to-blue-950 text-white flex flex-wrap items-center justify-between gap-4 shadow-xl border border-white/10">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-2xl bg-amber-400/20 border border-amber-400/40 text-amber-300 flex items-center justify-center font-black shrink-0 shadow-xs">
+                    <Award className="w-5 h-5 text-amber-300" />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <b className="text-sm sm:text-base font-black tracking-tight">{userProfile.university || 'Higher Education Registry'}</b>
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        UGC Attested
+                      </span>
+                    </div>
+                    <span className="text-xs text-slate-300 block mt-0.5">
+                      {userProfile.department || 'Faculty Division'} · {userProfile.profileType === 'Alumni' ? `Class of ${userProfile.graduationYear || '2024'}` : `Enrolled Student`}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setProfileTab('idcard')}
+                    className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition flex items-center gap-1.5 border border-white/15 cursor-pointer shadow-xs"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-amber-300" />
+                    <span>View Digital ID</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => enterEditMode()}
+                    className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"
+                  >
+                    <Sliders className="w-3.5 h-3.5" />
+                    <span>Edit Portfolio</span>
+                  </button>
+                </div>
+              </div>
+
               {/* SECTION 1: ACADEMIC CREDENTIALS & CAMPUS STANDING */}
               <div className="card p-6 sm:p-7 shadow-xl border-soft">
                 <div className="flex items-center justify-between pb-4 border-b border-soft">
@@ -2377,7 +2562,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                   </div>
                   <button
                     type="button"
-                    onClick={enterEditMode}
+                    onClick={() => enterEditMode('career')}
                     className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
                   >
                     Edit Career
@@ -2431,7 +2616,8 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                         )}
                       </p>
                       <button
-                        onClick={enterEditMode}
+                        type="button"
+                        onClick={() => enterEditMode('career')}
                         className="text-[11px] font-bold text-blue-600 hover:underline shrink-0 cursor-pointer"
                       >
                         {userProfile.linkedin ? 'Update Link' : '+ Add LinkedIn'}
@@ -2455,7 +2641,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                   </div>
                   <button
                     type="button"
-                    onClick={enterEditMode}
+                    onClick={() => enterEditMode('bio')}
                     className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
                   >
                     Edit Bio
@@ -2464,22 +2650,162 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
 
                 <div className="mt-4">
                   {userProfile.bio ? (
-                    <blockquote className="p-4 rounded-2xl bg-slate-50 border-l-4 border-blue-600 text-sm text-slate-700 leading-relaxed italic">
-                      "{userProfile.bio}"
-                    </blockquote>
+                    <div className="p-5 rounded-2xl bg-slate-50/90 border border-slate-200/80 text-sm text-slate-700 leading-relaxed italic relative">
+                      <span className="text-3xl text-blue-300 font-serif absolute top-2 left-3 select-none leading-none">“</span>
+                      <p className="pl-5 pr-2 pt-1">{userProfile.bio}</p>
+                    </div>
                   ) : (
                     <div className="p-6 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200">
-                      <p className="text-xs text-slate-400">You haven't written a biography yet.</p>
+                      <p className="text-xs text-slate-400">You haven't added a personal academic biography yet.</p>
                       <button
-                        onClick={enterEditMode}
+                        type="button"
+                        onClick={() => enterEditMode('bio')}
                         className="mt-2 text-xs font-bold text-blue-600 hover:underline cursor-pointer"
                       >
-                        + Add a bio so campus peers know your interests
+                        + Add a bio so campus peers know your interests and journey
                       </button>
                     </div>
                   )}
+
+                  {/* Skills & Technical Competencies Matrix */}
+                  <div className="mt-5 pt-5 border-t border-soft">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Academic & Professional Skills Matrix</span>
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-medium">{skills.length} competencies recorded</span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {skills.map((skill) => (
+                        <span
+                          key={skill}
+                          className="px-3 py-1 rounded-xl bg-blue-50/90 border border-blue-200/80 text-blue-800 text-xs font-bold flex items-center gap-1.5 shadow-2xs"
+                        >
+                          <span>{skill}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSkill(skill)}
+                            className="text-blue-400 hover:text-rose-600 transition ml-0.5 cursor-pointer"
+                            title="Remove skill"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+
+                      <div className="inline-flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          value={newSkillInput}
+                          onChange={(e) => setNewSkillInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddSkill();
+                            }
+                          }}
+                          placeholder="+ Add competency..."
+                          className="px-3 py-1 rounded-xl border border-slate-200 text-xs bg-white outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100 transition w-32 sm:w-40"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddSkill}
+                          disabled={!newSkillInput.trim()}
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-xs"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 1-Click Popular Competencies suggestions */}
+                    <div className="mt-4 pt-3 border-t border-slate-100">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                        Suggested Campus & Industry Competencies (1-Click Add):
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['Python', 'Machine Learning', 'Data Analysis', 'React', 'TypeScript', 'Cloud Architecture', 'System Design', 'Project Leadership', 'Research', 'FinTech']
+                          .filter((pop) => !skills.includes(pop))
+                          .slice(0, 8)
+                          .map((pop) => (
+                            <button
+                              key={pop}
+                              type="button"
+                              onClick={async () => {
+                                const next = [...skills, pop];
+                                setSkills(next);
+                                try {
+                                  await updateProfileData({ skills: next });
+                                } catch (e) {}
+                              }}
+                              className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/80 hover:border-blue-300 text-xs font-semibold transition flex items-center gap-1 cursor-pointer"
+                              title={`Add ${pop} to skills`}
+                            >
+                              <Plus className="w-3 h-3 text-slate-400" />
+                              <span>{pop}</span>
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* SECTION 3.5: COHORT COLLEAGUES & CAMPUS PEERS */}
+              {cohortPeers.length > 0 && (
+                <div className="card p-6 sm:p-7 shadow-xl border-soft">
+                  <div className="flex items-center justify-between pb-4 border-b border-soft">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold">
+                        <Users className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-black navy">Campus Cohort & Department Peers</h3>
+                        <p className="text-[11px] text-slate-400">Fellow scholars & alumni from {userProfile.university}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('alumni')}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Explore All Peers</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-4">
+                    {cohortPeers.slice(0, 6).map((peer) => (
+                      <div
+                        key={peer.id}
+                        onClick={() => onNavigate('alumniProfile', { id: peer.id, name: peer.name })}
+                        className="p-3.5 rounded-2xl bg-slate-50/80 hover:bg-white border border-slate-200/80 hover:border-blue-300 hover:shadow-md transition cursor-pointer flex items-center gap-3 group"
+                      >
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black flex items-center justify-center text-sm shrink-0 overflow-hidden shadow-xs">
+                          {peer.photoUrl ? (
+                            <img src={peer.photoUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            peer.name.charAt(0)
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <b className="navy text-xs font-black block truncate group-hover:text-blue-600 transition">
+                            {peer.name}
+                          </b>
+                          <span className="text-[11px] text-slate-500 block truncate">
+                            {peer.jobRole || `Class of ${peer.graduationYear || peer.batch || '2024'}`}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block truncate mt-0.5">
+                            {peer.department}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* SECTION 4: INSTITUTIONAL VERIFICATION & BADGES */}
               <div className="card p-6 sm:p-7 shadow-xl border-soft space-y-4">
@@ -2633,6 +2959,66 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* SECTION 5: CAMPUS ATMOSPHERE & BANNER THEME STUDIO */}
+              <div className="card p-6 sm:p-7 shadow-xl border-soft rounded-3xl bg-white">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-soft">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+                      <Palette className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black navy">Campus Atmosphere & Portfolio Decoration</h3>
+                      <p className="text-[11px] text-slate-400">Select an architectural visual aesthetic for your executive portfolio banner</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-full self-start sm:self-auto">
+                    Active Theme: {currentCoverTheme.name.split(' ')[0]}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-5">
+                  {COVER_THEMES.map((theme) => (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      onClick={() => handleSelectCoverTheme(theme.id)}
+                      className={`text-left rounded-2xl overflow-hidden border transition p-3 cursor-pointer group flex flex-col justify-between ${
+                        coverTheme === theme.id
+                          ? 'border-amber-400 bg-amber-50/40 ring-2 ring-amber-400/50 shadow-md'
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs'
+                      }`}
+                    >
+                      <div className="h-24 w-full rounded-xl overflow-hidden relative mb-2.5 bg-slate-900 border border-black/10">
+                        {theme.imageUrl ? (
+                          <img
+                            src={theme.imageUrl}
+                            alt=""
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                          />
+                        ) : (
+                          <div className={`w-full h-full bg-gradient-to-br ${theme.gradient}`} />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        <span
+                          className="absolute top-2 left-2 text-[10px] font-bold text-white px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-xs border border-white/20"
+                        >
+                          {theme.id.toUpperCase()}
+                        </span>
+                        {coverTheme === theme.id && (
+                          <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md">
+                            <Check className="w-3 h-3" />
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <b className="text-xs navy font-black block leading-tight">{theme.name}</b>
+                        <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">{theme.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
 
             </div>
@@ -4039,292 +4425,658 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
         </div>
       )}
 
-      {/* 6. Edit Profile Form */}
+      {/* 6. Edit Profile Form - Executive Tabbed Studio */}
       {currentUser && viewState === 'edit' && (
-        <div className="max-w-3xl mx-auto mt-8">
-          <div className="card p-6 sm:p-9 shadow-xl">
-            <div className="flex items-center justify-between pb-4 border-b border-soft">
+        <div className="max-w-4xl mx-auto mt-8">
+          <div className="card p-6 sm:p-9 shadow-2xl border-soft rounded-3xl bg-white">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-soft">
               <div>
-                <h2 className="text-2xl font-black navy">Edit Profile Information</h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Update your contact, location, and professional details.
+                <div className="flex items-center gap-2 text-xs font-bold text-blue-600 uppercase tracking-widest">
+                  <Sliders className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Profile Customization Studio</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-black navy mt-1 tracking-tight">Edit Academic Profile</h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Customize your credentials, campus aesthetic, and career milestones.
                 </p>
               </div>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setViewState('default')}
+                  className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-600 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+            {/* Segmented Sub-Tab Switcher */}
+            <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/90 rounded-2xl mt-5 mb-6 overflow-x-auto text-xs">
               <button
-                onClick={() => setViewState('default')}
-                className="text-xs text-slate-400 hover:text-slate-600"
+                type="button"
+                onClick={() => setEditTab('visuals')}
+                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
+                  editTab === 'visuals' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                Cancel
+                <Palette className="w-3.5 h-3.5" />
+                <span>1. Visuals & Themes</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditTab('academic')}
+                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
+                  editTab === 'academic' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <GraduationCap className="w-3.5 h-3.5" />
+                <span>2. Academic Identity</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditTab('career')}
+                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
+                  editTab === 'career' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Briefcase className="w-3.5 h-3.5" />
+                <span>3. Career & Social</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditTab('skills')}
+                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
+                  editTab === 'skills' || editTab === 'bio' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>4. Bio & Skills</span>
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="mt-6 grid sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white flex items-center justify-center text-xl font-black text-blue-700">
-                    {photoUrl || defaultProfilePictures[0]?.url ? <img src={photoUrl || defaultProfilePictures[0]?.url || ''} alt="Profile preview" className="h-full w-full object-cover" /> : (name.split(' ').map((part) => part[0]).join('').slice(0, 2) || 'U')}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-black text-slate-800">Profile picture</h3>
-                    <p className="text-xs text-slate-500 mt-1">Upload a JPG, PNG, WebP, or GIF up to 5 MB, or choose a platform default.</p>
-                    <label className="inline-flex mt-3 items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 cursor-pointer transition">
-                      <Camera className="w-3.5 h-3.5" /> {isUploadingPhoto ? 'Saving…' : 'Upload picture'}
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,image/gif"
-                        className="hidden"
-                        disabled={isUploadingPhoto}
-                        onChange={async (event) => {
-                          const file = event.target.files?.[0];
-                          event.target.value = '';
-                          if (!file) return;
-                          await handleUploadProfilePhoto(file);
-                        }}
-                      />
-                    </label>
-                  </div>
-                </div>
-                {defaultProfilePictures.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-xs font-bold text-slate-600 mb-2">Or choose a default picture</p>
-                    <div className="flex flex-wrap gap-3">
-                      {defaultProfilePictures.map((picture) => (
-                        <button
-                          key={picture.id}
-                          type="button"
-                          onClick={() => { setPhotoUrl(picture.url); setErrorMsg(''); }}
-                          className={`w-20 rounded-xl p-1.5 border text-center transition ${photoUrl === picture.url ? 'border-blue-500 bg-white ring-2 ring-blue-200' : 'border-slate-200 bg-white hover:border-blue-300'}`}
-                          title={`Use ${picture.name}`}
+            <form onSubmit={handleSaveEdit} className="space-y-6">
+              {/* TAB 1: VISUALS, AVATAR & CAMPUS THEMES */}
+              {editTab === 'visuals' && (
+                <div className="space-y-6 animate-in fade-in duration-150">
+                  {/* Avatar Section */}
+                  <div className="rounded-2xl border border-blue-100 bg-linear-to-br from-blue-50/70 via-indigo-50/30 to-white p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+                      <div className="relative group shrink-0 self-start sm:self-auto">
+                        <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-white shadow-xl bg-white flex items-center justify-center text-2xl font-black text-blue-700">
+                          {isUploadingPhoto ? (
+                            <div className="flex flex-col items-center gap-1 text-xs text-blue-600">
+                              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                              <span>Saving...</span>
+                            </div>
+                          ) : photoUrl || defaultProfilePictures[0]?.url ? (
+                            <img
+                              src={photoUrl || defaultProfilePictures[0]?.url || ''}
+                              alt="Profile preview"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            name.split(' ').map((p) => p[0]).join('').slice(0, 2) || 'U'
+                          )}
+                        </div>
+                        <label
+                          className="absolute -bottom-2 -right-2 p-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg cursor-pointer transition flex items-center justify-center border-2 border-white"
+                          title="Upload image"
                         >
-                          <img src={picture.url} alt={picture.name} className="w-16 h-16 object-cover rounded-lg mx-auto" />
-                          <span className="block text-[10px] font-bold text-slate-600 truncate mt-1">{picture.name}</span>
+                          <Camera className="w-4 h-4" />
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            className="hidden"
+                            disabled={isUploadingPhoto}
+                            onChange={async (event) => {
+                              const file = event.target.files?.[0];
+                              event.target.value = '';
+                              if (!file) return;
+                              await handleUploadProfilePhoto(file);
+                            }}
+                          />
+                        </label>
+                      </div>
+
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div>
+                          <h3 className="text-sm font-black text-slate-800">Profile Portrait & Persona</h3>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Upload a personal photograph or select one of the university platform defaults below.
+                          </p>
+                        </div>
+
+                        {photoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setPhotoUrl('')}
+                            className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                          >
+                            Remove selected picture
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Presets Grid */}
+                    {defaultProfilePictures.length > 0 && (
+                      <div className="mt-5 pt-4 border-t border-blue-100/80">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-2.5">
+                          Instant Academic Avatars:
+                        </span>
+                        <div className="flex flex-wrap gap-2.5">
+                          {defaultProfilePictures.map((picture) => (
+                            <button
+                              key={picture.id}
+                              type="button"
+                              onClick={() => {
+                                setPhotoUrl(picture.url);
+                                setErrorMsg('');
+                              }}
+                              className={`p-1 rounded-2xl border transition cursor-pointer flex items-center gap-2 ${
+                                photoUrl === picture.url
+                                  ? 'border-blue-600 bg-white ring-2 ring-blue-300 shadow-xs'
+                                  : 'border-slate-200 bg-white hover:border-blue-300'
+                              }`}
+                              title={`Use ${picture.name}`}
+                            >
+                              <img src={picture.url} alt={picture.name} className="w-10 h-10 object-cover rounded-xl" />
+                              <span className="text-xs font-bold text-slate-700 pr-2">{picture.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Campus Cover Theme Gallery */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <b className="text-sm font-black navy block">Campus Cover Banner Aesthetic</b>
+                        <p className="text-xs text-slate-500 mt-0.5">Choose your background architectural backdrop</p>
+                      </div>
+                      <span className="text-xs font-bold px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full">
+                        Theme: {currentCoverTheme.name.split(' ')[0]}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {COVER_THEMES.map((theme) => (
+                        <button
+                          key={theme.id}
+                          type="button"
+                          onClick={() => setCoverTheme(theme.id)}
+                          className={`text-left p-3 rounded-2xl border transition cursor-pointer flex flex-col justify-between group ${
+                            coverTheme === theme.id
+                              ? 'border-amber-400 bg-amber-50/40 ring-2 ring-amber-400/50 shadow-md'
+                              : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs'
+                          }`}
+                        >
+                          <div className="h-20 w-full rounded-xl overflow-hidden relative mb-2 bg-slate-900 border border-black/10">
+                            {theme.imageUrl ? (
+                              <img
+                                src={theme.imageUrl}
+                                alt=""
+                                className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                              />
+                            ) : (
+                              <div className={`w-full h-full bg-gradient-to-br ${theme.gradient}`} />
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                            <span className="absolute bottom-1.5 left-2 text-[10px] font-bold text-white px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-xs border border-white/20">
+                              {theme.id.toUpperCase()}
+                            </span>
+                            {coverTheme === theme.id && (
+                              <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md">
+                                <Check className="w-3 h-3" />
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <b className="text-xs navy font-black block leading-tight">{theme.name}</b>
+                            <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">{theme.desc}</p>
+                          </div>
                         </button>
                       ))}
                     </div>
                   </div>
-                )}
-                {photoUrl && <button type="button" onClick={() => setPhotoUrl('')} className="mt-3 text-xs font-bold text-rose-600 hover:text-rose-700">Remove selected picture</button>}
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-600">Full Name *</label>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className="account-input mt-1"
-                />
-              </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-600">Profile Classification *</label>
-                <div className="grid grid-cols-2 gap-2 mt-1">
-                  <button
-                    type="button"
-                    onClick={() => setProfileType('Student')}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                      profileType === 'Student'
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    Student (Enrolled)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setProfileType('Alumni')}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                      profileType === 'Alumni'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    Alumni (Graduated)
-                  </button>
-                </div>
-              </div>
+                  {/* Privacy & Discovery Toggles */}
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                    <b className="text-xs font-black navy uppercase tracking-wider block">Network Discovery Preferences</b>
+                    <div className="grid sm:grid-cols-2 gap-3 text-xs">
+                      <label className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-200 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={publicDirectoryVisible}
+                          onChange={(e) => setPublicDirectoryVisible(e.target.checked)}
+                          className="rounded text-blue-600"
+                        />
+                        <div>
+                          <b className="navy block">Show Profile in Public Directory</b>
+                          <span className="text-[11px] text-slate-500">Allow students & faculty to discover you</span>
+                        </div>
+                      </label>
 
-              <div>
-                <label className="text-xs font-bold text-slate-600">University *</label>
-                <select
-                  value={university}
-                  onChange={(e) => setUniversity(e.target.value)}
-                  required
-                  className="account-input mt-1 bg-white cursor-pointer"
-                >
-                  <option value="" disabled>-- Select University --</option>
-                  {ALL_DIRECTORY_UNIVERSITIES.map((u) => (
-                    <option key={u.name} value={u.name}>
-                      {u.name}
-                    </option>
-                  ))}
-                  <option value="OTHER">Other / Custom University</option>
-                </select>
-                {university === 'OTHER' && (
-                  <input
-                    value={customUniversity}
-                    onChange={(e) => setCustomUniversity(e.target.value)}
-                    required
-                    className="account-input mt-2"
-                    placeholder="Enter your exact University name"
-                  />
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-600">Department *</label>
-                <select
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  required
-                  className="account-input mt-1 bg-white cursor-pointer"
-                >
-                  <option value="" disabled>-- Select Department --</option>
-                  {RAW_DEPARTMENT_CATALOG.map((d) => (
-                    <option key={d.name} value={d.name}>
-                      {d.name}
-                    </option>
-                  ))}
-                  <option value="OTHER">Other / Custom Department</option>
-                </select>
-                {department === 'OTHER' && (
-                  <input
-                    value={customDepartment}
-                    onChange={(e) => setCustomDepartment(e.target.value)}
-                    required
-                    className="account-input mt-2"
-                    placeholder="Enter your exact Department name"
-                  />
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-600">Education Level *</label>
-                <select
-                  value={educationLevel}
-                  onChange={(e) => setEducationLevel(e.target.value)}
-                  className="account-input mt-1 bg-white cursor-pointer"
-                >
-                  <option value="Undergraduate">Bachelor's / Undergraduate</option>
-                  <option value="Master's">Master's</option>
-                  <option value="PhD">PhD</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-600">Student ID / Roll</label>
-                <input
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  className="account-input mt-1"
-                  placeholder="e.g. 230204101"
-                />
-              </div>
-
-              {profileType === 'Student' ? (
-                <>
-                  <div>
-                    <label className="text-xs font-bold text-slate-600">Current Year / Semester</label>
-                    <input
-                      value={studentYear}
-                      onChange={(e) => setStudentYear(e.target.value)}
-                      className="account-input mt-1"
-                      placeholder="e.g. 2nd Year, 4th Semester"
-                    />
+                      <label className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-200 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={mentorshipOpen}
+                          onChange={(e) => setMentorshipOpen(e.target.checked)}
+                          className="rounded text-blue-600"
+                        />
+                        <div>
+                          <b className="navy block">Open for Student Mentorship</b>
+                          <span className="text-[11px] text-slate-500">Show mentorship badge on your profile</span>
+                        </div>
+                      </label>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-600">Expected Graduation</label>
-                    <input
-                      value={expectedGraduation}
-                      onChange={(e) => setExpectedGraduation(e.target.value)}
-                      className="account-input mt-1"
-                      placeholder="e.g. 2027"
-                    />
-                  </div>
-                </>
-              ) : (
-                <div>
-                  <label className="text-xs font-bold text-slate-600">Graduation Year</label>
-                  <input
-                    value={graduationYear}
-                    onChange={(e) => setGraduationYear(e.target.value)}
-                    className="account-input mt-1"
-                    placeholder="e.g. 2023"
-                  />
                 </div>
               )}
 
-              <div>
-                <label className="text-xs font-bold text-slate-600">Job Role</label>
-                <input
-                  value={jobRole}
-                  onChange={(e) => setJobRole(e.target.value)}
-                  className="account-input mt-1"
-                  placeholder="e.g. Software Engineer"
-                />
-              </div>
+              {/* TAB 2: ACADEMIC CREDENTIALS */}
+              {editTab === 'academic' && (
+                <div className="space-y-4 animate-in fade-in duration-150">
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">Full Legal / Scholar Name *</label>
+                      <input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                        className="account-input"
+                        placeholder="e.g. Dr. Tanvir Hasan"
+                      />
+                    </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-600">Company</label>
-                <input
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  className="account-input mt-1"
-                  placeholder="e.g. Google, Brain Station 23"
-                />
-              </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">Profile Classification *</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setProfileType('Student')}
+                          className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                            profileType === 'Student'
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          Current Student
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setProfileType('Alumni')}
+                          className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                            profileType === 'Alumni'
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          Graduated Alumni
+                        </button>
+                      </div>
+                    </div>
+                  </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-600">Country</label>
-                <input
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                  className="account-input mt-1"
-                />
-              </div>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">University *</label>
+                      <select
+                        value={university}
+                        onChange={(e) => setUniversity(e.target.value)}
+                        required
+                        className="account-input bg-white cursor-pointer"
+                      >
+                        <option value="" disabled>-- Select University --</option>
+                        {ALL_DIRECTORY_UNIVERSITIES.map((u) => (
+                          <option key={u.name} value={u.name}>
+                            {u.name}
+                          </option>
+                        ))}
+                        <option value="OTHER">Other / Custom University</option>
+                      </select>
+                      {university === 'OTHER' && (
+                        <input
+                          value={customUniversity}
+                          onChange={(e) => setCustomUniversity(e.target.value)}
+                          required
+                          className="account-input mt-2"
+                          placeholder="Enter your exact University name"
+                        />
+                      )}
+                    </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-600">City</label>
-                <input
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="account-input mt-1"
-                />
-              </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">Faculty / Department *</label>
+                      <select
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+                        required
+                        className="account-input bg-white cursor-pointer"
+                      >
+                        <option value="" disabled>-- Select Department --</option>
+                        {RAW_DEPARTMENT_CATALOG.map((d) => (
+                          <option key={d.name} value={d.name}>
+                            {d.name}
+                          </option>
+                        ))}
+                        <option value="OTHER">Other / Custom Department</option>
+                      </select>
+                      {department === 'OTHER' && (
+                        <input
+                          value={customDepartment}
+                          onChange={(e) => setCustomDepartment(e.target.value)}
+                          required
+                          className="account-input mt-2"
+                          placeholder="Enter your exact Department name"
+                        />
+                      )}
+                    </div>
+                  </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-600">LinkedIn URL</label>
-                <input
-                  value={linkedin}
-                  onChange={(e) => setLinkedin(e.target.value)}
-                  className="account-input mt-1"
-                />
-              </div>
+                  <div className="grid sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">Degree Program Level *</label>
+                      <select
+                        value={educationLevel}
+                        onChange={(e) => setEducationLevel(e.target.value)}
+                        className="account-input bg-white cursor-pointer"
+                      >
+                        <option value="Undergraduate">Bachelor's / Undergraduate</option>
+                        <option value="Master's">Master's / Postgraduate</option>
+                        <option value="PhD">PhD / Doctorate</option>
+                      </select>
+                    </div>
 
-              <div className="sm:col-span-2">
-                <label className="text-xs font-bold text-slate-600">Bio</label>
-                <textarea
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  rows={3}
-                  className="account-input mt-1"
-                />
-              </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">Degree Specialization Title</label>
+                      <input
+                        value={degreeTitle}
+                        onChange={(e) => setDegreeTitle(e.target.value)}
+                        className="account-input"
+                        placeholder="e.g. B.Sc. in Computer Science"
+                      />
+                    </div>
 
-              <div className="sm:col-span-2 flex justify-end gap-3 pt-4 border-t border-soft">
-                <button
-                  type="button"
-                  onClick={() => setViewState('default')}
-                  className="px-4 py-2 border border-soft rounded-xl text-xs font-semibold text-slate-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-navy text-white px-6 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 transition"
-                >
-                  Save Changes
-                </button>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">Student ID / Roll Registration</label>
+                      <input
+                        value={studentId}
+                        onChange={(e) => setStudentId(e.target.value)}
+                        className="account-input font-mono"
+                        placeholder="e.g. 230204101"
+                      />
+                    </div>
+                  </div>
+
+                  {profileType === 'Student' ? (
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 block mb-1">Current Year / Semester</label>
+                        <input
+                          value={studentYear}
+                          onChange={(e) => setStudentYear(e.target.value)}
+                          className="account-input"
+                          placeholder="e.g. 3rd Year, 5th Semester"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 block mb-1">Expected Graduation Year</label>
+                        <input
+                          value={expectedGraduation}
+                          onChange={(e) => setExpectedGraduation(e.target.value)}
+                          className="account-input"
+                          placeholder="e.g. 2027"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 block mb-1">Graduation Batch Year</label>
+                        <input
+                          value={graduationYear}
+                          onChange={(e) => setGraduationYear(e.target.value)}
+                          className="account-input"
+                          placeholder="e.g. 2024"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 block mb-1">Alumni Directory Status</label>
+                        <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Active in University Alumni Archives</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: CAREER & SOCIAL TRAJECTORY */}
+              {editTab === 'career' && (
+                <div className="space-y-4 animate-in fade-in duration-150">
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">Current Job Title / Designation</label>
+                      <input
+                        value={jobRole}
+                        onChange={(e) => setJobRole(e.target.value)}
+                        className="account-input"
+                        placeholder="e.g. Senior Software Engineer"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">Organization / Employer / Firm</label>
+                      <input
+                        value={company}
+                        onChange={(e) => setCompany(e.target.value)}
+                        className="account-input"
+                        placeholder="e.g. Google, Walton, Brain Station 23"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">City / Region</label>
+                      <input
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        className="account-input"
+                        placeholder="e.g. Dhaka, Munich, New York"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">Country</label>
+                      <input
+                        value={country}
+                        onChange={(e) => setCountry(e.target.value)}
+                        className="account-input"
+                        placeholder="e.g. Bangladesh, Germany, United States"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">LinkedIn Profile URL</label>
+                      <input
+                        value={linkedin}
+                        onChange={(e) => setLinkedin(e.target.value)}
+                        className="account-input font-mono text-xs"
+                        placeholder="https://linkedin.com/in/username"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">Portfolio or Research Website URL</label>
+                      <input
+                        value={portfolioUrl}
+                        onChange={(e) => setPortfolioUrl(e.target.value)}
+                        className="account-input font-mono text-xs"
+                        placeholder="https://yourportfolio.dev"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: BIO & SKILLS MATRIX */}
+              {(editTab === 'skills' || editTab === 'bio') && (
+                <div className="space-y-5 animate-in fade-in duration-150">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-slate-600">Personal Biography & Academic Statement</label>
+                      <span className="text-[10px] text-slate-400">{bio.length} characters</span>
+                    </div>
+                    <textarea
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      rows={4}
+                      className="account-input text-xs"
+                      placeholder="Share your academic interests, engineering background, research breakthroughs, and career trajectory..."
+                    />
+                  </div>
+
+                  {/* Skills Section */}
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <b className="text-xs font-black navy uppercase tracking-wider block">Academic & Technical Skills Matrix</b>
+                      <span className="text-[11px] text-slate-400">{skills.length} skills</span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {skills.map((skill) => (
+                        <span
+                          key={skill}
+                          className="px-3 py-1 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold flex items-center gap-1.5 shadow-2xs"
+                        >
+                          <span>{skill}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSkill(skill)}
+                            className="text-blue-400 hover:text-rose-600 transition cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+
+                      <div className="inline-flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          value={newSkillInput}
+                          onChange={(e) => setNewSkillInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddSkill();
+                            }
+                          }}
+                          placeholder="+ Add competency..."
+                          className="px-3 py-1 rounded-xl border border-slate-200 text-xs bg-white outline-none focus:border-blue-400 transition w-36"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddSkill}
+                          disabled={!newSkillInput.trim()}
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-xs"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Popular skills rack */}
+                    <div className="pt-2 border-t border-slate-200/60">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                        Tap to Add Popular Competencies:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['Python', 'Machine Learning', 'Data Analysis', 'React', 'TypeScript', 'Cloud Architecture', 'System Design', 'Project Leadership', 'Research', 'FinTech']
+                          .filter((p) => !skills.includes(p))
+                          .slice(0, 8)
+                          .map((p) => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => {
+                                if (!skills.includes(p)) {
+                                  setSkills([...skills, p]);
+                                }
+                              }}
+                              className="px-2.5 py-0.5 rounded-lg bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 text-[11px] font-semibold transition flex items-center gap-1 cursor-pointer"
+                            >
+                              <Plus className="w-3 h-3 text-slate-400" />
+                              <span>{p}</span>
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Form Navigation & Actions Bar */}
+              <div className="pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-soft">
+                <div className="flex items-center gap-2">
+                  {editTab !== 'visuals' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editTab === 'academic') setEditTab('visuals');
+                        else if (editTab === 'career') setEditTab('academic');
+                        else if (editTab === 'skills' || editTab === 'bio') setEditTab('career');
+                      }}
+                      className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-700 transition cursor-pointer"
+                    >
+                      ← Previous Step
+                    </button>
+                  )}
+                  {editTab !== 'skills' && editTab !== 'bio' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editTab === 'visuals') setEditTab('academic');
+                        else if (editTab === 'academic') setEditTab('career');
+                        else if (editTab === 'career') setEditTab('skills');
+                      }}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 transition cursor-pointer"
+                    >
+                      Next Step →
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setViewState('default')}
+                    className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-600 transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="bg-navy hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl text-xs font-bold transition shadow-md disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Save Profile Changes</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
