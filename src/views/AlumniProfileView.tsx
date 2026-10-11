@@ -19,10 +19,21 @@ import {
   Briefcase,
   Share2,
   ArrowLeft,
+  QrCode,
+  Award,
+  BadgeCheck,
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import { AlumniRecord, AlumniConnectionStatus, AlumniConnectionRecord } from '../types';
+import { AlumniRecord, AlumniConnectionStatus, AlumniConnectionRecord, UserProfile } from '../types';
+import { DigitalIDCard } from '../components/DigitalIDCard';
+import { getUniversityLogo, universityInitials } from '../data/initialData';
+import goldCrestMedallion from '../assets/images/academic_crest_gold_1791743732343.jpg';
+import oxfordGothicBanner from '../assets/images/campus_oxford_gothic_1791743675787.jpg';
+import techQuadBanner from '../assets/images/campus_tech_quad_1791743699365.jpg';
+import emeraldHeritageBanner from '../assets/images/campus_heritage_emerald_1791744473729.jpg';
+import crimsonQuadBanner from '../assets/images/campus_crimson_quad_1791744501154.jpg';
+import nightSapphireBanner from '../assets/images/campus_night_sapphire_1791744524534.jpg';
 
 interface AlumniProfileViewProps {
   alumniId?: string;
@@ -288,6 +299,49 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
   const [isSending, setIsSending] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [showDigitalPass, setShowDigitalPass] = useState(false);
+
+  // Determine architectural campus banner for this profile
+  const campusBanner = useMemo(() => {
+    const uniText = (profile.university || '').toLowerCase();
+    const deptText = (profile.department || '').toLowerCase();
+    if (uniText.includes('engineering') || uniText.includes('science') || uniText.includes('tech') || deptText.includes('computer')) {
+      return techQuadBanner;
+    }
+    if (uniText.includes('dhaka') || uniText.includes('jahangirnagar')) {
+      return oxfordGothicBanner;
+    }
+    if (uniText.includes('north south') || uniText.includes('brac')) {
+      return nightSapphireBanner;
+    }
+    return emeraldHeritageBanner;
+  }, [profile.university, profile.department]);
+
+  // Prepared userProfile object for DigitalIDCard
+  const userProfileForCard = useMemo<UserProfile>(() => ({
+    id: profile.id,
+    uid: profile.userId || profile.id,
+    name: profile.name,
+    email: profile.email || '',
+    university: profile.university,
+    department: profile.department,
+    role: 'ALUMNI',
+    status: 'APPROVED',
+    profileType: 'Alumni',
+    graduationYear: profile.graduationYear || profile.batch || '2024',
+    studentId: profile.studentId || '',
+    educationLevel: profile.educationLevel || 'Undergraduate',
+    jobRole: profile.jobRole || '',
+    company: profile.company || '',
+    city: profile.city || '',
+    country: profile.country || 'Bangladesh',
+    bio: profile.bio || '',
+    photoUrl: profile.photoUrl || '',
+    linkedin: profile.linkedin || '',
+    isVerifiedAlumni: Boolean(profile.isVerified),
+    createdAt: profile.createdAt || new Date().toISOString(),
+    updatedAt: profile.updatedAt || new Date().toISOString(),
+  }), [profile]);
 
   // Chat conversation state for connected alumni
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -460,125 +514,257 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
         </div>
       </div>
 
-      {/* Primary Profile Card */}
-      <div className="card p-6 sm:p-8 relative overflow-hidden bg-white shadow-sm border border-slate-200/80 rounded-2xl">
-        <div className="flex flex-col md:flex-row gap-6 items-start justify-between">
-          <div className="flex flex-col sm:flex-row gap-5 items-start">
-            {/* Avatar */}
-            <div className="w-24 h-24 rounded-2xl avatar flex items-center justify-center text-3xl font-black shadow-md shrink-0 border-2 border-white bg-linear-to-br from-blue-700 to-indigo-900 text-white">
-              {initials}
+      {/* Primary Profile Card with Luxury Campus Cover Banner */}
+      <div className="card overflow-hidden bg-white shadow-2xl border border-slate-200/80 rounded-3xl">
+        {/* Luxury Collegiate Cover Banner */}
+        <div className="h-52 sm:h-64 lg:h-72 relative overflow-hidden bg-slate-950">
+          <img
+            src={campusBanner}
+            alt={profile.university}
+            className="absolute inset-0 w-full h-full object-cover object-center filter brightness-90 contrast-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-black/35 backdrop-blur-[0.5px]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-950/70 via-slate-900/60 to-indigo-950/80 mix-blend-overlay" />
+          <div className="absolute -top-16 -right-16 w-80 h-80 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-16 -left-16 w-80 h-80 rounded-full bg-amber-500/20 blur-3xl pointer-events-none" />
+          <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none" />
+
+          {/* Gold Crest Medallion Watermark */}
+          <div className="absolute right-6 -bottom-6 opacity-30 pointer-events-none select-none hidden sm:block">
+            <img
+              src={goldCrestMedallion}
+              alt=""
+              className="w-44 h-44 lg:w-52 lg:h-52 object-contain filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.7)] brightness-110"
+            />
+          </div>
+
+          {/* University Crest / Emblem Watermark */}
+          {profile.university && (
+            <div className="absolute right-48 -bottom-4 opacity-15 pointer-events-none select-none hidden md:block">
+              {getUniversityLogo(profile.university) ? (
+                <img
+                  src={getUniversityLogo(profile.university)}
+                  alt=""
+                  className="w-32 h-32 object-contain brightness-200 contrast-125"
+                />
+              ) : (
+                <span className="text-7xl font-black text-white/40 tracking-tighter font-serif">
+                  {universityInitials(profile.university)}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Cover Top Badges & Quick Action Toolbar */}
+          <div className="absolute top-4 left-4 right-4 flex flex-wrap items-center justify-between gap-2 z-10">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-black text-white bg-black/45 backdrop-blur-md px-3.5 py-1 rounded-full border border-white/25 shadow-md flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5 text-amber-300" />
+                <span>Verified Scholar</span>
+              </span>
+
+              {profile.university && (
+                <span className="text-[11px] font-bold text-emerald-200 bg-emerald-950/65 backdrop-blur-md px-3.5 py-1 rounded-full border border-emerald-400/40 flex items-center gap-1.5 shadow-md">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>UGC Accredited University</span>
+                </span>
+              )}
             </div>
 
-            {/* Profile Info & Status Indicators */}
-            <div>
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-black navy tracking-tight">{profile.name}</h1>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDigitalPass((prev) => !prev)}
+                className={`text-[11px] font-bold px-3.5 py-1.5 rounded-full backdrop-blur-md transition shadow-lg flex items-center gap-1.5 cursor-pointer border ${
+                  showDigitalPass
+                    ? 'bg-amber-500 text-slate-950 border-amber-300 font-black'
+                    : 'text-amber-200 bg-amber-950/70 hover:bg-amber-900/90 border-amber-400/50'
+                }`}
+                title="Toggle Digital Campus Pass"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span>{showDigitalPass ? 'Hide Digital Pass' : 'View Digital Pass'}</span>
+              </button>
 
-                {/* Institutional Verification Badge */}
-                {profile.isVerified ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    Verified Alumni
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-slate-500 bg-slate-100 border border-slate-200">
-                    Alumni Member
-                  </span>
-                )}
-
-                {/* ========================================================= */}
-                {/* CONNECTION STATUS INDICATOR (PROMINENT HEADER BADGE) */}
-                {/* ========================================================= */}
-                {connectionRecord.status === 'NOT_CONNECTED' && (
-                  <span
-                    data-testid="connection-status-not-connected"
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200/90"
-                  >
-                    <UserPlus className="w-3.5 h-3.5 text-slate-400" />
-                    Status: Not Connected
-                  </span>
-                )}
-
-                {connectionRecord.status === 'PENDING' && (
-                  <span
-                    data-testid="connection-status-pending"
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-amber-800 bg-amber-50 border border-amber-300 shadow-xs"
-                  >
-                    <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-                    Status: Request Pending
-                  </span>
-                )}
-
-                {connectionRecord.status === 'CONNECTED' && (
-                  <span
-                    data-testid="connection-status-connected"
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 shadow-xs"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    Status: Connected (1st Degree)
-                  </span>
-                )}
-              </div>
-
-              {/* Current Role & Company */}
-              <div className="flex items-center gap-2 mt-1.5 text-slate-700 font-bold text-base">
-                <Briefcase className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>
-                  {profile.jobRole} <span className="text-slate-400 font-normal">at</span>{' '}
-                  <span className="text-navy">{profile.company}</span>
-                </span>
-              </div>
-
-              {/* Academic & Geographic details */}
-              <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-500 mt-2">
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Residence / Location:</span>
-                  <b className="text-slate-700">{profile.city ? `${profile.city}, ` : ''}{profile.country}</b>
-                </span>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <Building className="w-3.5 h-3.5 text-slate-400" />
-                  {profile.university}
-                </span>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
-                  {profile.degree ? `${profile.degree} · ` : ''}{profile.department} ({profile.batch || profile.graduationYear})
-                </span>
-              </div>
-
-              {profile.bio && (
-                <p className="text-xs text-slate-600 mt-3 max-w-xl leading-relaxed italic bg-slate-50/80 p-3 rounded-xl border border-slate-100">
-                  "{profile.bio}"
-                </p>
-              )}
-
-              {/* Specialization & Sector pills */}
-              <div className="flex flex-wrap gap-1.5 mt-3.5">
-                {profile.sector && (
-                  <span className="pill text-xs bg-blue-50 text-blue-700 border-blue-200">
-                    {profile.sector}
-                  </span>
-                )}
-                {profile.specialization && (
-                  <span className="pill text-xs bg-indigo-50 text-indigo-700 border-indigo-200">
-                    {profile.specialization}
-                  </span>
-                )}
-                {profile.careerStatus && (
-                  <span className="pill text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
-                    {profile.careerStatus}
-                  </span>
-                )}
-                {profile.academicSession && (
-                  <span className="pill text-xs bg-slate-50 text-slate-700 border-slate-200">
-                    Session {profile.academicSession}
-                  </span>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={handleCopyProfileLink}
+                className="text-[11px] font-bold text-white bg-black/50 hover:bg-black/70 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/30 transition shadow-lg flex items-center gap-1.5 cursor-pointer"
+                title="Share profile link"
+              >
+                {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-slate-200" />}
+                <span>{copiedLink ? 'Copied!' : 'Share'}</span>
+              </button>
             </div>
           </div>
+
+          {/* Bottom Latin Motto */}
+          <div className="absolute left-6 bottom-4 text-white/90 z-10 hidden sm:flex items-center gap-2">
+            <span className="text-[10px] font-bold tracking-widest uppercase text-amber-300/90 flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/15 shadow-sm">
+              <Sparkles className="w-3 h-3 text-amber-300" />
+              <span>Veritas & Scientia · Official Academic Registry</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Profile Avatar & Primary Row */}
+        <div className="px-6 pb-6 pt-0 sm:px-8 relative">
+          <div className="flex flex-col md:flex-row gap-6 items-start justify-between -mt-16 sm:-mt-20 mb-4">
+            <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-end">
+              {/* 3D Metallic Foil Avatar Frame */}
+              <div className="relative group self-start shrink-0">
+                <div
+                  className={`w-28 h-28 sm:w-36 sm:h-36 rounded-3xl p-1.5 shadow-2xl transition duration-300 ${
+                    profile.isVerified
+                      ? 'bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600 ring-4 ring-amber-400/40 shadow-amber-950/30'
+                      : 'bg-gradient-to-tr from-blue-600 via-sky-300 to-indigo-600 ring-4 ring-blue-500/30 shadow-blue-950/30'
+                  }`}
+                >
+                  <div className="w-full h-full rounded-2xl bg-white overflow-hidden flex items-center justify-center font-black text-3xl sm:text-4xl text-blue-700 bg-gradient-to-tr from-blue-50 to-indigo-50 relative">
+                    {profile.photoUrl ? (
+                      <img src={profile.photoUrl} alt={profile.name} className="w-full h-full object-cover rounded-2xl" />
+                    ) : (
+                      initials
+                    )}
+                  </div>
+                </div>
+
+                {profile.isVerified && (
+                  <div
+                    className="absolute -top-2 -right-2 w-9 h-9 rounded-full bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-600 border-2 border-white shadow-xl flex items-center justify-center text-amber-950"
+                    title="Verified Alumni Holder"
+                  >
+                    <BadgeCheck className="w-5 h-5 text-amber-950 fill-amber-300" />
+                  </div>
+                )}
+
+                <div
+                  className="absolute -bottom-1 -left-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white shadow-md flex items-center justify-center"
+                  title="Active Member"
+                >
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                </div>
+              </div>
+
+              {/* Profile Info & Status Indicators */}
+              <div className="pb-1 space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h1 className="text-2xl sm:text-3xl font-black navy tracking-tight">{profile.name}</h1>
+
+                  {/* Institutional Verification Badge */}
+                  {profile.isVerified ? (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black text-amber-900 bg-amber-50 border border-amber-300 shadow-xs">
+                      <BadgeCheck className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Verified Alumni</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-slate-500 bg-slate-100 border border-slate-200">
+                      Alumni Member
+                    </span>
+                  )}
+
+                  {/* ========================================================= */}
+                  {/* CONNECTION STATUS INDICATOR (PROMINENT HEADER BADGE) */}
+                  {/* ========================================================= */}
+                  {connectionRecord.status === 'NOT_CONNECTED' && (
+                    <span
+                      data-testid="connection-status-not-connected"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200/90 shadow-2xs"
+                    >
+                      <UserPlus className="w-3.5 h-3.5 text-slate-400" />
+                      Status: Not Connected
+                    </span>
+                  )}
+
+                  {connectionRecord.status === 'PENDING' && (
+                    <span
+                      data-testid="connection-status-pending"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-amber-800 bg-amber-50 border border-amber-300 shadow-xs"
+                    >
+                      <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                      Status: Request Pending
+                    </span>
+                  )}
+
+                  {connectionRecord.status === 'CONNECTED' && (
+                    <span
+                      data-testid="connection-status-connected"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 shadow-xs"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      Status: Connected (1st Degree)
+                    </span>
+                  )}
+                </div>
+
+                {/* Current Role & Company */}
+                <div className="flex items-center gap-2 mt-1.5 text-slate-700 font-bold text-base">
+                  <Briefcase className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>
+                    {profile.jobRole} <span className="text-slate-400 font-normal">at</span>{' '}
+                    <span className="text-navy">{profile.company}</span>
+                  </span>
+                </div>
+
+                {/* Academic & Geographic details */}
+                <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-500 mt-2">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Residence / Location:</span>
+                    <b className="text-slate-700">{profile.city ? `${profile.city}, ` : ''}{profile.country}</b>
+                  </span>
+                  <span>•</span>
+                  {profile.university && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('universityDetail', { name: profile.university })}
+                      className="flex items-center gap-1 text-blue-600 hover:underline font-bold cursor-pointer"
+                    >
+                      {getUniversityLogo(profile.university) && (
+                        <img src={getUniversityLogo(profile.university)} alt="" className="w-3.5 h-3.5 object-contain" />
+                      )}
+                      <span>{profile.university}</span>
+                    </button>
+                  )}
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
+                    {profile.degree ? `${profile.degree} · ` : ''}{profile.department} ({profile.batch || profile.graduationYear})
+                  </span>
+                </div>
+
+                {profile.bio && (
+                  <p className="text-xs text-slate-600 mt-3 max-w-xl leading-relaxed italic bg-slate-50/80 p-3 rounded-xl border border-slate-100 relative">
+                    <span className="text-2xl text-blue-300 font-serif absolute -top-1 left-1.5 select-none leading-none">“</span>
+                    <span className="pl-3 block">{profile.bio}</span>
+                  </p>
+                )}
+
+                {/* Specialization & Sector pills */}
+                <div className="flex flex-wrap gap-1.5 mt-3.5">
+                  {profile.sector && (
+                    <span className="pill text-xs bg-blue-50 text-blue-700 border-blue-200">
+                      {profile.sector}
+                    </span>
+                  )}
+                  {profile.specialization && (
+                    <span className="pill text-xs bg-indigo-50 text-indigo-700 border-indigo-200">
+                      {profile.specialization}
+                    </span>
+                  )}
+                  {profile.careerStatus && (
+                    <span className="pill text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                      {profile.careerStatus}
+                    </span>
+                  )}
+                  {profile.academicSession && (
+                    <span className="pill text-xs bg-slate-50 text-slate-700 border-slate-200">
+                      Session {profile.academicSession}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
 
           {/* ========================================================= */}
           {/* ACTION BUTTONS & CONNECT CONTROLS */}
@@ -675,6 +861,28 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
             )}
           </div>
         </div>
+
+        {/* Expandable Official Digital Campus Pass */}
+        {showDigitalPass && (
+          <div className="mt-6 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white border border-white/20 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <QrCode className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-black uppercase tracking-wider text-amber-300">
+                  Official Smart Campus Passport
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDigitalPass(false)}
+                className="text-xs font-bold text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                Close Pass ✕
+              </button>
+            </div>
+            <DigitalIDCard userProfile={userProfileForCard} onNavigate={onNavigate} />
+          </div>
+        )}
 
         {/* ========================================================= */}
         {/* INTERACTIVE CONNECTION STATUS CALLOUT BANNER */}
@@ -893,6 +1101,7 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
             </a>
           </div>
         )}
+        </div>
       </div>
 
       {/* ========================================================= */}

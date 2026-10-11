@@ -3272,7 +3272,42 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                   </button>
                 </form>
 
-                <div className="mt-5 pt-5 border-t border-soft">
+                {/* 1-Click Instant Test Demo Profiles */}
+                <div className="mt-5 p-3.5 rounded-2xl bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-slate-50 border border-blue-200/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      <span>1-Click Test Sign-In:</span>
+                    </span>
+                    <span className="text-[10px] text-blue-700 font-semibold">Instant Profiles</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail('tanvir.hasan@alumni.ac.bd');
+                        setPassword('Alumni@2026');
+                      }}
+                      className="p-2 bg-white hover:bg-blue-50 border border-blue-200 rounded-xl text-left transition cursor-pointer shadow-2xs group"
+                    >
+                      <b className="navy font-black text-xs block group-hover:text-blue-600 truncate">Alumni Scholar</b>
+                      <span className="text-[10px] text-slate-500 block truncate">Tanvir (Google SWE)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail('farhana.yasmin@buet.ac.bd');
+                        setPassword('Alumni@2026');
+                      }}
+                      className="p-2 bg-white hover:bg-emerald-50 border border-emerald-200 rounded-xl text-left transition cursor-pointer shadow-2xs group"
+                    >
+                      <b className="navy font-black text-xs block group-hover:text-emerald-700 truncate">Research Fellow</b>
+                      <span className="text-[10px] text-slate-500 block truncate">Dr. Farhana (Meta)</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-5 pt-4 border-t border-soft">
                   <button
                     type="button"
                     onClick={handleGoogleSignIn}
