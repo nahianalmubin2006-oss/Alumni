@@ -37,7 +37,7 @@ async function research(uni: Uni): Promise<Candidate> {
     body: JSON.stringify({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       tools: [{ google_search: {} }],
-      generationConfig: { temperature: 0.1, responseMimeType: 'application/json' }
+      generationConfig: { temperature: 0.1 }
     }),
     signal: AbortSignal.timeout(90000)
   });
@@ -45,9 +45,16 @@ async function research(uni: Uni): Promise<Candidate> {
   const payload: any = await response.json();
   const text = (payload.candidates?.[0]?.content?.parts ?? []).map((p: any) => p.text || '').join('');
   const parsed = extractJson(text);
-  const sources = Array.isArray(parsed.sources) ? parsed.sources.filter((s: any) => typeof s.url === 'string' && /^https?:\/\//i.test(s.url)).map((s: any) => ({
+  const modelSources = Array.isArray(parsed.sources) ? parsed.sources.filter((s: any) => typeof s.url === 'string' && /^https?:\/\//i.test(s.url)).map((s: any) => ({
     url: s.url, title: String(s.title || 'Untitled source'), supports: String(s.supports || '')
   })) : [];
+  const groundedChunks = payload.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+  const groundedSources = groundedChunks.map((chunk: any) => chunk.web).filter((web: any) => typeof web?.uri === 'string' && /^https?:\/\//i.test(web.uri)).map((web: any) => ({
+    url: web.uri, title: String(web.title || 'Google Search source'), supports: 'Returned by Gemini Google Search grounding; inspect page to confirm support.'
+  }));
+  const sourceMap = new Map<string, { url: string; title: string; supports: string }>();
+  for (const source of [...groundedSources, ...modelSources]) if (!sourceMap.has(source.url)) sourceMap.set(source.url, source);
+  const sources = [...sourceMap.values()];
   const departments = Array.isArray(parsed.departments) ? parsed.departments.filter((d: any) => typeof d.name === 'string' && d.name.trim()).map((d: any) => ({
     name: d.name.trim(), sourceUrl: typeof d.sourceUrl === 'string' && /^https?:\/\//i.test(d.sourceUrl) ? d.sourceUrl : null
   })) : [];
