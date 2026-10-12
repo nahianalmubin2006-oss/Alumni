@@ -586,15 +586,7 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
                 <span>{showDigitalPass ? 'Hide Digital Pass' : 'View Digital Pass'}</span>
               </button>
 
-              <button
-                type="button"
-                onClick={handleCopyProfileLink}
-                className="text-[11px] font-bold text-white bg-black/50 hover:bg-black/70 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/30 transition shadow-lg flex items-center gap-1.5 cursor-pointer"
-                title="Share profile link"
-              >
-                {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-slate-200" />}
-                <span>{copiedLink ? 'Copied!' : 'Share'}</span>
-              </button>
+
             </div>
           </div>
 
@@ -609,7 +601,7 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
 
         {/* Profile Avatar & Primary Row */}
         <div className="px-6 pb-6 pt-0 sm:px-8 relative">
-          <div className="flex flex-col md:flex-row gap-6 items-start justify-between -mt-16 sm:-mt-20 mb-4">
+          <div className="flex flex-col md:flex-row gap-6 items-start justify-between mt-5 sm:mt-6 mb-4">
             <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-end">
               {/* 3D Metallic Foil Avatar Frame */}
               <div className="relative group self-start shrink-0">
@@ -881,76 +873,6 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
               </button>
             </div>
             <DigitalIDCard userProfile={userProfileForCard} onNavigate={onNavigate} />
-          </div>
-        )}
-
-        {/* ========================================================= */}
-        {/* INTERACTIVE CONNECTION STATUS CALLOUT BANNER */}
-        {/* ========================================================= */}
-        {connectionRecord.status === 'PENDING' && (
-          <div className="mt-6 p-4 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
-                <Clock className="w-4 h-4 animate-pulse" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-amber-900">
-                  Connection Invitation Pending: Sent {formattedSentDate}
-                </p>
-                <p className="text-xs text-amber-700 mt-0.5">
-                  You sent a connection request to {profile.name}. Once accepted, you can initiate direct 1-on-1 mentorship messages.
-                </p>
-                {connectionRecord.message && connectionRecord.message !== 'No personal note attached.' && (
-                  <p className="text-xs italic text-amber-800/90 mt-1 bg-amber-100/60 p-2 rounded-lg border border-amber-200/50">
-                    "{connectionRecord.message}"
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-              <button
-                onClick={handleSimulateAcceptance}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Simulate Accept</span>
-              </button>
-              <button
-                onClick={handleWithdrawRequest}
-                className="bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer"
-              >
-                Withdraw
-              </button>
-            </div>
-          </div>
-        )}
-
-        {connectionRecord.status === 'CONNECTED' && (
-          <div className="mt-6 p-4 rounded-xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                <CheckCircle2 className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-emerald-900">
-                  Connected Network Member (1st Degree)
-                </p>
-                <p className="text-xs text-emerald-700 mt-0.5">
-                  You and {profile.name} are directly connected. You have full access to direct messaging and peer mentoring.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-              <button
-                onClick={() => setMessageModalOpen(true)}
-                className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer"
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>Chat with {profile.name.split(' ')[0]}</span>
-              </button>
-            </div>
           </div>
         )}
 
