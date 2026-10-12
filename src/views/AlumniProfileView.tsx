@@ -560,13 +560,13 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-black text-white bg-black/45 backdrop-blur-md px-3.5 py-1 rounded-full border border-white/25 shadow-md flex items-center gap-1.5">
                 <Award className="w-3.5 h-3.5 text-amber-300" />
-                <span>Verified Scholar</span>
+                <span>{profile.isVerified ? 'Verified Alumni' : 'Alumni Profile'}</span>
               </span>
 
               {profile.university && (
                 <span className="text-[11px] font-bold text-emerald-200 bg-emerald-950/65 backdrop-blur-md px-3.5 py-1 rounded-full border border-emerald-400/40 flex items-center gap-1.5 shadow-md">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>UGC Accredited University</span>
+                  <span>{profile.university}</span>
                 </span>
               )}
             </div>
@@ -600,9 +600,9 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
         </div>
 
         {/* Profile Avatar & Primary Row */}
-        <div className="px-6 pb-6 pt-0 sm:px-8 relative">
-          <div className="flex flex-col md:flex-row gap-6 items-start justify-between mt-5 sm:mt-6 mb-4">
-            <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-end">
+        <div className="px-4 pb-6 pt-6 sm:px-8 sm:pt-8 relative">
+          <div className="flex flex-col md:flex-row gap-6 items-start justify-between mb-4">
+            <div className="flex min-w-0 flex-col sm:flex-row gap-5 items-start flex-1">
               {/* 3D Metallic Foil Avatar Frame */}
               <div className="relative group self-start shrink-0">
                 <div
@@ -639,9 +639,9 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
               </div>
 
               {/* Profile Info & Status Indicators */}
-              <div className="pb-1 space-y-1.5">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <h1 className="text-2xl sm:text-3xl font-black navy tracking-tight">{profile.name}</h1>
+              <div className="min-w-0 flex-1 pb-1 space-y-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+                  <h1 className="max-w-full break-words text-2xl sm:text-3xl font-black navy tracking-tight">{profile.name}</h1>
 
                   {/* Institutional Verification Badge */}
                   {profile.isVerified ? (
@@ -655,38 +655,6 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
                     </span>
                   )}
 
-                  {/* ========================================================= */}
-                  {/* CONNECTION STATUS INDICATOR (PROMINENT HEADER BADGE) */}
-                  {/* ========================================================= */}
-                  {connectionRecord.status === 'NOT_CONNECTED' && (
-                    <span
-                      data-testid="connection-status-not-connected"
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200/90 shadow-2xs"
-                    >
-                      <UserPlus className="w-3.5 h-3.5 text-slate-400" />
-                      Status: Not Connected
-                    </span>
-                  )}
-
-                  {connectionRecord.status === 'PENDING' && (
-                    <span
-                      data-testid="connection-status-pending"
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-amber-800 bg-amber-50 border border-amber-300 shadow-xs"
-                    >
-                      <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-                      Status: Request Pending
-                    </span>
-                  )}
-
-                  {connectionRecord.status === 'CONNECTED' && (
-                    <span
-                      data-testid="connection-status-connected"
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 shadow-xs"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      Status: Connected (1st Degree)
-                    </span>
-                  )}
                 </div>
 
                 {/* Current Role & Company */}
