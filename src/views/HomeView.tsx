@@ -668,6 +668,48 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
               </div>
             </div>
 
+            {/* Card 5: Analytics & Insights */}
+            <div
+              onClick={() => onNavigate('analytics')}
+              className="group relative bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer overflow-hidden flex flex-col justify-between shadow-sm hover:shadow-xl hover:shadow-blue-900/10 hover:-translate-y-1.5 hover:border-blue-400/80 transition-all duration-300"
+            >
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+              <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-blue-50 border border-blue-200/80 flex items-center justify-center text-[11px] font-black text-blue-600 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-all duration-200">
+                05
+              </div>
+
+              <div>
+                <div
+                  className="w-13 h-13 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-300"
+                  style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #0284c7 100%)' }}
+                >
+                  <TrendingUp className="w-6 h-6 text-white" />
+                </div>
+
+                <div className="inline-flex items-center gap-1 text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2 opacity-60">
+                  Analytics
+                </div>
+                <h3 className="font-black text-lg text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
+                  Career Analytics
+                </h3>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  Interactive charts for institutional distribution, graduation batches, and top industry sectors.
+                </p>
+
+                <div className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  Live Charts
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-bold text-blue-600 group-hover:text-blue-700">Open dashboard</span>
+                <div className="w-7 h-7 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center group-hover:bg-blue-600 group-hover:border-blue-600 transition-all duration-200">
+                  <ArrowRight className="w-3.5 h-3.5 text-blue-600 group-hover:text-white group-hover:translate-x-0.5 transition-all duration-200" />
+                </div>
+              </div>
+            </div>
+
           </div>
 
           {/* Bottom trust strip */}

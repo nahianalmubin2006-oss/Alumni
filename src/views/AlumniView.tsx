@@ -21,6 +21,7 @@ import {
   Briefcase,
   Layers,
   ArrowUpDown,
+  BarChart3,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
@@ -30,9 +31,10 @@ import { AlumniRecord } from '../types';
 interface AlumniViewProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
   onBack?: () => void;
+  initialParams?: Record<string, string>;
 }
 
-export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) => {
+export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, initialParams }) => {
   const { currentUser, userProfile } = useAuth();
   const { universities, alumni, stats, allUsers, loadingData } = useData();
 
@@ -77,6 +79,22 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
     }, 300);
     return () => clearTimeout(timer);
   }, [alumniSearch]);
+
+  // Synchronize initialParams filters if navigated from charts or external views
+  useEffect(() => {
+    if (initialParams) {
+      if (initialParams.uni) setUniversityFilter(initialParams.uni);
+      if (initialParams.dept) setDepartmentFilter(initialParams.dept);
+      if (initialParams.sector) setSectorFilter(initialParams.sector);
+      if (initialParams.country) setCountryFilter(initialParams.country);
+      if (initialParams.year) setYearFilter(initialParams.year);
+      if (initialParams.verified === 'true') setVerifiedOnly(true);
+      if (initialParams.search) {
+        setAlumniSearch(initialParams.search);
+        setDebouncedSearch(initialParams.search);
+      }
+    }
+  }, [initialParams]);
 
   // Sorted universities by alumni count
   const universityRankings = useMemo(() => {
@@ -154,6 +172,18 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
             },
           },
         },
+        onClick: (_event, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            const clickedUni = top10Unis[index]?.name;
+            if (clickedUni) {
+              setUniversityFilter(clickedUni);
+              if (directoryRef.current) {
+                directoryRef.current.scrollIntoView({ behavior: 'smooth' });
+              }
+            }
+          }
+        },
       },
     });
 
@@ -185,6 +215,18 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
               font: { size: 10 },
             },
           },
+        },
+        onClick: (_event, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            const clickedDept = top10Depts[index]?.name;
+            if (clickedDept) {
+              setDepartmentFilter(clickedDept);
+              if (directoryRef.current) {
+                directoryRef.current.scrollIntoView({ behavior: 'smooth' });
+              }
+            }
+          }
         },
       },
     });
@@ -534,6 +576,35 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
             <div className="text-xs text-slate-400 mt-0.5">Total network alumni</div>
           </div>
         </div>
+      </div>
+
+      {/* Visual Analytics & Data-Driven Insights Pathway */}
+      <div className="mt-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-navy to-indigo-950 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start sm:items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-400/30 flex items-center justify-center shrink-0">
+            <BarChart3 className="w-5 h-5 text-blue-300" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <b className="text-sm font-black text-white">Data-Driven Alumni Discovery & Analytics</b>
+              <span className="text-[10px] uppercase tracking-wider font-extrabold text-amber-300 bg-amber-400/20 border border-amber-400/30 px-2 py-0.5 rounded-full">
+                Interactive
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 mt-0.5">
+              Explore dynamic cohort distributions by university, department disciplines, graduation batches, and career industries.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onNavigate('analytics')}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
+        >
+          <span>Open Analytics Dashboard</span>
+          <ChevronRight className="w-4 h-4 text-blue-200" />
+        </button>
       </div>
 
       {/* Directory Account Opening & Member Gateway */}

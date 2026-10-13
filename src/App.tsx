@@ -15,6 +15,7 @@ import { DepartmentProfileView } from './views/DepartmentProfileView';
 import { DepartmentBatchView } from './views/DepartmentBatchView';
 import { AlumniView } from './views/AlumniView';
 import { AlumniProfileView } from './views/AlumniProfileView';
+import { AlumniAnalyticsView } from './views/AlumniAnalyticsView';
 import { LiveNewsView } from './views/LiveNewsView';
 import { NewsDetailView } from './views/NewsDetailView';
 import { SearchPageView } from './views/SearchPageView';
@@ -40,6 +41,7 @@ function getInitialPageFromPath(): { page: string; params: Record<string, string
   if (pathname === '/universities') return { page: 'universities', params: {} };
   if (pathname === '/department') return { page: 'department', params: {} };
   if (pathname === '/alumni') return { page: 'alumni', params: {} };
+  if (pathname === '/analytics') return { page: 'analytics', params: {} };
   if (pathname === '/news') return { page: 'news', params: {} };
   if (pathname === '/account') return { page: 'account', params: {} };
   if (pathname === '/terms') return { page: 'terms', params: {} };
@@ -107,6 +109,8 @@ export default function App() {
         return { page: 'department', params: {} };
       case 'alumniProfile':
         return { page: 'alumni', params: {} };
+      case 'analytics':
+        return { page: 'alumni', params: {} };
       case 'newsDetail':
         return { page: 'news', params: {} };
       case 'universities':
@@ -139,6 +143,7 @@ export default function App() {
     else if (page === 'universities') newPath = '/universities';
     else if (page === 'department') newPath = '/department';
     else if (page === 'alumni') newPath = '/alumni';
+    else if (page === 'analytics') newPath = '/analytics';
     else if (page === 'news') newPath = '/news';
     else if (page === 'account') newPath = '/account';
     else if (page === 'terms') newPath = '/terms';
@@ -166,6 +171,7 @@ export default function App() {
       else if (prev.page === 'universities') newPath = '/universities';
       else if (prev.page === 'department') newPath = '/department';
       else if (prev.page === 'alumni') newPath = '/alumni';
+      else if (prev.page === 'analytics') newPath = '/analytics';
       else if (prev.page === 'news') newPath = '/news';
       else if (prev.page === 'account') newPath = '/account';
       else if (prev.page === 'terms') newPath = '/terms';
@@ -188,6 +194,7 @@ export default function App() {
     if (upper.page === 'universities') newPath = '/universities';
     else if (upper.page === 'department') newPath = '/department';
     else if (upper.page === 'alumni') newPath = '/alumni';
+    else if (upper.page === 'analytics') newPath = '/analytics';
     else if (upper.page === 'news') newPath = '/news';
     else if (upper.page === 'account') newPath = '/account';
     else if (upper.page === 'terms') newPath = '/terms';
@@ -336,7 +343,21 @@ export default function App() {
                 />
               )}
 
-              {currentPage === 'alumni' && <AlumniView onNavigate={handleNavigate} onBack={handleBack} />}
+              {currentPage === 'alumni' && (
+                <AlumniView
+                  onNavigate={handleNavigate}
+                  onBack={handleBack}
+                  initialParams={pageParams}
+                />
+              )}
+
+              {currentPage === 'analytics' && (
+                <AlumniAnalyticsView
+                  onNavigate={handleNavigate}
+                  onBack={handleBack}
+                  initialParams={pageParams}
+                />
+              )}
 
               {currentPage === 'alumniProfile' && (
                 <AlumniProfileView

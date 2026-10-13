@@ -180,6 +180,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             Alumni
           </button>
           <button
+            onClick={() => onNavigate('analytics')}
+            className={`navbtn px-3 py-2 rounded-lg text-sm font-semibold transition ${
+              currentPage === 'analytics' ? 'active' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Analytics
+          </button>
+          <button
             onClick={() => onNavigate('news')}
             className={`navbtn px-3 py-2 rounded-lg text-sm font-semibold transition ${
               currentPage === 'news' || currentPage === 'newsDetail' ? 'active' : 'text-slate-600 hover:text-slate-900'
