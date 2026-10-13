@@ -591,12 +591,6 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
           </div>
 
           {/* Bottom Latin Motto */}
-          <div className="absolute left-6 bottom-4 text-white/90 z-10 hidden sm:flex items-center gap-2">
-            <span className="text-[10px] font-bold tracking-widest uppercase text-amber-300/90 flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/15 shadow-sm">
-              <Sparkles className="w-3 h-3 text-amber-300" />
-              <span>Veritas & Scientia · Official Academic Registry</span>
-            </span>
-          </div>
         </div>
 
         {/* Profile Avatar & Primary Row */}
