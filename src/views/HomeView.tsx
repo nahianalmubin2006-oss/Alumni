@@ -467,111 +467,227 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
       </div>
 
       {/* ========================================================= */}
-      {/* DISCOVERY PATHWAYS: CHOOSE HOW YOU WANT TO EXPLORE */}
+      {/* DISCOVERY PATHWAYS: CHOOSE HOW YOU WANT TO EXPLORE — PREMIUM */}
       {/* ========================================================= */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-          <div>
-            <div className="text-xs font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
-              <Compass className="w-4 h-4" />
-              <span>EXPLORATION FRAMEWORK</span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-black navy tracking-tight mt-1">
-              Choose How You Want to Explore
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Tailored entry points to research institutional rankings, disciplines, cohorts, or individual careers.
-            </p>
-          </div>
-        </div>
+      <div className="relative overflow-hidden">
+        {/* Full-bleed gradient background panel */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/60 pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(59,130,246,0.08),transparent)] pointer-events-none" />
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-          {/* Card 1: Universities */}
-          <div
-            onClick={() => onNavigate('universities')}
-            className="card p-5 hover:border-blue-400 hover:shadow-md transition cursor-pointer group flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center mb-4 group-hover:scale-105 transition">
-                <Building2 className="w-5 h-5" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
+          {/* Section Header */}
+          <div className="mb-10 sm:mb-14 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div className="max-w-xl">
+              <div className="inline-flex items-center gap-2 text-[11px] font-black text-blue-600 uppercase tracking-[0.18em] bg-blue-50 border border-blue-200/80 px-3 py-1.5 rounded-full mb-4 shadow-sm">
+                <Compass className="w-3.5 h-3.5" />
+                <span>Exploration Framework</span>
               </div>
-              <h3 className="font-black text-lg navy group-hover:text-blue-600 transition">
-                Universities Directory
-              </h3>
-              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                Browse 178 institutions with official insignia, verified campus profiles, and faculty offerings.
+              <h2 className="text-3xl sm:text-4xl font-black navy tracking-[-0.03em] leading-tight">
+                Choose How You Want{' '}
+                <span className="relative inline-block">
+                  to Explore
+                  <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full" />
+                </span>
+              </h2>
+              <p className="text-sm text-slate-500 mt-3 leading-relaxed">
+                Four precision entry points to research institutional rankings, academic disciplines, verified cohorts, or individual career journeys.
               </p>
             </div>
-            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600">
-              <span>Explore 178 campuses</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
+            <div className="flex items-center gap-2 self-start sm:self-end shrink-0">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live Data · Updated Now
+              </span>
             </div>
           </div>
 
-          {/* Card 2: Departments */}
-          <div
-            onClick={() => onNavigate('department')}
-            className="card p-5 hover:border-blue-400 hover:shadow-md transition cursor-pointer group flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-4 group-hover:scale-105 transition">
-                <BookOpen className="w-5 h-5" />
+          {/* Premium Cards Grid */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
+
+            {/* Card 1: Universities */}
+            <div
+              onClick={() => onNavigate('universities')}
+              className="explore-premium-card group relative bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer overflow-hidden flex flex-col justify-between shadow-sm hover:shadow-xl hover:shadow-blue-900/10 hover:-translate-y-1.5 hover:border-blue-300/80 transition-all duration-300"
+            >
+              {/* Hover shimmer top line */}
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+              {/* Step badge */}
+              <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-blue-50 border border-blue-200/80 flex items-center justify-center text-[11px] font-black text-blue-500 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-all duration-200">
+                01
               </div>
-              <h3 className="font-black text-lg navy group-hover:text-blue-600 transition">
-                Academic Departments
-              </h3>
-              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                Explore 48 disciplines from Computer Science to Economics, seeing which universities offer them.
-              </p>
+
+              <div>
+                {/* Icon orb */}
+                <div className="w-13 h-13 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-300"
+                  style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)' }}>
+                  <Building2 className="w-6 h-6 text-white" />
+                </div>
+
+                <div className="inline-flex items-center gap-1 text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2 opacity-60">
+                  Directory
+                </div>
+                <h3 className="font-black text-lg text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
+                  Universities
+                </h3>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  Browse 178 institutions with official insignia, verified campus profiles, and faculty offerings.
+                </p>
+
+                {/* Stat pill */}
+                <div className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                  178 Institutions
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-bold text-blue-600 group-hover:text-blue-700">Explore campuses</span>
+                <div className="w-7 h-7 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center group-hover:bg-blue-600 group-hover:border-blue-600 transition-all duration-200">
+                  <ArrowRight className="w-3.5 h-3.5 text-blue-600 group-hover:text-white group-hover:translate-x-0.5 transition-all duration-200" />
+                </div>
+              </div>
             </div>
-            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
-              <span>View all disciplines</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
+
+            {/* Card 2: Departments */}
+            <div
+              onClick={() => onNavigate('department')}
+              className="group relative bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer overflow-hidden flex flex-col justify-between shadow-sm hover:shadow-xl hover:shadow-emerald-900/10 hover:-translate-y-1.5 hover:border-emerald-300/80 transition-all duration-300"
+            >
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+              <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-[11px] font-black text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600 transition-all duration-200">
+                02
+              </div>
+
+              <div>
+                <div className="w-13 h-13 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform duration-300"
+                  style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
+                  <BookOpen className="w-6 h-6 text-white" />
+                </div>
+
+                <div className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2 opacity-60">
+                  Academic
+                </div>
+                <h3 className="font-black text-lg text-slate-900 group-hover:text-emerald-700 transition-colors leading-snug">
+                  Departments
+                </h3>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  Explore 48 disciplines from Computer Science to Economics, seeing which universities offer them.
+                </p>
+
+                <div className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  48 Disciplines
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-600 group-hover:text-emerald-700">View all disciplines</span>
+                <div className="w-7 h-7 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center group-hover:bg-emerald-600 group-hover:border-emerald-600 transition-all duration-200">
+                  <ArrowRight className="w-3.5 h-3.5 text-emerald-600 group-hover:text-white group-hover:translate-x-0.5 transition-all duration-200" />
+                </div>
+              </div>
             </div>
+
+            {/* Card 3: Alumni */}
+            <div
+              onClick={() => onNavigate('alumni')}
+              className="group relative bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer overflow-hidden flex flex-col justify-between shadow-sm hover:shadow-xl hover:shadow-indigo-900/10 hover:-translate-y-1.5 hover:border-indigo-300/80 transition-all duration-300"
+            >
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+              <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-indigo-50 border border-indigo-200/80 flex items-center justify-center text-[11px] font-black text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition-all duration-200">
+                03
+              </div>
+
+              <div>
+                <div className="w-13 h-13 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform duration-300"
+                  style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' }}>
+                  <GraduationCap className="w-6 h-6 text-white" />
+                </div>
+
+                <div className="inline-flex items-center gap-1 text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-2 opacity-60">
+                  Roster
+                </div>
+                <h3 className="font-black text-lg text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
+                  Alumni Network
+                </h3>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  Filter alumni by company, job role, destination country, graduation year, and degree qualification.
+                </p>
+
+                <div className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                  Verified Profiles
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-bold text-indigo-600 group-hover:text-indigo-700">Search alumni roster</span>
+                <div className="w-7 h-7 rounded-full bg-indigo-50 border border-indigo-200 flex items-center justify-center group-hover:bg-indigo-600 group-hover:border-indigo-600 transition-all duration-200">
+                  <ArrowRight className="w-3.5 h-3.5 text-indigo-600 group-hover:text-white group-hover:translate-x-0.5 transition-all duration-200" />
+                </div>
+              </div>
+            </div>
+
+            {/* Card 4: AI Intelligence & News */}
+            <div
+              onClick={() => onNavigate('news')}
+              className="group relative bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer overflow-hidden flex flex-col justify-between shadow-sm hover:shadow-xl hover:shadow-purple-900/10 hover:-translate-y-1.5 hover:border-purple-300/80 transition-all duration-300"
+            >
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 via-fuchsia-500 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+              <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-purple-50 border border-purple-200/80 flex items-center justify-center text-[11px] font-black text-purple-600 group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-600 transition-all duration-200">
+                04
+              </div>
+
+              <div>
+                <div className="w-13 h-13 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-purple-500/20 group-hover:scale-110 transition-transform duration-300"
+                  style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
+                  <Bot className="w-6 h-6 text-white" />
+                </div>
+
+                <div className="inline-flex items-center gap-1 text-[10px] font-black text-purple-600 uppercase tracking-widest mb-2 opacity-60">
+                  AI Wire
+                </div>
+                <h3 className="font-black text-lg text-slate-900 group-hover:text-purple-600 transition-colors leading-snug">
+                  Intelligence & News
+                </h3>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  Live web-scanned alumni achievements, research paper breakthroughs, fellowship awards, and honors.
+                </p>
+
+                <div className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-bold text-purple-700 bg-purple-50 border border-purple-100 px-2.5 py-1 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                  24h Live Bot Active
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-600 group-hover:text-purple-700">Read live achievements</span>
+                <div className="w-7 h-7 rounded-full bg-purple-50 border border-purple-200 flex items-center justify-center group-hover:bg-purple-600 group-hover:border-purple-600 transition-all duration-200">
+                  <ArrowRight className="w-3.5 h-3.5 text-purple-600 group-hover:text-white group-hover:translate-x-0.5 transition-all duration-200" />
+                </div>
+              </div>
+            </div>
+
           </div>
 
-          {/* Card 3: Alumni */}
-          <div
-            onClick={() => onNavigate('alumni')}
-            className="card p-5 hover:border-blue-400 hover:shadow-md transition cursor-pointer group flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center mb-4 group-hover:scale-105 transition">
-                <GraduationCap className="w-5 h-5" />
-              </div>
-              <h3 className="font-black text-lg navy group-hover:text-blue-600 transition">
-                Verified Alumni Roster
-              </h3>
-              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                Filter alumni by company, job role, destination country, graduation year, and degree qualification.
-              </p>
-            </div>
-            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600">
-              <span>Search alumni roster</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
-            </div>
-          </div>
-
-          {/* Card 4: News & AI Wire */}
-          <div
-            onClick={() => onNavigate('news')}
-            className="card p-5 hover:border-blue-400 hover:shadow-md transition cursor-pointer group flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center mb-4 group-hover:scale-105 transition">
-                <Bot className="w-5 h-5" />
-              </div>
-              <h3 className="font-black text-lg navy group-hover:text-blue-600 transition">
-                AI Intelligence & News
-              </h3>
-              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                Live web-scanned alumni achievements, research paper breakthroughs, fellowship awards, and honors.
-              </p>
-            </div>
-            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-purple-600">
-              <span>Read live achievements</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
-            </div>
+          {/* Bottom trust strip */}
+          <div className="mt-10 pt-8 border-t border-slate-200/60 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400">
+            <span className="flex items-center gap-1.5 font-semibold">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              UGC Verified Data
+            </span>
+            <span className="flex items-center gap-1.5 font-semibold">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              178 Institutions Indexed
+            </span>
+            <span className="flex items-center gap-1.5 font-semibold">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              Real-time Alumni Profiles
+            </span>
+            <span className="flex items-center gap-1.5 font-semibold">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              AI-Powered News Wire
+            </span>
           </div>
         </div>
       </div>
