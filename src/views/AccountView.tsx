@@ -1255,19 +1255,19 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
             </div>
 
             {/* Profile Avatar & Primary Info Row */}
-            <div className="px-6 pb-6 pt-0 sm:px-8 relative">
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-16 sm:-mt-20 mb-4">
+            <div className="px-6 pb-6 pt-0 sm:px-8 relative bg-white">
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 -mt-14 sm:-mt-16 md:-mt-20 mb-6">
                 <div className="flex flex-col sm:flex-row sm:items-end gap-5">
                   {/* 3D Metallic Foil Avatar Frame */}
-                  <div className="relative group self-start">
+                  <div className="relative group shrink-0">
                     <div
-                      className={`w-28 h-28 sm:w-36 sm:h-36 rounded-3xl p-1.5 shadow-2xl transition duration-300 ${
+                      className={`w-28 h-28 sm:w-36 sm:h-36 rounded-3xl p-1.5 shadow-2xl transition duration-300 ring-4 ring-white bg-white ${
                         userProfile.isVerifiedAlumni || userProfile.profileType === 'Alumni'
-                          ? 'bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600 ring-4 ring-amber-400/40 shadow-amber-950/30'
-                          : 'bg-gradient-to-tr from-blue-600 via-sky-300 to-indigo-600 ring-4 ring-blue-500/30 shadow-blue-950/30'
+                          ? 'bg-linear-to-tr from-amber-400 via-yellow-200 to-amber-600 shadow-amber-950/20'
+                          : 'bg-linear-to-tr from-blue-600 via-sky-300 to-indigo-600 shadow-blue-950/20'
                       }`}
                     >
-                      <div className="w-full h-full rounded-2xl bg-white overflow-hidden flex items-center justify-center font-black text-4xl text-blue-700 bg-gradient-to-tr from-blue-50 to-indigo-50 relative">
+                      <div className="w-full h-full rounded-2xl bg-white overflow-hidden flex items-center justify-center font-black text-4xl text-blue-700 bg-linear-to-tr from-blue-50 to-indigo-50 relative">
                         {isUploadingPhoto ? (
                           <div className="flex flex-col items-center justify-center gap-1.5 text-blue-600 p-2 text-center">
                             <div className="w-7 h-7 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -1294,7 +1294,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                     {/* Verified Alumni Hologram / Shield Badge Overlay */}
                     {userProfile.isVerifiedAlumni && (
                       <div
-                        className="absolute -top-2 -right-2 w-9 h-9 rounded-full bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-600 border-2 border-white shadow-xl flex items-center justify-center text-amber-950"
+                        className="absolute -top-2 -right-2 w-9 h-9 rounded-full bg-linear-to-tr from-amber-400 via-yellow-300 to-amber-600 border-2 border-white shadow-xl flex items-center justify-center text-amber-950"
                         title="Official Verified Degree Holder"
                       >
                         <BadgeCheck className="w-5 h-5 text-amber-950 fill-amber-300" />
@@ -1331,10 +1331,10 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                     </label>
                   </div>
 
-                  {/* Name, Credentials, and Institutional Pill */}
-                  <div className="pb-1 space-y-1.5">
+                  {/* Name, Credentials, and Institutional Info - clean, un-crowded, completely below cover */}
+                  <div className="pt-3 sm:pt-0 pb-1 space-y-2">
                     <div className="flex flex-wrap items-center gap-2.5">
-                      <h2 className="text-2xl sm:text-4xl font-extrabold navy tracking-tight">
+                      <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold navy tracking-tight">
                         {userProfile.name}
                       </h2>
                       {userProfile.isVerifiedAlumni ? (
@@ -1384,8 +1384,8 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                       )}
                     </p>
 
-                    {/* University & City Row */}
-                    <div className="flex flex-wrap items-center gap-3 text-xs pt-1">
+                    {/* University & City & ID Row */}
+                    <div className="flex flex-wrap items-center gap-3 text-xs pt-0.5">
                       {userProfile.university && (
                         <button
                           type="button"
@@ -1434,11 +1434,11 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                 </div>
 
                 {/* Profile Action Buttons */}
-                <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto pt-2 sm:pt-0">
+                <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0 shrink-0">
                   <button
                     type="button"
                     onClick={() => setProfileTab('idcard')}
-                    className="inline-flex items-center gap-1.5 border border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 px-4 py-2 rounded-xl text-xs font-black text-amber-900 transition shadow-xs cursor-pointer"
+                    className="inline-flex items-center gap-1.5 border border-amber-300 bg-linear-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 px-3.5 py-2 rounded-xl text-xs font-black text-amber-900 transition shadow-xs cursor-pointer"
                     title="View your official smart university digital identity pass"
                   >
                     <QrCode className="w-3.5 h-3.5 text-amber-700" />
@@ -1458,7 +1458,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
 
                   <button
                     onClick={() => enterEditMode()}
-                    className="inline-flex items-center gap-2 border border-blue-200 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-md cursor-pointer"
+                    className="inline-flex items-center gap-1.5 border border-blue-200 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-md cursor-pointer"
                     aria-label="Edit Profile"
                   >
                     <Sliders className="w-3.5 h-3.5" />
@@ -1467,7 +1467,7 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
 
                   <button
                     onClick={logout}
-                    className="bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+                    className="bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
                     title="Sign out of account"
                   >
                     Log Out
@@ -2378,44 +2378,6 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
           {/* ========================================================= */}
           {profileTab === 'dossier' && (
             <div className="space-y-6">
-              {/* ACCREDITATIONS & INSTITUTIONAL SUMMARY STRIP */}
-              <div className="p-4 sm:p-5 rounded-3xl bg-linear-to-r from-slate-950 via-slate-900 to-blue-950 text-white flex flex-wrap items-center justify-between gap-4 shadow-xl border border-white/10">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-2xl bg-amber-400/20 border border-amber-400/40 text-amber-300 flex items-center justify-center font-black shrink-0 shadow-xs">
-                    <Award className="w-5 h-5 text-amber-300" />
-                  </div>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <b className="text-sm sm:text-base font-black tracking-tight">{userProfile.university || 'Higher Education Registry'}</b>
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        UGC Attested
-                      </span>
-                    </div>
-                    <span className="text-xs text-slate-300 block mt-0.5">
-                      {userProfile.department || 'Faculty Division'} · {userProfile.profileType === 'Alumni' ? `Class of ${userProfile.graduationYear || '2024'}` : `Enrolled Student`}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setProfileTab('idcard')}
-                    className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition flex items-center gap-1.5 border border-white/15 cursor-pointer shadow-xs"
-                  >
-                    <QrCode className="w-3.5 h-3.5 text-amber-300" />
-                    <span>View Digital ID</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => enterEditMode()}
-                    className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"
-                  >
-                    <Sliders className="w-3.5 h-3.5" />
-                    <span>Edit Portfolio</span>
-                  </button>
-                </div>
-              </div>
 
               {/* SECTION 1: ACADEMIC CREDENTIALS & CAMPUS STANDING */}
               <div className="card p-6 sm:p-7 shadow-xl border-soft">
