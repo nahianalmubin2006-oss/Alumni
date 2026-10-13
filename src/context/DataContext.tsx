@@ -33,6 +33,11 @@ import {
   UserProfile,
   UserPost,
   PostReactionType,
+  ConnectionRequest,
+  ConnectionStatus,
+  MentorshipRequest,
+  MentorshipStatus,
+  MentorshipTopic,
 } from '../types';
 import {
   ALL_DIRECTORY_UNIVERSITIES,
@@ -64,6 +69,51 @@ interface DataContextType {
   approveProfileClaim: (id: string, comment?: string) => Promise<void>;
   rejectProfileClaim: (id: string, comment?: string) => Promise<void>;
   notifications: AppNotification[];
+  connectionRequests: ConnectionRequest[];
+  mentorshipRequests: MentorshipRequest[];
+  sendConnectionRequest: (target: {
+    recipientId: string;
+    recipientName: string;
+    recipientEmail?: string;
+    recipientRole?: Role;
+    recipientPhotoUrl?: string;
+    recipientUniversity?: string;
+    recipientDepartment?: string;
+    recipientJobRole?: string;
+    recipientCompany?: string;
+    recipientAlumniId?: string;
+    message?: string;
+  }) => Promise<void>;
+  respondConnectionRequest: (requestId: string, status: 'ACCEPTED' | 'DECLINED') => Promise<void>;
+  cancelConnectionRequest: (requestId: string) => Promise<void>;
+  disconnectConnection: (requestId: string) => Promise<void>;
+  sendMentorshipRequest: (target: {
+    mentorId: string;
+    mentorName: string;
+    mentorRole?: Role;
+    mentorPhotoUrl?: string;
+    mentorUniversity?: string;
+    mentorDepartment?: string;
+    mentorJobRole?: string;
+    mentorCompany?: string;
+    mentorAlumniId?: string;
+    topic: MentorshipTopic;
+    message: string;
+    preferredSchedule?: string;
+  }) => Promise<void>;
+  respondMentorshipRequest: (requestId: string, status: 'ACCEPTED' | 'DECLINED' | 'COMPLETED', feedback?: string) => Promise<void>;
+  cancelMentorshipRequest: (requestId: string) => Promise<void>;
+  completeMentorshipRequest: (requestId: string) => Promise<void>;
+  getConnectionStatusWith: (targetIdOrAlumniId: string) => {
+    status: ConnectionStatus | 'NONE';
+    request?: ConnectionRequest;
+    isOutgoing: boolean;
+  };
+  getMentorshipStatusWith: (targetIdOrAlumniId: string) => {
+    status: MentorshipStatus | 'NONE';
+    request?: MentorshipRequest;
+    isOutgoing: boolean;
+  };
   auditLogs: AuditLog[];
   adminAssignments: AdminAssignment[];
   platformSettings: PlatformSetting;
@@ -240,6 +290,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [verificationRequests, setVerificationRequests] = useState<VerificationRequest[]>([]);
   const [profileClaims, setProfileClaims] = useState<ProfileClaimRequest[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [connectionRequests, setConnectionRequests] = useState<ConnectionRequest[]>(() => {
+    try {
+      const saved = localStorage.getItem('alumnisphere_connections_cache');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [mentorshipRequests, setMentorshipRequests] = useState<MentorshipRequest[]>(() => {
+    try {
+      const saved = localStorage.getItem('alumnisphere_mentorship_cache');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [adminAssignments, setAdminAssignments] = useState<AdminAssignment[]>([]);
   const [platformSettings, setPlatformSettings] = useState<PlatformSetting>(INITIAL_PLATFORM_SETTINGS);
@@ -922,6 +988,112 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
+    // -------------------------------------------------------------
+    // Real Connection Requests Listeners
+    // -------------------------------------------------------------
+    let unsubConnSender = () => {};
+    let unsubConnRecipient = () => {};
+    let unsubConnAll = () => {};
+
+    if (isSuperAdmin) {
+      unsubConnAll = onSnapshot(
+        collection(db, 'connectionRequests'),
+        (snap) => {
+          const list: ConnectionRequest[] = [];
+          snap.forEach((d) => list.push({ ...d.data(), id: d.id } as ConnectionRequest));
+          setConnectionRequests(list.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1)));
+        },
+        (err) => console.warn('Connection requests all listener note:', err.message)
+      );
+    } else {
+      const senderMap = new Map<string, ConnectionRequest>();
+      const recipientMap = new Map<string, ConnectionRequest>();
+
+      const syncMerged = () => {
+        const merged = new Map<string, ConnectionRequest>();
+        senderMap.forEach((v, k) => merged.set(k, v));
+        recipientMap.forEach((v, k) => merged.set(k, v));
+        const list = Array.from(merged.values()).sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+        setConnectionRequests(list);
+        try {
+          localStorage.setItem('alumnisphere_connections_cache', JSON.stringify(list));
+        } catch {}
+      };
+
+      unsubConnSender = onSnapshot(
+        query(collection(db, 'connectionRequests'), where('senderId', '==', currentUser.uid)),
+        (snap) => {
+          senderMap.clear();
+          snap.forEach((d) => senderMap.set(d.id, { ...d.data(), id: d.id } as ConnectionRequest));
+          syncMerged();
+        },
+        (err) => console.warn('Conn sender listener note:', err.message)
+      );
+
+      unsubConnRecipient = onSnapshot(
+        query(collection(db, 'connectionRequests'), where('recipientId', '==', currentUser.uid)),
+        (snap) => {
+          recipientMap.clear();
+          snap.forEach((d) => recipientMap.set(d.id, { ...d.data(), id: d.id } as ConnectionRequest));
+          syncMerged();
+        },
+        (err) => console.warn('Conn recipient listener note:', err.message)
+      );
+    }
+
+    // -------------------------------------------------------------
+    // Real Mentorship Requests Listeners
+    // -------------------------------------------------------------
+    let unsubMentorStudent = () => {};
+    let unsubMentorTarget = () => {};
+    let unsubMentorAll = () => {};
+
+    if (isSuperAdmin) {
+      unsubMentorAll = onSnapshot(
+        collection(db, 'mentorshipRequests'),
+        (snap) => {
+          const list: MentorshipRequest[] = [];
+          snap.forEach((d) => list.push({ ...d.data(), id: d.id } as MentorshipRequest));
+          setMentorshipRequests(list.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1)));
+        },
+        (err) => console.warn('Mentorship requests all listener note:', err.message)
+      );
+    } else {
+      const studentMap = new Map<string, MentorshipRequest>();
+      const mentorMap = new Map<string, MentorshipRequest>();
+
+      const syncMentorMerged = () => {
+        const merged = new Map<string, MentorshipRequest>();
+        studentMap.forEach((v, k) => merged.set(k, v));
+        mentorMap.forEach((v, k) => merged.set(k, v));
+        const list = Array.from(merged.values()).sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+        setMentorshipRequests(list);
+        try {
+          localStorage.setItem('alumnisphere_mentorship_cache', JSON.stringify(list));
+        } catch {}
+      };
+
+      unsubMentorStudent = onSnapshot(
+        query(collection(db, 'mentorshipRequests'), where('studentId', '==', currentUser.uid)),
+        (snap) => {
+          studentMap.clear();
+          snap.forEach((d) => studentMap.set(d.id, { ...d.data(), id: d.id } as MentorshipRequest));
+          syncMentorMerged();
+        },
+        (err) => console.warn('Mentor student listener note:', err.message)
+      );
+
+      unsubMentorTarget = onSnapshot(
+        query(collection(db, 'mentorshipRequests'), where('mentorId', '==', currentUser.uid)),
+        (snap) => {
+          mentorMap.clear();
+          snap.forEach((d) => mentorMap.set(d.id, { ...d.data(), id: d.id } as MentorshipRequest));
+          syncMentorMerged();
+        },
+        (err) => console.warn('Mentor target listener note:', err.message)
+      );
+    }
+
     return () => {
       unsubChangeRequests();
       unsubVerificationRequests();
@@ -930,6 +1102,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubAuditLogs();
       unsubAdminAssignments();
       unsubUsers();
+      unsubConnSender();
+      unsubConnRecipient();
+      unsubConnAll();
+      unsubMentorStudent();
+      unsubMentorTarget();
+      unsubMentorAll();
     };
   }, [currentUser, isSuperAdmin]);
 
@@ -2575,6 +2753,477 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // --------------------------------------------------------------------------
+  // Real Alumni Networking & Mentorship Engine
+  // --------------------------------------------------------------------------
+
+  const getConnectionStatusWith = (targetIdOrAlumniId: string) => {
+    if (!currentUser || !targetIdOrAlumniId) {
+      return { status: 'NONE' as const, request: undefined, isOutgoing: false };
+    }
+    const cleanTarget = targetIdOrAlumniId.trim().toLowerCase();
+    const req = connectionRequests.find((r) => {
+      const isSender = r.senderId.toLowerCase() === currentUser.uid.toLowerCase();
+      const isRecipient = r.recipientId.toLowerCase() === currentUser.uid.toLowerCase();
+      if (!isSender && !isRecipient) return false;
+
+      const otherId = isSender ? r.recipientId : r.senderId;
+      const otherAlumniId = isSender ? r.recipientAlumniId : r.senderAlumniId;
+
+      return (
+        (otherId && otherId.toLowerCase() === cleanTarget) ||
+        (otherAlumniId && otherAlumniId.toLowerCase() === cleanTarget)
+      );
+    });
+
+    if (!req || req.status === 'CANCELLED') {
+      return { status: 'NONE' as const, request: undefined, isOutgoing: false };
+    }
+
+    return {
+      status: req.status,
+      request: req,
+      isOutgoing: req.senderId.toLowerCase() === currentUser.uid.toLowerCase(),
+    };
+  };
+
+  const getMentorshipStatusWith = (targetIdOrAlumniId: string) => {
+    if (!currentUser || !targetIdOrAlumniId) {
+      return { status: 'NONE' as const, request: undefined, isOutgoing: false };
+    }
+    const cleanTarget = targetIdOrAlumniId.trim().toLowerCase();
+    const req = mentorshipRequests.find((r) => {
+      const isStudent = r.studentId.toLowerCase() === currentUser.uid.toLowerCase();
+      const isMentor = r.mentorId.toLowerCase() === currentUser.uid.toLowerCase();
+      if (!isStudent && !isMentor) return false;
+
+      const otherId = isStudent ? r.mentorId : r.studentId;
+      const otherAlumniId = r.mentorAlumniId;
+
+      return (
+        (otherId && otherId.toLowerCase() === cleanTarget) ||
+        (otherAlumniId && otherAlumniId.toLowerCase() === cleanTarget)
+      );
+    });
+
+    if (!req || req.status === 'CANCELLED') {
+      return { status: 'NONE' as const, request: undefined, isOutgoing: false };
+    }
+
+    return {
+      status: req.status,
+      request: req,
+      isOutgoing: req.studentId.toLowerCase() === currentUser.uid.toLowerCase(),
+    };
+  };
+
+  const sendConnectionRequest = async (target: {
+    recipientId: string;
+    recipientName: string;
+    recipientEmail?: string;
+    recipientRole?: Role;
+    recipientPhotoUrl?: string;
+    recipientUniversity?: string;
+    recipientDepartment?: string;
+    recipientJobRole?: string;
+    recipientCompany?: string;
+    recipientAlumniId?: string;
+    message?: string;
+  }) => {
+    if (!currentUser) throw new Error('Authentication required to send connection request.');
+    if (
+      currentUser.uid.toLowerCase() === target.recipientId.toLowerCase() ||
+      (userProfile?.id && userProfile.id.toLowerCase() === target.recipientId.toLowerCase())
+    ) {
+      throw new Error('You cannot send a connection request to yourself.');
+    }
+
+    // Check duplicate
+    const existing = connectionRequests.find(
+      (r) =>
+        ((r.senderId.toLowerCase() === currentUser.uid.toLowerCase() && r.recipientId.toLowerCase() === target.recipientId.toLowerCase()) ||
+          (r.recipientId.toLowerCase() === currentUser.uid.toLowerCase() && r.senderId.toLowerCase() === target.recipientId.toLowerCase())) &&
+        (r.status === 'PENDING' || r.status === 'ACCEPTED')
+    );
+    if (existing) {
+      throw new Error(
+        existing.status === 'ACCEPTED'
+          ? 'You are already connected with this member.'
+          : 'A connection request between you and this member is already pending.'
+      );
+    }
+
+    const docId = `conn_${currentUser.uid}_${target.recipientId}`;
+    const now = new Date().toISOString();
+    const newReq: ConnectionRequest = {
+      id: docId,
+      senderId: currentUser.uid,
+      senderName: userProfile?.name || currentUser.displayName || 'AlumniSphere Member',
+      senderEmail: userProfile?.email || currentUser.email || '',
+      senderRole: userProfile?.role || 'STUDENT',
+      senderPhotoUrl: userProfile?.photoUrl,
+      senderUniversity: userProfile?.university,
+      senderDepartment: userProfile?.department,
+      senderJobRole: userProfile?.jobRole,
+      senderCompany: userProfile?.company,
+      recipientId: target.recipientId,
+      recipientName: target.recipientName,
+      recipientEmail: target.recipientEmail,
+      recipientRole: target.recipientRole,
+      recipientPhotoUrl: target.recipientPhotoUrl,
+      recipientUniversity: target.recipientUniversity,
+      recipientDepartment: target.recipientDepartment,
+      recipientJobRole: target.recipientJobRole,
+      recipientCompany: target.recipientCompany,
+      recipientAlumniId: target.recipientAlumniId,
+      status: 'PENDING',
+      message: (target.message || '').slice(0, 300).trim(),
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // Optimistically update
+    setConnectionRequests((prev) => [newReq, ...prev.filter((r) => r.id !== docId)]);
+
+    // Persist to Firestore
+    try {
+      await setDoc(doc(db, 'connectionRequests', docId), newReq);
+      // Dispatch notification
+      await addDoc(collection(db, 'notifications'), {
+        recipientId: target.recipientId,
+        title: 'New Connection Request',
+        message: `${newReq.senderName} would like to connect with you.`,
+        type: 'CONNECTION',
+        read: false,
+        actionUrl: 'network',
+        createdAt: now,
+      });
+    } catch (err: any) {
+      console.warn('Firestore connection request note:', err.message);
+    }
+
+    // Call server API mirror if available
+    try {
+      await fetch('/api/connections/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser.uid },
+        body: JSON.stringify(target),
+      });
+    } catch {}
+  };
+
+  const respondConnectionRequest = async (requestId: string, status: 'ACCEPTED' | 'DECLINED') => {
+    if (!currentUser) throw new Error('Authentication required.');
+    const req = connectionRequests.find((r) => r.id === requestId);
+    if (!req) throw new Error('Connection request not found.');
+
+    const isRecipient =
+      req.recipientId.toLowerCase() === currentUser.uid.toLowerCase() ||
+      (userProfile?.email && req.recipientEmail?.toLowerCase() === userProfile.email.toLowerCase()) ||
+      isSuperAdmin;
+
+    if (!isRecipient) {
+      throw new Error('Unauthorized: only the recipient can accept or decline this request.');
+    }
+
+    if (req.status !== 'PENDING') {
+      throw new Error(`Cannot respond to a request with status ${req.status}.`);
+    }
+
+    const now = new Date().toISOString();
+    const updated: ConnectionRequest = {
+      ...req,
+      status,
+      updatedAt: now,
+      respondedAt: now,
+    };
+
+    setConnectionRequests((prev) => prev.map((r) => (r.id === requestId ? updated : r)));
+
+    try {
+      await updateDoc(doc(db, 'connectionRequests', requestId), {
+        status,
+        updatedAt: now,
+        respondedAt: now,
+      });
+      // Send notification to sender
+      await addDoc(collection(db, 'notifications'), {
+        recipientId: req.senderId,
+        title: status === 'ACCEPTED' ? 'Connection Request Accepted' : 'Connection Request Update',
+        message: `${req.recipientName} ${status === 'ACCEPTED' ? 'accepted your connection request!' : 'declined your connection request.'}`,
+        type: 'CONNECTION',
+        read: false,
+        actionUrl: 'network',
+        createdAt: now,
+      });
+    } catch (err: any) {
+      console.warn('Firestore connection response note:', err.message);
+    }
+
+    try {
+      await fetch(`/api/connections/${requestId}/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser.uid },
+        body: JSON.stringify({ status }),
+      });
+    } catch {}
+  };
+
+  const cancelConnectionRequest = async (requestId: string) => {
+    if (!currentUser) throw new Error('Authentication required.');
+    const req = connectionRequests.find((r) => r.id === requestId);
+    if (!req) throw new Error('Connection request not found.');
+
+    const isSender =
+      req.senderId.toLowerCase() === currentUser.uid.toLowerCase() ||
+      (userProfile?.email && req.senderEmail?.toLowerCase() === userProfile.email.toLowerCase()) ||
+      isSuperAdmin;
+
+    if (!isSender) {
+      throw new Error('Unauthorized: only the sender can cancel this request.');
+    }
+
+    const now = new Date().toISOString();
+    setConnectionRequests((prev) => prev.map((r) => (r.id === requestId ? { ...r, status: 'CANCELLED', updatedAt: now } : r)));
+
+    try {
+      await updateDoc(doc(db, 'connectionRequests', requestId), {
+        status: 'CANCELLED',
+        updatedAt: now,
+      });
+    } catch (err: any) {
+      console.warn('Firestore cancel connection note:', err.message);
+    }
+
+    try {
+      await fetch(`/api/connections/${requestId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser.uid },
+      });
+    } catch {}
+  };
+
+  const disconnectConnection = async (requestId: string) => {
+    if (!currentUser) throw new Error('Authentication required.');
+    const req = connectionRequests.find((r) => r.id === requestId);
+    if (!req) throw new Error('Connection not found.');
+
+    const isParty =
+      req.senderId.toLowerCase() === currentUser.uid.toLowerCase() ||
+      req.recipientId.toLowerCase() === currentUser.uid.toLowerCase() ||
+      isSuperAdmin;
+
+    if (!isParty) {
+      throw new Error('Unauthorized: you are not a party to this connection.');
+    }
+
+    const now = new Date().toISOString();
+    setConnectionRequests((prev) => prev.map((r) => (r.id === requestId ? { ...r, status: 'CANCELLED', updatedAt: now } : r)));
+
+    try {
+      await updateDoc(doc(db, 'connectionRequests', requestId), {
+        status: 'CANCELLED',
+        updatedAt: now,
+      });
+    } catch (err: any) {
+      console.warn('Firestore disconnect note:', err.message);
+    }
+
+    try {
+      await fetch(`/api/connections/${requestId}/disconnect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser.uid },
+      });
+    } catch {}
+  };
+
+  const sendMentorshipRequest = async (target: {
+    mentorId: string;
+    mentorName: string;
+    mentorRole?: Role;
+    mentorPhotoUrl?: string;
+    mentorUniversity?: string;
+    mentorDepartment?: string;
+    mentorJobRole?: string;
+    mentorCompany?: string;
+    mentorAlumniId?: string;
+    topic: MentorshipTopic;
+    message: string;
+    preferredSchedule?: string;
+  }) => {
+    if (!currentUser) throw new Error('Authentication required.');
+    if (
+      currentUser.uid.toLowerCase() === target.mentorId.toLowerCase() ||
+      (userProfile?.id && userProfile.id.toLowerCase() === target.mentorId.toLowerCase())
+    ) {
+      throw new Error('You cannot request mentorship from yourself.');
+    }
+
+    if (!target.message || target.message.trim().length < 20) {
+      throw new Error('Please provide a clear purpose or message of at least 20 characters.');
+    }
+
+    const existingPending = mentorshipRequests.find(
+      (r) =>
+        r.studentId.toLowerCase() === currentUser.uid.toLowerCase() &&
+        r.mentorId.toLowerCase() === target.mentorId.toLowerCase() &&
+        r.status === 'PENDING'
+    );
+    if (existingPending) {
+      throw new Error('You already have a pending mentorship request to this mentor. Please wait for their response.');
+    }
+
+    const docId = `mentor_${currentUser.uid}_${target.mentorId}_${Date.now()}`;
+    const now = new Date().toISOString();
+    const newReq: MentorshipRequest = {
+      id: docId,
+      studentId: currentUser.uid,
+      studentName: userProfile?.name || currentUser.displayName || 'Student Mentee',
+      studentEmail: userProfile?.email || currentUser.email || '',
+      studentRole: userProfile?.role || 'STUDENT',
+      studentPhotoUrl: userProfile?.photoUrl,
+      studentUniversity: userProfile?.university,
+      studentDepartment: userProfile?.department,
+      studentGraduation: userProfile?.graduationYear || userProfile?.expectedGraduation,
+      studentBio: userProfile?.bio,
+      mentorId: target.mentorId,
+      mentorName: target.mentorName,
+      mentorRole: target.mentorRole,
+      mentorPhotoUrl: target.mentorPhotoUrl,
+      mentorUniversity: target.mentorUniversity,
+      mentorDepartment: target.mentorDepartment,
+      mentorJobRole: target.mentorJobRole,
+      mentorCompany: target.mentorCompany,
+      mentorAlumniId: target.mentorAlumniId,
+      topic: target.topic,
+      message: target.message.trim().slice(0, 1000),
+      preferredSchedule: target.preferredSchedule,
+      status: 'PENDING',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    setMentorshipRequests((prev) => [newReq, ...prev]);
+
+    try {
+      await setDoc(doc(db, 'mentorshipRequests', docId), newReq);
+      await addDoc(collection(db, 'notifications'), {
+        recipientId: target.mentorId,
+        title: 'New Mentorship Request',
+        message: `${newReq.studentName} requested mentorship on "${newReq.topic}".`,
+        type: 'MENTORSHIP',
+        read: false,
+        actionUrl: 'network',
+        createdAt: now,
+      });
+    } catch (err: any) {
+      console.warn('Firestore mentorship request note:', err.message);
+    }
+
+    try {
+      await fetch('/api/mentorship/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser.uid },
+        body: JSON.stringify(target),
+      });
+    } catch {}
+  };
+
+  const respondMentorshipRequest = async (
+    requestId: string,
+    status: 'ACCEPTED' | 'DECLINED' | 'COMPLETED',
+    feedback?: string
+  ) => {
+    if (!currentUser) throw new Error('Authentication required.');
+    const req = mentorshipRequests.find((r) => r.id === requestId);
+    if (!req) throw new Error('Mentorship request not found.');
+
+    const isMentor =
+      req.mentorId.toLowerCase() === currentUser.uid.toLowerCase() ||
+      isSuperAdmin;
+
+    if (!isMentor) {
+      throw new Error('Unauthorized: only the mentor can respond to this request.');
+    }
+
+    const now = new Date().toISOString();
+    const updated: MentorshipRequest = {
+      ...req,
+      status,
+      feedback: feedback ? feedback.trim().slice(0, 1000) : req.feedback,
+      updatedAt: now,
+      respondedAt: now,
+    };
+
+    setMentorshipRequests((prev) => prev.map((r) => (r.id === requestId ? updated : r)));
+
+    try {
+      await updateDoc(doc(db, 'mentorshipRequests', requestId), {
+        status,
+        feedback: updated.feedback || '',
+        updatedAt: now,
+        respondedAt: now,
+      });
+      await addDoc(collection(db, 'notifications'), {
+        recipientId: req.studentId,
+        title: status === 'ACCEPTED' ? 'Mentorship Request Accepted!' : status === 'COMPLETED' ? 'Mentorship Completed' : 'Mentorship Request Update',
+        message: `${req.mentorName} ${status === 'ACCEPTED' ? 'accepted your mentorship request!' : status === 'COMPLETED' ? 'marked your mentorship as completed!' : 'declined your mentorship request.'}${feedback ? ` Note: "${feedback}"` : ''}`,
+        type: 'MENTORSHIP',
+        read: false,
+        actionUrl: 'network',
+        createdAt: now,
+      });
+    } catch (err: any) {
+      console.warn('Firestore mentorship response note:', err.message);
+    }
+
+    try {
+      await fetch(`/api/mentorship/${requestId}/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser.uid },
+        body: JSON.stringify({ status, feedback }),
+      });
+    } catch {}
+  };
+
+  const cancelMentorshipRequest = async (requestId: string) => {
+    if (!currentUser) throw new Error('Authentication required.');
+    const req = mentorshipRequests.find((r) => r.id === requestId);
+    if (!req) throw new Error('Mentorship request not found.');
+
+    const isStudent =
+      req.studentId.toLowerCase() === currentUser.uid.toLowerCase() ||
+      (userProfile?.email && req.studentEmail?.toLowerCase() === userProfile.email.toLowerCase()) ||
+      isSuperAdmin;
+
+    if (!isStudent) {
+      throw new Error('Unauthorized: only the student can cancel this request.');
+    }
+
+    const now = new Date().toISOString();
+    setMentorshipRequests((prev) => prev.map((r) => (r.id === requestId ? { ...r, status: 'CANCELLED', updatedAt: now } : r)));
+
+    try {
+      await updateDoc(doc(db, 'mentorshipRequests', requestId), {
+        status: 'CANCELLED',
+        updatedAt: now,
+      });
+    } catch (err: any) {
+      console.warn('Firestore cancel mentorship note:', err.message);
+    }
+
+    try {
+      await fetch(`/api/mentorship/${requestId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser.uid },
+      });
+    } catch {}
+  };
+
+  const completeMentorshipRequest = async (requestId: string) => {
+    return respondMentorshipRequest(requestId, 'COMPLETED');
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -2593,6 +3242,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         approveProfileClaim,
         rejectProfileClaim,
         notifications,
+        connectionRequests,
+        mentorshipRequests,
+        sendConnectionRequest,
+        respondConnectionRequest,
+        cancelConnectionRequest,
+        disconnectConnection,
+        sendMentorshipRequest,
+        respondMentorshipRequest,
+        cancelMentorshipRequest,
+        completeMentorshipRequest,
+        getConnectionStatusWith,
+        getMentorshipStatusWith,
         auditLogs,
         adminAssignments,
         platformSettings,

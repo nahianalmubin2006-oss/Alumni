@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test:security": "node --test tests/security-rules.test.mjs"
+    "test:security": "node --test tests/security-rules.test.mjs tests/networking-mentorship.test.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

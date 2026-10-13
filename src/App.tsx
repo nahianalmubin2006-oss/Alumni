@@ -15,11 +15,11 @@ import { DepartmentProfileView } from './views/DepartmentProfileView';
 import { DepartmentBatchView } from './views/DepartmentBatchView';
 import { AlumniView } from './views/AlumniView';
 import { AlumniProfileView } from './views/AlumniProfileView';
-import { AlumniAnalyticsView } from './views/AlumniAnalyticsView';
 import { LiveNewsView } from './views/LiveNewsView';
 import { NewsDetailView } from './views/NewsDetailView';
 import { SearchPageView } from './views/SearchPageView';
 import { AccountView } from './views/AccountView';
+import { NetworkView } from './views/NetworkView';
 import { TermsView } from './views/TermsView';
 import { CreatorView } from './views/CreatorView';
 
@@ -41,9 +41,9 @@ function getInitialPageFromPath(): { page: string; params: Record<string, string
   if (pathname === '/universities') return { page: 'universities', params: {} };
   if (pathname === '/department') return { page: 'department', params: {} };
   if (pathname === '/alumni') return { page: 'alumni', params: {} };
-  if (pathname === '/analytics') return { page: 'analytics', params: {} };
   if (pathname === '/news') return { page: 'news', params: {} };
   if (pathname === '/account') return { page: 'account', params: {} };
+  if (pathname === '/network') return { page: 'network', params: {} };
   if (pathname === '/terms') return { page: 'terms', params: {} };
   if (pathname === '/creator') return { page: 'creator', params: {} };
   if (pathname === '/search') {
@@ -109,8 +109,6 @@ export default function App() {
         return { page: 'department', params: {} };
       case 'alumniProfile':
         return { page: 'alumni', params: {} };
-      case 'analytics':
-        return { page: 'alumni', params: {} };
       case 'newsDetail':
         return { page: 'news', params: {} };
       case 'universities':
@@ -130,28 +128,39 @@ export default function App() {
   };
 
   const handleNavigate = (page: string, params: Record<string, string> = {}) => {
-    if (page !== currentPage || JSON.stringify(params) !== JSON.stringify(pageParams)) {
+    let targetPage = page;
+    const targetParams = { ...params };
+    if (page.includes('?')) {
+      const [p, qs] = page.split('?');
+      targetPage = p;
+      const parsed = new URLSearchParams(qs);
+      parsed.forEach((v, k) => {
+        targetParams[k] = v;
+      });
+    }
+
+    if (targetPage !== currentPage || JSON.stringify(targetParams) !== JSON.stringify(pageParams)) {
       setNavHistory((prev) => [...prev, { page: currentPage, params: pageParams }]);
     }
-    setCurrentPage(page);
-    setPageParams(params);
+    setCurrentPage(targetPage);
+    setPageParams(targetParams);
 
     // Synchronize browser URL bar and history
     let newPath = '/';
-    if (page === 'admin-login' || page === 'admin') newPath = '/admin/login';
-    else if (page === 'admin-dashboard') newPath = '/admin/dashboard';
-    else if (page === 'universities') newPath = '/universities';
-    else if (page === 'department') newPath = '/department';
-    else if (page === 'alumni') newPath = '/alumni';
-    else if (page === 'analytics') newPath = '/analytics';
-    else if (page === 'news') newPath = '/news';
-    else if (page === 'account') newPath = '/account';
-    else if (page === 'terms') newPath = '/terms';
-    else if (page === 'creator') newPath = '/creator';
-    else if (page === 'search') newPath = '/search';
+    if (targetPage === 'admin-login' || targetPage === 'admin') newPath = '/admin/login';
+    else if (targetPage === 'admin-dashboard') newPath = '/admin/dashboard';
+    else if (targetPage === 'universities') newPath = '/universities';
+    else if (targetPage === 'department') newPath = '/department';
+    else if (targetPage === 'alumni') newPath = '/alumni';
+    else if (targetPage === 'network') newPath = '/network';
+    else if (targetPage === 'news') newPath = '/news';
+    else if (targetPage === 'account') newPath = '/account';
+    else if (targetPage === 'terms') newPath = '/terms';
+    else if (targetPage === 'creator') newPath = '/creator';
+    else if (targetPage === 'search') newPath = '/search';
 
-    if (window.location.pathname !== newPath || window.history.state?.page !== page) {
-      window.history.pushState({ page, params }, '', newPath);
+    if (window.location.pathname !== newPath || window.history.state?.page !== targetPage) {
+      window.history.pushState({ page: targetPage, params: targetParams }, '', newPath);
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -171,7 +180,6 @@ export default function App() {
       else if (prev.page === 'universities') newPath = '/universities';
       else if (prev.page === 'department') newPath = '/department';
       else if (prev.page === 'alumni') newPath = '/alumni';
-      else if (prev.page === 'analytics') newPath = '/analytics';
       else if (prev.page === 'news') newPath = '/news';
       else if (prev.page === 'account') newPath = '/account';
       else if (prev.page === 'terms') newPath = '/terms';
@@ -194,7 +202,6 @@ export default function App() {
     if (upper.page === 'universities') newPath = '/universities';
     else if (upper.page === 'department') newPath = '/department';
     else if (upper.page === 'alumni') newPath = '/alumni';
-    else if (upper.page === 'analytics') newPath = '/analytics';
     else if (upper.page === 'news') newPath = '/news';
     else if (upper.page === 'account') newPath = '/account';
     else if (upper.page === 'terms') newPath = '/terms';
@@ -343,21 +350,7 @@ export default function App() {
                 />
               )}
 
-              {currentPage === 'alumni' && (
-                <AlumniView
-                  onNavigate={handleNavigate}
-                  onBack={handleBack}
-                  initialParams={pageParams}
-                />
-              )}
-
-              {currentPage === 'analytics' && (
-                <AlumniAnalyticsView
-                  onNavigate={handleNavigate}
-                  onBack={handleBack}
-                  initialParams={pageParams}
-                />
-              )}
+              {currentPage === 'alumni' && <AlumniView onNavigate={handleNavigate} onBack={handleBack} />}
 
               {currentPage === 'alumniProfile' && (
                 <AlumniProfileView
@@ -388,6 +381,14 @@ export default function App() {
 
               {currentPage === 'account' && (
                 <AccountView
+                  onNavigate={handleNavigate}
+                  onBack={handleBack}
+                  pageParams={pageParams}
+                />
+              )}
+
+              {currentPage === 'network' && (
+                <NetworkView
                   onNavigate={handleNavigate}
                   onBack={handleBack}
                   pageParams={pageParams}

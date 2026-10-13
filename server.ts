@@ -534,6 +534,69 @@ interface AdminAccessApplication {
   reviewerNote?: string;
 }
 
+interface ServerConnectionRequest {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderEmail?: string;
+  senderRole?: string;
+  senderPhotoUrl?: string;
+  senderUniversity?: string;
+  senderDepartment?: string;
+  senderJobRole?: string;
+  senderCompany?: string;
+  senderAlumniId?: string;
+
+  recipientId: string;
+  recipientName: string;
+  recipientEmail?: string;
+  recipientRole?: string;
+  recipientPhotoUrl?: string;
+  recipientUniversity?: string;
+  recipientDepartment?: string;
+  recipientJobRole?: string;
+  recipientCompany?: string;
+  recipientAlumniId?: string;
+
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
+  message?: string;
+  createdAt: string;
+  updatedAt: string;
+  respondedAt?: string;
+}
+
+interface ServerMentorshipRequest {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentEmail?: string;
+  studentRole?: string;
+  studentPhotoUrl?: string;
+  studentUniversity?: string;
+  studentDepartment?: string;
+  studentGraduation?: string;
+  studentBio?: string;
+
+  mentorId: string;
+  mentorName: string;
+  mentorRole?: string;
+  mentorPhotoUrl?: string;
+  mentorUniversity?: string;
+  mentorDepartment?: string;
+  mentorJobRole?: string;
+  mentorCompany?: string;
+  mentorAlumniId?: string;
+
+  topic: string;
+  message: string;
+  preferredSchedule?: string;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'COMPLETED' | 'CANCELLED';
+  feedback?: string;
+  createdAt: string;
+  updatedAt: string;
+  respondedAt?: string;
+}
+
 interface AdminStoreData {
   users: AdminUser[];
   auditLogs: AdminAuditLog[];
@@ -541,6 +604,8 @@ interface AdminStoreData {
   changeRequests: ChangeRequestItem[];
   settings: AdminSettings;
   adminApplications?: AdminAccessApplication[];
+  connectionRequests?: ServerConnectionRequest[];
+  mentorshipRequests?: ServerMentorshipRequest[];
 }
 
 // Password hashing with cryptographic salt and scrypt
@@ -634,6 +699,8 @@ let adminStore: AdminStoreData = (() => {
 
 // Backward-compatible schema migration for existing admin-database.json files.
 if (!Array.isArray(adminStore.adminApplications)) adminStore.adminApplications = [];
+if (!Array.isArray(adminStore.connectionRequests)) adminStore.connectionRequests = [];
+if (!Array.isArray(adminStore.mentorshipRequests)) adminStore.mentorshipRequests = [];
 
 // Ensure all platform students and alumni are populated so administrators can see all members
 const seededUserEmails = new Set(adminStore.users.map((u) => u.email.toLowerCase()));
@@ -3356,6 +3423,505 @@ app.get('/api/admin/stats', requireAdminAuth, (_req, res) => {
       activeSessionsCount: activeAdminSessions.size,
     },
   });
+});
+
+// ============================================================================
+// Real Alumni Networking & Mentorship API Routes
+// ============================================================================
+
+const networkRateLimitMap = new Map<string, number[]>();
+function checkNetworkingRateLimit(userId: string, limitCount = 25, windowMs = 3600000): boolean {
+  const now = Date.now();
+  const timestamps = (networkRateLimitMap.get(userId) || []).filter((t) => now - t < windowMs);
+  if (timestamps.length >= limitCount) return false;
+  timestamps.push(now);
+  networkRateLimitMap.set(userId, timestamps);
+  return true;
+}
+
+function resolveNetworkingUser(req: express.Request): AdminUser | null {
+  const authHeader = req.headers.authorization;
+  const token = req.body?.token || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null);
+  const identifier = req.body?.userId || req.headers['x-user-id'] || req.query?.userId;
+
+  let user: AdminUser | undefined;
+  if (token) {
+    const session = activeAdminSessions.get(token);
+    if (session) {
+      user = adminStore.users.find((u) => u.id === session.userId);
+    }
+  }
+  if (!user && identifier) {
+    const cleanId = String(identifier).trim().toLowerCase();
+    user = adminStore.users.find(
+      (u) =>
+        u.id.toLowerCase() === cleanId ||
+        (u.firebaseUid && u.firebaseUid.toLowerCase() === cleanId) ||
+        u.email.toLowerCase() === cleanId
+    );
+  }
+  return user || null;
+}
+
+// GET /api/connections/my - Get connections and requests for authenticated user
+app.get('/api/connections/my', (req, res) => {
+  const user = resolveNetworkingUser(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required to view your professional network.' });
+  }
+
+  const userId = user.id.toLowerCase();
+  const userEmail = user.email.toLowerCase();
+
+  const allReqs = (adminStore.connectionRequests || []).filter(
+    (r) =>
+      r.senderId.toLowerCase() === userId ||
+      r.recipientId.toLowerCase() === userId ||
+      (r.senderEmail && r.senderEmail.toLowerCase() === userEmail) ||
+      (r.recipientEmail && r.recipientEmail.toLowerCase() === userEmail)
+  );
+
+  const incoming = allReqs.filter(
+    (r) =>
+      (r.recipientId.toLowerCase() === userId || (r.recipientEmail && r.recipientEmail.toLowerCase() === userEmail)) &&
+      r.status === 'PENDING'
+  );
+
+  const outgoing = allReqs.filter(
+    (r) =>
+      (r.senderId.toLowerCase() === userId || (r.senderEmail && r.senderEmail.toLowerCase() === userEmail)) &&
+      r.status !== 'CANCELLED'
+  );
+
+  const accepted = allReqs.filter((r) => r.status === 'ACCEPTED');
+
+  return res.json({
+    success: true,
+    totalConnections: accepted.length,
+    incoming,
+    outgoing,
+    accepted,
+  });
+});
+
+// POST /api/connections/request - Send a new connection request
+app.post('/api/connections/request', (req, res) => {
+  const user = resolveNetworkingUser(req);
+  if (!user) {
+    return res.status(401).json({ error: 'You must be signed in to send a connection request.' });
+  }
+
+  const {
+    recipientId,
+    recipientName,
+    recipientEmail,
+    recipientRole,
+    recipientPhotoUrl,
+    recipientUniversity,
+    recipientDepartment,
+    recipientJobRole,
+    recipientCompany,
+    recipientAlumniId,
+    message,
+  } = req.body || {};
+
+  if (!recipientId || !recipientName) {
+    return res.status(400).json({ error: 'Recipient ID and name are required.' });
+  }
+
+  // Prevent connecting with oneself
+  if (
+    recipientId.toLowerCase() === user.id.toLowerCase() ||
+    (user.firebaseUid && recipientId.toLowerCase() === user.firebaseUid.toLowerCase()) ||
+    (recipientEmail && recipientEmail.toLowerCase() === user.email.toLowerCase())
+  ) {
+    return res.status(400).json({ error: 'You cannot send a connection request to yourself.' });
+  }
+
+  // Rate limiting & abuse prevention
+  if (!checkNetworkingRateLimit(user.id)) {
+    return res.status(429).json({ error: 'Too many requests. Please wait a while before sending more invitations.' });
+  }
+
+  // Duplicate active request check
+  const existing = (adminStore.connectionRequests || []).find(
+    (r) =>
+      ((r.senderId.toLowerCase() === user.id.toLowerCase() && r.recipientId.toLowerCase() === String(recipientId).toLowerCase()) ||
+        (r.recipientId.toLowerCase() === user.id.toLowerCase() && r.senderId.toLowerCase() === String(recipientId).toLowerCase())) &&
+      (r.status === 'PENDING' || r.status === 'ACCEPTED')
+  );
+
+  if (existing) {
+    return res.status(409).json({
+      error:
+        existing.status === 'ACCEPTED'
+          ? 'You are already connected with this member.'
+          : 'A connection request between you and this member is already pending.',
+    });
+  }
+
+  const safeMessage = typeof message === 'string' ? message.slice(0, 300).trim() : '';
+  const now = new Date().toISOString();
+  const newRequest: ServerConnectionRequest = {
+    id: `conn-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`,
+    senderId: user.id,
+    senderName: user.name,
+    senderEmail: user.email,
+    senderRole: user.role,
+    senderUniversity: user.university,
+    senderDepartment: user.department,
+    senderJobRole: user.jobRole,
+    senderCompany: user.company,
+    recipientId: String(recipientId).trim(),
+    recipientName: String(recipientName).trim(),
+    recipientEmail: recipientEmail ? String(recipientEmail).trim() : undefined,
+    recipientRole: recipientRole,
+    recipientPhotoUrl: recipientPhotoUrl,
+    recipientUniversity: recipientUniversity,
+    recipientDepartment: recipientDepartment,
+    recipientJobRole: recipientJobRole,
+    recipientCompany: recipientCompany,
+    recipientAlumniId: recipientAlumniId,
+    message: safeMessage,
+    status: 'PENDING',
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  adminStore.connectionRequests!.push(newRequest);
+  persistAdminStore();
+
+  return res.status(201).json({ success: true, request: newRequest });
+});
+
+// POST /api/connections/:id/respond - Accept or Decline request (Recipient only)
+app.post('/api/connections/:id/respond', (req, res) => {
+  const user = resolveNetworkingUser(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  const { id } = req.params;
+  const { status } = req.body || {};
+
+  if (status !== 'ACCEPTED' && status !== 'DECLINED') {
+    return res.status(400).json({ error: 'Valid status must be either ACCEPTED or DECLINED.' });
+  }
+
+  const request = (adminStore.connectionRequests || []).find((r) => r.id === id);
+  if (!request) {
+    return res.status(404).json({ error: 'Connection request not found.' });
+  }
+
+  // Authorization: Only the recipient can accept or decline
+  const isRecipient =
+    request.recipientId.toLowerCase() === user.id.toLowerCase() ||
+    (user.firebaseUid && request.recipientId.toLowerCase() === user.firebaseUid.toLowerCase()) ||
+    (request.recipientEmail && request.recipientEmail.toLowerCase() === user.email.toLowerCase()) ||
+    user.role === 'SUPER_ADMIN';
+
+  if (!isRecipient) {
+    return res.status(403).json({ error: 'Unauthorized: only the recipient may accept or decline this request.' });
+  }
+
+  if (request.status !== 'PENDING') {
+    return res.status(400).json({ error: `Cannot respond to a request with status ${request.status}.` });
+  }
+
+  const now = new Date().toISOString();
+  request.status = status;
+  request.updatedAt = now;
+  request.respondedAt = now;
+
+  persistAdminStore();
+  return res.json({ success: true, request });
+});
+
+// POST /api/connections/:id/cancel - Cancel an outgoing pending request (Sender only)
+app.post('/api/connections/:id/cancel', (req, res) => {
+  const user = resolveNetworkingUser(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  const { id } = req.params;
+  const request = (adminStore.connectionRequests || []).find((r) => r.id === id);
+  if (!request) {
+    return res.status(404).json({ error: 'Connection request not found.' });
+  }
+
+  // Authorization: Only the sender can cancel
+  const isSender =
+    request.senderId.toLowerCase() === user.id.toLowerCase() ||
+    (user.firebaseUid && request.senderId.toLowerCase() === user.firebaseUid.toLowerCase()) ||
+    (request.senderEmail && request.senderEmail.toLowerCase() === user.email.toLowerCase()) ||
+    user.role === 'SUPER_ADMIN';
+
+  if (!isSender) {
+    return res.status(403).json({ error: 'Unauthorized: only the sender may cancel this request.' });
+  }
+
+  request.status = 'CANCELLED';
+  request.updatedAt = new Date().toISOString();
+
+  persistAdminStore();
+  return res.json({ success: true, request });
+});
+
+// POST /api/connections/:id/disconnect - Remove an existing connection
+app.post('/api/connections/:id/disconnect', (req, res) => {
+  const user = resolveNetworkingUser(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  const { id } = req.params;
+  const request = (adminStore.connectionRequests || []).find((r) => r.id === id);
+  if (!request) {
+    return res.status(404).json({ error: 'Connection not found.' });
+  }
+
+  const isParty =
+    request.senderId.toLowerCase() === user.id.toLowerCase() ||
+    request.recipientId.toLowerCase() === user.id.toLowerCase() ||
+    (user.firebaseUid && (request.senderId.toLowerCase() === user.firebaseUid.toLowerCase() || request.recipientId.toLowerCase() === user.firebaseUid.toLowerCase())) ||
+    user.role === 'SUPER_ADMIN';
+
+  if (!isParty) {
+    return res.status(403).json({ error: 'Unauthorized: you are not a party to this connection.' });
+  }
+
+  request.status = 'CANCELLED';
+  request.updatedAt = new Date().toISOString();
+
+  persistAdminStore();
+  return res.json({ success: true, message: 'Connection removed.' });
+});
+
+// GET /api/mentorship/my - Get student and mentor requests
+app.get('/api/mentorship/my', (req, res) => {
+  const user = resolveNetworkingUser(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  const userId = user.id.toLowerCase();
+  const userEmail = user.email.toLowerCase();
+
+  const allReqs = (adminStore.mentorshipRequests || []).filter(
+    (r) =>
+      r.studentId.toLowerCase() === userId ||
+      r.mentorId.toLowerCase() === userId ||
+      (r.studentEmail && r.studentEmail.toLowerCase() === userEmail)
+  );
+
+  const incoming = allReqs.filter(
+    (r) => r.mentorId.toLowerCase() === userId && r.status !== 'CANCELLED'
+  );
+
+  const outgoing = allReqs.filter(
+    (r) => (r.studentId.toLowerCase() === userId || (r.studentEmail && r.studentEmail.toLowerCase() === userEmail)) && r.status !== 'CANCELLED'
+  );
+
+  return res.json({
+    success: true,
+    incoming,
+    outgoing,
+  });
+});
+
+// POST /api/mentorship/request - Submit a new student mentorship request
+app.post('/api/mentorship/request', (req, res) => {
+  const user = resolveNetworkingUser(req);
+  if (!user) {
+    return res.status(401).json({ error: 'You must be signed in to request mentorship.' });
+  }
+
+  const {
+    mentorId,
+    mentorName,
+    mentorRole,
+    mentorPhotoUrl,
+    mentorUniversity,
+    mentorDepartment,
+    mentorJobRole,
+    mentorCompany,
+    mentorAlumniId,
+    topic,
+    message,
+    preferredSchedule,
+  } = req.body || {};
+
+  if (!mentorId || !mentorName) {
+    return res.status(400).json({ error: 'Mentor ID and name are required.' });
+  }
+
+  if (
+    mentorId.toLowerCase() === user.id.toLowerCase() ||
+    (user.firebaseUid && mentorId.toLowerCase() === user.firebaseUid.toLowerCase())
+  ) {
+    return res.status(400).json({ error: 'You cannot request mentorship from yourself.' });
+  }
+
+  if (!message || typeof message !== 'string' || message.trim().length < 20) {
+    return res.status(400).json({ error: 'Please provide a clear purpose or message of at least 20 characters.' });
+  }
+
+  if (message.length > 1000) {
+    return res.status(400).json({ error: 'Message cannot exceed 1000 characters.' });
+  }
+
+  if (!checkNetworkingRateLimit(user.id)) {
+    return res.status(429).json({ error: 'Too many mentorship requests. Please wait before submitting more.' });
+  }
+
+  // Prevent duplicate pending mentorship request to the same mentor
+  const existingPending = (adminStore.mentorshipRequests || []).find(
+    (r) =>
+      r.studentId.toLowerCase() === user.id.toLowerCase() &&
+      r.mentorId.toLowerCase() === String(mentorId).toLowerCase() &&
+      r.status === 'PENDING'
+  );
+
+  if (existingPending) {
+    return res.status(409).json({
+      error: 'You already have a pending mentorship request to this mentor. Please wait for their response.',
+    });
+  }
+
+  const now = new Date().toISOString();
+  const newRequest: ServerMentorshipRequest = {
+    id: `mentor-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`,
+    studentId: user.id,
+    studentName: user.name,
+    studentEmail: user.email,
+    studentRole: user.role,
+    studentUniversity: user.university,
+    studentDepartment: user.department,
+    mentorId: String(mentorId).trim(),
+    mentorName: String(mentorName).trim(),
+    mentorRole,
+    mentorPhotoUrl,
+    mentorUniversity,
+    mentorDepartment,
+    mentorJobRole,
+    mentorCompany,
+    mentorAlumniId,
+    topic: String(topic || 'General Mentorship').trim(),
+    message: message.trim(),
+    preferredSchedule: typeof preferredSchedule === 'string' ? preferredSchedule.trim() : undefined,
+    status: 'PENDING',
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  adminStore.mentorshipRequests!.push(newRequest);
+  persistAdminStore();
+
+  return res.status(201).json({ success: true, request: newRequest });
+});
+
+// POST /api/mentorship/:id/respond - Mentor responds (ACCEPTED / DECLINED) with feedback
+app.post('/api/mentorship/:id/respond', (req, res) => {
+  const user = resolveNetworkingUser(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  const { id } = req.params;
+  const { status, feedback } = req.body || {};
+
+  if (status !== 'ACCEPTED' && status !== 'DECLINED') {
+    return res.status(400).json({ error: 'Status must be ACCEPTED or DECLINED.' });
+  }
+
+  const request = (adminStore.mentorshipRequests || []).find((r) => r.id === id);
+  if (!request) {
+    return res.status(404).json({ error: 'Mentorship request not found.' });
+  }
+
+  const isMentor =
+    request.mentorId.toLowerCase() === user.id.toLowerCase() ||
+    (user.firebaseUid && request.mentorId.toLowerCase() === user.firebaseUid.toLowerCase()) ||
+    user.role === 'SUPER_ADMIN';
+
+  if (!isMentor) {
+    return res.status(403).json({ error: 'Unauthorized: only the mentor may respond to this request.' });
+  }
+
+  if (request.status !== 'PENDING') {
+    return res.status(400).json({ error: `Cannot respond to a mentorship request with status ${request.status}.` });
+  }
+
+  const now = new Date().toISOString();
+  request.status = status;
+  if (typeof feedback === 'string') {
+    request.feedback = feedback.slice(0, 1000).trim();
+  }
+  request.updatedAt = now;
+  request.respondedAt = now;
+
+  persistAdminStore();
+  return res.json({ success: true, request });
+});
+
+// POST /api/mentorship/:id/cancel - Student cancels pending request
+app.post('/api/mentorship/:id/cancel', (req, res) => {
+  const user = resolveNetworkingUser(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  const { id } = req.params;
+  const request = (adminStore.mentorshipRequests || []).find((r) => r.id === id);
+  if (!request) {
+    return res.status(404).json({ error: 'Mentorship request not found.' });
+  }
+
+  const isStudent =
+    request.studentId.toLowerCase() === user.id.toLowerCase() ||
+    (user.firebaseUid && request.studentId.toLowerCase() === user.firebaseUid.toLowerCase()) ||
+    (request.studentEmail && request.studentEmail.toLowerCase() === user.email.toLowerCase()) ||
+    user.role === 'SUPER_ADMIN';
+
+  if (!isStudent) {
+    return res.status(403).json({ error: 'Unauthorized: only the student may cancel this request.' });
+  }
+
+  request.status = 'CANCELLED';
+  request.updatedAt = new Date().toISOString();
+
+  persistAdminStore();
+  return res.json({ success: true, request });
+});
+
+// POST /api/mentorship/:id/complete - Mark mentorship completed
+app.post('/api/mentorship/:id/complete', (req, res) => {
+  const user = resolveNetworkingUser(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  const { id } = req.params;
+  const request = (adminStore.mentorshipRequests || []).find((r) => r.id === id);
+  if (!request) {
+    return res.status(404).json({ error: 'Mentorship request not found.' });
+  }
+
+  const isParty =
+    request.mentorId.toLowerCase() === user.id.toLowerCase() ||
+    request.studentId.toLowerCase() === user.id.toLowerCase() ||
+    user.role === 'SUPER_ADMIN';
+
+  if (!isParty) {
+    return res.status(403).json({ error: 'Unauthorized: you are not a party to this mentorship relationship.' });
+  }
+
+  request.status = 'COMPLETED';
+  request.updatedAt = new Date().toISOString();
+
+  persistAdminStore();
+  return res.json({ success: true, request });
 });
 
 // Background session cleaner (every 15 minutes)

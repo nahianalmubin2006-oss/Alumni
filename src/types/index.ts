@@ -182,6 +182,7 @@ export interface AlumniRecord {
   linkedin?: string;
   isVerified: boolean;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  mentorshipOpen?: boolean;
   degree?: string;
   sector?: string;
   specialization?: string;
@@ -342,7 +343,16 @@ export interface AppNotification {
   recipientRole?: Role;
   title: string;
   message: string;
-  type: 'ACCOUNT' | 'VERIFICATION' | 'CHANGE_REQUEST' | 'PROFILE_CLAIM' | 'NEWS' | 'ADMIN_ASSIGNMENT' | 'SYSTEM';
+  type:
+    | 'ACCOUNT'
+    | 'VERIFICATION'
+    | 'CHANGE_REQUEST'
+    | 'PROFILE_CLAIM'
+    | 'NEWS'
+    | 'ADMIN_ASSIGNMENT'
+    | 'SYSTEM'
+    | 'CONNECTION'
+    | 'MENTORSHIP';
   read: boolean;
   actionUrl?: string;
   createdAt: string;
@@ -385,6 +395,83 @@ export interface PlatformSetting {
   maintenanceMode: boolean;
   updatedBy?: string;
   updatedAt?: string;
+}
+
+export type ConnectionStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
+
+export interface ConnectionRequest {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderEmail?: string;
+  senderRole?: Role;
+  senderPhotoUrl?: string;
+  senderUniversity?: string;
+  senderDepartment?: string;
+  senderJobRole?: string;
+  senderCompany?: string;
+  senderAlumniId?: string;
+
+  recipientId: string;
+  recipientName: string;
+  recipientEmail?: string;
+  recipientRole?: Role;
+  recipientPhotoUrl?: string;
+  recipientUniversity?: string;
+  recipientDepartment?: string;
+  recipientJobRole?: string;
+  recipientCompany?: string;
+  recipientAlumniId?: string;
+
+  status: ConnectionStatus;
+  message?: string;
+  createdAt: string;
+  updatedAt: string;
+  respondedAt?: string;
+}
+
+export type MentorshipStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'COMPLETED' | 'CANCELLED';
+
+export type MentorshipTopic =
+  | 'Career Path Guidance'
+  | 'Resume & Portfolio Review'
+  | 'Job Search & Referrals'
+  | 'Technical Interview Prep'
+  | 'Higher Studies & Research'
+  | 'Industry Transition'
+  | 'General Mentorship';
+
+export interface MentorshipRequest {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentEmail?: string;
+  studentRole?: Role;
+  studentPhotoUrl?: string;
+  studentUniversity?: string;
+  studentDepartment?: string;
+  studentGraduation?: string;
+  studentBio?: string;
+
+  mentorId: string;
+  mentorName: string;
+  mentorEmail?: string;
+  mentorRole?: Role;
+  mentorPhotoUrl?: string;
+  mentorUniversity?: string;
+  mentorDepartment?: string;
+  mentorJobRole?: string;
+  mentorCompany?: string;
+  mentorAlumniId?: string;
+
+  topic: MentorshipTopic;
+  message: string;
+  preferredSchedule?: string;
+  status: MentorshipStatus;
+  feedback?: string;
+  createdAt: string;
+  updatedAt: string;
+  respondedAt?: string;
 }
 
 export type AlumniConnectionStatus = 'NOT_CONNECTED' | 'SENDING' | 'PENDING' | 'CONNECTED';

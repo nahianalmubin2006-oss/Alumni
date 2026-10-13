@@ -37,7 +37,30 @@ export const Navbar: React.FC<NavbarProps> = ({
     setSimulatedRole,
     logout,
   } = useAuth();
-  const { notifications, markNotificationRead, clearNotifications } = useData();
+  const {
+    notifications,
+    markNotificationRead,
+    clearNotifications,
+    connectionRequests,
+    mentorshipRequests,
+  } = useData();
+
+  const pendingIncomingCount = React.useMemo(() => {
+    if (!currentUser) return 0;
+    const uid = currentUser.uid.toLowerCase();
+    const email = (userProfile?.email || currentUser.email || '').toLowerCase();
+    const connCount = (connectionRequests || []).filter(
+      (r) =>
+        r.status === 'PENDING' &&
+        (r.recipientId.toLowerCase() === uid || (r.recipientEmail && r.recipientEmail.toLowerCase() === email))
+    ).length;
+    const mentorCount = (mentorshipRequests || []).filter(
+      (r) =>
+        r.status === 'PENDING' &&
+        (r.mentorId.toLowerCase() === uid || (r.mentorEmail && r.mentorEmail.toLowerCase() === email))
+    ).length;
+    return connCount + mentorCount;
+  }, [currentUser, userProfile, connectionRequests, mentorshipRequests]);
 
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [notifMenuOpen, setNotifMenuOpen] = useState(false);
@@ -180,12 +203,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             Alumni
           </button>
           <button
-            onClick={() => onNavigate('analytics')}
-            className={`navbtn px-3 py-2 rounded-lg text-sm font-semibold transition ${
-              currentPage === 'analytics' ? 'active' : 'text-slate-600 hover:text-slate-900'
+            onClick={() => onNavigate('network')}
+            className={`navbtn px-3 py-2 rounded-lg text-sm font-semibold transition inline-flex items-center gap-1.5 ${
+              currentPage === 'network' ? 'active' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Analytics
+            <span>Network</span>
+            {pendingIncomingCount > 0 && (
+              <span className="w-4 h-4 bg-blue-600 text-white rounded-full text-[10px] font-bold inline-flex items-center justify-center shadow-xs">
+                {pendingIncomingCount > 9 ? '9+' : pendingIncomingCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => onNavigate('news')}
@@ -411,6 +439,60 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span className="menu-icon">{item.icon}</span>
                         <span className="text-left font-semibold text-sm flex-1">
                           {item.title}
+                        </span>
+                        {isPressing && (
+                          <span className="absolute right-2 top-2 text-[9px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-bold animate-pulse">
+                            Hold 3s...
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })()}
+
+                  {/* Item: My Network & Mentorship */}
+                  {(() => {
+                    const item: HelpItem = {
+                      id: 'network',
+                      title: 'My Network & Mentorship',
+                      subtitle: currentUser
+                        ? `${pendingIncomingCount} pending requests`
+                        : 'Explore professional connections',
+                      description:
+                        'Browse your accepted professional connections, review incoming connection & mentorship requests, and manage active student mentorship relationships.',
+                      icon: '🤝',
+                      onAction: () => onNavigate('network'),
+                    };
+                    const isPressing = activePressId === item.id;
+
+                    return (
+                      <button
+                        key={item.id}
+                        onMouseEnter={() => setHoveredHelp(item)}
+                        onMouseLeave={() => setHoveredHelp(null)}
+                        onTouchStart={() => handleTouchStart(item)}
+                        onTouchEnd={() =>
+                          handleTouchEnd(() => {
+                            setMoreMenuOpen(false);
+                            onNavigate('network');
+                          })
+                        }
+                        onTouchMove={handleTouchMove}
+                        onClick={() => {
+                          setMoreMenuOpen(false);
+                          onNavigate('network');
+                        }}
+                        className={`menu-item transition relative ${
+                          isPressing ? 'bg-blue-100 ring-2 ring-blue-400' : ''
+                        }`}
+                      >
+                        <span className="menu-icon">{item.icon}</span>
+                        <span className="text-left font-semibold text-sm flex-1 flex items-center justify-between">
+                          <span>{item.title}</span>
+                          {pendingIncomingCount > 0 && (
+                            <span className="text-[10px] bg-blue-600 text-white font-bold px-1.5 py-0.5 rounded-full shadow-xs">
+                              {pendingIncomingCount}
+                            </span>
+                          )}
                         </span>
                         {isPressing && (
                           <span className="absolute right-2 top-2 text-[9px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-bold animate-pulse">
@@ -651,6 +733,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             Alumni
+          </button>
+          <button
+            onClick={() => onNavigate('network')}
+            className={`navbtn px-3 py-1.5 rounded-lg text-xs font-bold transition inline-flex items-center gap-1 ${
+              currentPage === 'network' ? 'active bg-blue-50 text-blue-700' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>Network</span>
+            {pendingIncomingCount > 0 && (
+              <span className="w-3.5 h-3.5 rounded-full bg-blue-600 text-white text-[9px] font-black inline-flex items-center justify-center shadow-xs">
+                {pendingIncomingCount > 9 ? '9+' : pendingIncomingCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => onNavigate('news')}

@@ -21,7 +21,8 @@ import {
   Briefcase,
   Layers,
   ArrowUpDown,
-  BarChart3,
+  Handshake,
+  Users,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
@@ -31,10 +32,9 @@ import { AlumniRecord } from '../types';
 interface AlumniViewProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
   onBack?: () => void;
-  initialParams?: Record<string, string>;
 }
 
-export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, initialParams }) => {
+export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) => {
   const { currentUser, userProfile } = useAuth();
   const { universities, alumni, stats, allUsers, loadingData } = useData();
 
@@ -66,6 +66,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, init
   const [yearMax, setYearMax] = useState<string>('');
   const [useYearRange, setUseYearRange] = useState(false);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [mentorshipOnly, setMentorshipOnly] = useState(false);
   const [directorySort, setDirectorySort] = useState('name-asc');
   const [directoryPage, setDirectoryPage] = useState(1);
   const [directoryPageSize, setDirectoryPageSize] = useState(9);
@@ -79,22 +80,6 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, init
     }, 300);
     return () => clearTimeout(timer);
   }, [alumniSearch]);
-
-  // Synchronize initialParams filters if navigated from charts or external views
-  useEffect(() => {
-    if (initialParams) {
-      if (initialParams.uni) setUniversityFilter(initialParams.uni);
-      if (initialParams.dept) setDepartmentFilter(initialParams.dept);
-      if (initialParams.sector) setSectorFilter(initialParams.sector);
-      if (initialParams.country) setCountryFilter(initialParams.country);
-      if (initialParams.year) setYearFilter(initialParams.year);
-      if (initialParams.verified === 'true') setVerifiedOnly(true);
-      if (initialParams.search) {
-        setAlumniSearch(initialParams.search);
-        setDebouncedSearch(initialParams.search);
-      }
-    }
-  }, [initialParams]);
 
   // Sorted universities by alumni count
   const universityRankings = useMemo(() => {
@@ -172,18 +157,6 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, init
             },
           },
         },
-        onClick: (_event, elements) => {
-          if (elements.length > 0) {
-            const index = elements[0].index;
-            const clickedUni = top10Unis[index]?.name;
-            if (clickedUni) {
-              setUniversityFilter(clickedUni);
-              if (directoryRef.current) {
-                directoryRef.current.scrollIntoView({ behavior: 'smooth' });
-              }
-            }
-          }
-        },
       },
     });
 
@@ -215,18 +188,6 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, init
               font: { size: 10 },
             },
           },
-        },
-        onClick: (_event, elements) => {
-          if (elements.length > 0) {
-            const index = elements[0].index;
-            const clickedDept = top10Depts[index]?.name;
-            if (clickedDept) {
-              setDepartmentFilter(clickedDept);
-              if (directoryRef.current) {
-                directoryRef.current.scrollIntoView({ behavior: 'smooth' });
-              }
-            }
-          }
         },
       },
     });
@@ -278,6 +239,9 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, init
     const filtered = approvedAlumni.filter((a) => {
       // 1. Verified filter
       if (verifiedOnly && !a.isVerified) return false;
+
+      // 1b. Mentorship availability filter
+      if (mentorshipOnly && a.mentorshipOpen === false) return false;
 
       // 2. University filter
       if (universityFilter !== 'All' && a.university?.toLowerCase() !== universityFilter.toLowerCase()) {
@@ -395,6 +359,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, init
     yearMax,
     useYearRange,
     verifiedOnly,
+    mentorshipOnly,
     directorySort,
     universityTypeLookup,
     departmentGroupLookup,
@@ -472,6 +437,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, init
     if (countryFilter !== 'All') count++;
     if (sectorFilter !== 'All') count++;
     if (verifiedOnly) count++;
+    if (mentorshipOnly) count++;
     return count;
   }, [
     alumniSearch,
@@ -486,6 +452,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, init
     countryFilter,
     sectorFilter,
     verifiedOnly,
+    mentorshipOnly,
   ]);
 
   const totalDirectoryPages = Math.max(1, Math.ceil(filteredAlumni.length / directoryPageSize));
@@ -511,6 +478,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, init
     setYearMax('');
     setUseYearRange(false);
     setVerifiedOnly(false);
+    setMentorshipOnly(false);
     setDirectorySort('name-asc');
     setDirectoryPage(1);
   };
@@ -576,35 +544,6 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, init
             <div className="text-xs text-slate-400 mt-0.5">Total network alumni</div>
           </div>
         </div>
-      </div>
-
-      {/* Visual Analytics & Data-Driven Insights Pathway */}
-      <div className="mt-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-navy to-indigo-950 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-start sm:items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-400/30 flex items-center justify-center shrink-0">
-            <BarChart3 className="w-5 h-5 text-blue-300" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <b className="text-sm font-black text-white">Data-Driven Alumni Discovery & Analytics</b>
-              <span className="text-[10px] uppercase tracking-wider font-extrabold text-amber-300 bg-amber-400/20 border border-amber-400/30 px-2 py-0.5 rounded-full">
-                Interactive
-              </span>
-            </div>
-            <p className="text-xs text-slate-300 mt-0.5">
-              Explore dynamic cohort distributions by university, department disciplines, graduation batches, and career industries.
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => onNavigate('analytics')}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
-        >
-          <span>Open Analytics Dashboard</span>
-          <ChevronRight className="w-4 h-4 text-blue-200" />
-        </button>
       </div>
 
       {/* Directory Account Opening & Member Gateway */}
@@ -1235,6 +1174,24 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, init
               <UserCheck className="w-3.5 h-3.5" />
               <span>Verified Only</span>
             </button>
+
+            {/* Mentorship Availability Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                setMentorshipOnly((prev) => !prev);
+                setDirectoryPage(1);
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                mentorshipOnly
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+              title="Filter alumni available for student mentorship"
+            >
+              <Handshake className="w-3.5 h-3.5" />
+              <span>Open for Mentorship</span>
+            </button>
           </div>
 
           {/* Quick Preset Buttons */}
@@ -1425,6 +1382,22 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, init
               </span>
             )}
 
+            {/* Mentorship Chip */}
+            {mentorshipOnly && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-300 text-xs font-semibold shadow-2xs">
+                <Handshake className="w-3 h-3" />
+                <span>Open for Mentorship</span>
+                <button
+                  type="button"
+                  onClick={() => { setMentorshipOnly(false); setDirectoryPage(1); }}
+                  className="hover:bg-blue-200 rounded-full p-0.5 ml-0.5 cursor-pointer"
+                  title="Remove mentorship filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
             {/* Search Query Chip */}
             {alumniSearch.trim() && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white text-amber-800 border border-amber-300 text-xs font-semibold shadow-2xs">
@@ -1606,12 +1579,20 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, init
                             <b className="navy block text-xs group-hover:text-blue-600 transition truncate">
                               {person.name}
                             </b>
-                            {person.isVerified && (
-                              <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5">
-                                <Check className="w-2.5 h-2.5" />
-                                <span>Verified</span>
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {person.isVerified && (
+                                <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5">
+                                  <Check className="w-2.5 h-2.5" />
+                                  <span>Verified</span>
+                                </span>
+                              )}
+                              {person.mentorshipOpen !== false && (
+                                <span className="text-[10px] text-blue-600 font-bold flex items-center gap-0.5" title="Available for Student Mentorship">
+                                  <Handshake className="w-2.5 h-2.5" />
+                                  <span>Mentor</span>
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -1766,16 +1747,24 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack, init
 
                   {/* Card Footer — Status + CTA */}
                   <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                    {person.isVerified ? (
-                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                        <CheckCircle2 className="w-2.5 h-2.5" />
-                        <span>Verified</span>
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-slate-400 bg-white px-2 py-0.5 rounded-full border border-slate-200">
-                        Graduate
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {person.isVerified ? (
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          <span>Verified</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 bg-white px-2 py-0.5 rounded-full border border-slate-200">
+                          Graduate
+                        </span>
+                      )}
+                      {person.mentorshipOpen !== false && (
+                        <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 flex items-center gap-1" title="Available for Student Mentorship">
+                          <Handshake className="w-2.5 h-2.5 text-blue-600" />
+                          <span>Mentor</span>
+                        </span>
+                      )}
+                    </div>
                     <span
                       className="text-blue-600 font-bold text-xs group-hover:translate-x-0.5 transition-transform inline-flex items-center gap-1"
                       aria-hidden="true"

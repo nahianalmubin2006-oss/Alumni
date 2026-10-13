@@ -416,6 +416,7 @@ service cloud.firestore {
         && (
           request.resource.data.recipientId == request.auth.uid
           || request.resource.data.recipientId == 'ADMIN'
+          || request.resource.data.type in ['CONNECTION', 'MENTORSHIP']
         )
       );
       allow update: if isSuperAdmin() || (
@@ -425,6 +426,81 @@ service cloud.firestore {
       );
       allow delete: if isSuperAdmin()
         || (isSignedIn() && resource.data.recipientId == request.auth.uid);
+    }
+
+    match /connectionRequests/{requestId} {
+      allow read: if isSuperAdmin()
+        || (isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.recipientId == request.auth.uid));
+      allow create: if isSignedIn()
+        && request.resource.data.senderId == request.auth.uid
+        && request.resource.data.recipientId != request.auth.uid
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.keys().hasOnly([
+          'id', 'senderId', 'senderName', 'senderEmail', 'senderRole', 'senderPhotoUrl',
+          'senderUniversity', 'senderDepartment', 'senderJobRole', 'senderCompany', 'senderAlumniId',
+          'recipientId', 'recipientName', 'recipientEmail', 'recipientRole', 'recipientPhotoUrl',
+          'recipientUniversity', 'recipientDepartment', 'recipientJobRole', 'recipientCompany', 'recipientAlumniId',
+          'status', 'message', 'createdAt', 'updatedAt', 'respondedAt'
+        ])
+        && request.resource.data.get('message', '') is string
+        && request.resource.data.get('message', '').size() <= 500;
+      allow update: if isSuperAdmin()
+        || (
+          isSignedIn()
+          && resource.data.recipientId == request.auth.uid
+          && resource.data.status == 'PENDING'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'respondedAt'])
+          && request.resource.data.status in ['ACCEPTED', 'DECLINED']
+        )
+        || (
+          isSignedIn()
+          && resource.data.senderId == request.auth.uid
+          && resource.data.status == 'PENDING'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+          && request.resource.data.status == 'CANCELLED'
+        )
+        || (
+          isSignedIn()
+          && (resource.data.senderId == request.auth.uid || resource.data.recipientId == request.auth.uid)
+          && resource.data.status == 'ACCEPTED'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+          && request.resource.data.status == 'CANCELLED'
+        );
+      allow delete: if isSuperAdmin();
+    }
+
+    match /mentorshipRequests/{requestId} {
+      allow read: if isSuperAdmin()
+        || (isSignedIn() && (resource.data.studentId == request.auth.uid || resource.data.mentorId == request.auth.uid));
+      allow create: if isSignedIn()
+        && request.resource.data.studentId == request.auth.uid
+        && request.resource.data.mentorId != request.auth.uid
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.keys().hasOnly([
+          'id', 'studentId', 'studentName', 'studentEmail', 'studentRole', 'studentPhotoUrl',
+          'studentUniversity', 'studentDepartment', 'studentGraduation', 'studentBio',
+          'mentorId', 'mentorName', 'mentorRole', 'mentorPhotoUrl',
+          'mentorUniversity', 'mentorDepartment', 'mentorJobRole', 'mentorCompany', 'mentorAlumniId',
+          'topic', 'message', 'preferredSchedule', 'status', 'feedback', 'createdAt', 'updatedAt', 'respondedAt'
+        ])
+        && request.resource.data.message is string
+        && request.resource.data.message.size() >= 10
+        && request.resource.data.message.size() <= 2000;
+      allow update: if isSuperAdmin()
+        || (
+          isSignedIn()
+          && resource.data.mentorId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'feedback', 'updatedAt', 'respondedAt'])
+          && request.resource.data.status in ['ACCEPTED', 'DECLINED', 'COMPLETED']
+        )
+        || (
+          isSignedIn()
+          && resource.data.studentId == request.auth.uid
+          && resource.data.status == 'PENDING'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+          && request.resource.data.status == 'CANCELLED'
+        );
+      allow delete: if isSuperAdmin();
     }
 
     match /auditLogs/{logId} {
