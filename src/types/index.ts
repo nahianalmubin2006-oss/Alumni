@@ -195,6 +195,13 @@ export interface AlumniRecord {
   batchNumber?: number;
   academicSession?: string;
   passingYear?: string;
+  skills?: string[];
+  portfolioUrl?: string;
+  achievements?: string;
+  mentorshipOpen?: boolean;
+  publicDirectoryVisible?: boolean;
+  degreeTitle?: string;
+  coverTheme?: string;
   createdAt: string;
   updatedAt: string;
 }
