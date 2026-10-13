@@ -400,8 +400,13 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
       }));
   }, [batchRecords, departmentAlumni, uLower, dLower, normD, departmentName, universityName]);
 
-  // Department administration is managed in the Admin Dashboard
-  const isThisDeptAdmin = false;
+  // Institutional authorization: Super Admins or assigned Department Admins can propose changes
+  const isThisDeptAdmin = Boolean(
+    isSuperAdmin ||
+    (userProfile?.role === 'DEPARTMENT_ADMIN' &&
+      (userProfile.assignedUniversity || userProfile.university)?.toLowerCase().trim() === uLower &&
+      (userProfile.assignedDepartment || userProfile.department)?.toLowerCase().trim() === dLower)
+  );
 
   const handleProposeDeptChange = async (e: React.FormEvent) => {
     e.preventDefault();

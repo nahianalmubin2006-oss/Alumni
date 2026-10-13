@@ -249,9 +249,9 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
     }
   };
 
-  // Profile tabs: 'overview' | 'academic' | 'skills' | 'network' | 'posts' | 'digitalid' | 'storage'
+  // Profile tabs: 'overview' | 'academic' | 'skills' | 'network' | 'posts' | 'digitalid' | 'storage' (with aliases)
   const [profileTab, setProfileTab] = useState<
-    'overview' | 'academic' | 'skills' | 'network' | 'posts' | 'digitalid' | 'storage'
+    'overview' | 'academic' | 'skills' | 'network' | 'posts' | 'digitalid' | 'storage' | 'dossier' | 'idcard' | 'followed'
   >('overview');
 
   // Executive profile decoration and customization states

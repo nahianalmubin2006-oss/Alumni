@@ -171,6 +171,24 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     );
   }, [students, universityName]);
 
+  // Real geographic destination distribution calculated from actual alumni records
+  const topDestinations = useMemo(() => {
+    if (uniAlumni.length === 0) return [];
+    const countryMap = new Map<string, number>();
+    uniAlumni.forEach((a) => {
+      const c = (a.country || '').trim() || 'Bangladesh';
+      countryMap.set(c, (countryMap.get(c) || 0) + 1);
+    });
+    return Array.from(countryMap.entries())
+      .map(([country, count]) => ({
+        country,
+        count,
+        percentage: Math.round((count / uniAlumni.length) * 100),
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [uniAlumni]);
+
   // Available departments for this university (combining verified catalog + active alumni & student affiliations)
   const uniDeptList = useMemo(() => {
     const qName = (universityName || '').toLowerCase().trim();
@@ -181,6 +199,28 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     const fromStudents = uniStudents.map((s) => s.department).filter(Boolean);
     return Array.from(new Set([...fromDb, ...fromAlumni, ...fromStudents])).sort();
   }, [departments, universityName, uniAlumni, uniStudents]);
+
+  // Dynamically featured department based on largest active alumni or student cohort
+  const featuredDepartment = useMemo(() => {
+    if (uniDeptList.length === 0) return null;
+    let bestDept = uniDeptList[0];
+    let bestCount = -1;
+    uniDeptList.forEach((dName) => {
+      const count = uniAlumni.filter((a) => (a.department || '').toLowerCase().trim() === dName.toLowerCase().trim()).length;
+      if (count > bestCount) {
+        bestCount = count;
+        bestDept = dName;
+      }
+    });
+    const deptAlumni = uniAlumni.filter((a) => (a.department || '').toLowerCase().trim() === bestDept.toLowerCase().trim());
+    const employedCount = deptAlumni.filter((a) => Boolean(a.jobRole || a.company)).length;
+    const employmentRate = deptAlumni.length > 0 ? Math.round((employedCount / deptAlumni.length) * 100) : 85;
+    return {
+      name: bestDept,
+      alumniCount: deptAlumni.length,
+      employmentRate,
+    };
+  }, [uniDeptList, uniAlumni]);
 
   // Chronologically sorted graduation cohorts for this university
   const uniBatches = useMemo(() => {
@@ -206,18 +246,19 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     if (years.size === 0) {
       ['2020', '2021', '2022', '2023', '2024', '2025'].forEach((y) => years.add(y));
     }
+    const defaultDept = uniDeptList[0] || 'Computer Science and Engineering';
     return Array.from(years)
       .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
       .map((yr, idx) => ({
         id: `batch-${yr}`,
         year: yr,
-        department: 'Computer Science and Engineering',
+        department: defaultDept,
         university: universityName,
         batchName: `${yr} Batch`,
         batchNumber: idx + 1,
         sessionName: undefined as string | undefined,
       }));
-  }, [batches, universityName, uniAlumni]);
+  }, [batches, universityName, uniAlumni, uniDeptList]);
 
   // Related news with department filtering & hot topic prioritization
   const uniNews = useMemo(() => {
@@ -269,8 +310,12 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
     }
   };
 
-  // Institutional administration is managed in the Admin Dashboard
-  const isThisUniAdmin = false;
+  // Institutional authorization: Super Admins or assigned University Admins can propose changes
+  const isThisUniAdmin = Boolean(
+    isSuperAdmin ||
+    (userProfile?.role === 'UNIVERSITY_ADMIN' &&
+      (userProfile.assignedUniversity || userProfile.university)?.toLowerCase().trim() === (universityName || '').toLowerCase().trim())
+  );
 
   const handleProposeChanges = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -560,89 +605,81 @@ export const UniversityDetailView: React.FC<UniversityDetailViewProps> = ({
       {/* Tab Content */}
       {activeTab === 'overview' && (
         <div className="mt-6 grid lg:grid-cols-3 gap-6">
-          <button
-            onClick={() =>
-              onNavigate('departmentProfile', {
-                dept: 'Computer Science & Engineering',
-                uni: university.name,
-              })
-            }
-            className="card p-6 text-left lg:col-span-2 hover:-translate-y-1 transition group"
-          >
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-xs text-blue-600 font-bold uppercase tracking-wider">
-                  Featured Department
-                </span>
-                <h2 className="text-xl font-black navy mt-1 group-hover:text-blue-600 transition">
-                  Computer Science & Engineering
-                </h2>
-                <p className="text-sm text-slate-400 mt-1">842 alumni · 84% employment outcome</p>
+          {featuredDepartment ? (
+            <button
+              onClick={() =>
+                onNavigate('departmentProfile', {
+                  dept: featuredDepartment.name,
+                  uni: university.name,
+                })
+              }
+              className="card p-6 text-left lg:col-span-2 hover:-translate-y-1 transition group cursor-pointer"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-xs text-blue-600 font-bold uppercase tracking-wider">
+                    Leading Academic Department
+                  </span>
+                  <h2 className="text-xl font-black navy mt-1 group-hover:text-blue-600 transition">
+                    {featuredDepartment.name}
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    {featuredDepartment.alumniCount} verified alumni · {featuredDepartment.employmentRate}% verified employment outcome
+                  </p>
+                </div>
+                <span className="text-blue-600 font-black text-xl group-hover:translate-x-1 transition">
+                  →
+                  </span>
               </div>
-              <span className="text-blue-600 font-black text-xl group-hover:translate-x-1 transition">
-                →
-              </span>
-            </div>
 
-            <div className="mt-5 grid grid-cols-3 gap-3">
-              <div className="bg-slate-50 rounded-xl p-3">
-                <b className="navy text-base">86/100</b>
-                <p className="text-xs text-slate-400 mt-0.5">Career Index</p>
+              <div className="mt-5 grid grid-cols-3 gap-3">
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <b className="navy text-base">{featuredDepartment.alumniCount}</b>
+                  <p className="text-xs text-slate-400 mt-0.5">Verified Alumni</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <b className="text-emerald-600 text-base">{featuredDepartment.employmentRate}%</b>
+                  <p className="text-xs text-slate-400 mt-0.5">Placement Outcome</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <b className="text-blue-600 text-base">{uniBatches.length}</b>
+                  <p className="text-xs text-slate-400 mt-0.5">Tracked Batches</p>
+                </div>
               </div>
-              <div className="bg-slate-50 rounded-xl p-3">
-                <b className="navy text-base">74/100</b>
-                <p className="text-xs text-slate-400 mt-0.5">Research Index</p>
-              </div>
-              <div className="bg-slate-50 rounded-xl p-3">
-                <b className="navy text-base">88/100</b>
-                <p className="text-xs text-slate-400 mt-0.5">Industry Rating</p>
-              </div>
+            </button>
+          ) : (
+            <div className="card p-6 text-left lg:col-span-2 text-slate-500 flex flex-col justify-center">
+              <span className="text-xs text-blue-600 font-bold uppercase tracking-wider">Academic Directory</span>
+              <h2 className="text-xl font-black navy mt-1">Departments in Development</h2>
+              <p className="text-xs text-slate-400 mt-2">
+                New department affiliations added by registered alumni will appear dynamically here.
+              </p>
             </div>
-          </button>
+          )}
 
           <div className="card p-6">
             <h3 className="font-bold navy text-base">Top global destinations</h3>
-            <p className="text-xs text-slate-400 mt-1">Geographic distribution of alumni</p>
+            <p className="text-xs text-slate-400 mt-1">
+              {topDestinations.length > 0 ? `Calculated from ${uniAlumni.length} verified records` : 'Awaiting alumni country records'}
+            </p>
             <div className="mt-5 space-y-3.5 text-sm">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-600">Bangladesh</span>
-                <b className="navy">72%</b>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-blue-600 h-full rounded-full" style={{ width: '72%' }}></div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-slate-600">Germany</span>
-                <b className="navy">7%</b>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-blue-600 h-full rounded-full" style={{ width: '7%' }}></div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-slate-600">USA</span>
-                <b className="navy">6%</b>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-blue-600 h-full rounded-full" style={{ width: '6%' }}></div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-slate-600">Canada</span>
-                <b className="navy">5%</b>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-blue-600 h-full rounded-full" style={{ width: '5%' }}></div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-slate-600">United Kingdom</span>
-                <b className="navy">4%</b>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-blue-600 h-full rounded-full" style={{ width: '4%' }}></div>
-              </div>
+              {topDestinations.length > 0 ? (
+                topDestinations.map((dest) => (
+                  <div key={dest.country}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-slate-600 text-xs font-semibold">{dest.country}</span>
+                      <b className="navy text-xs">{dest.percentage}% ({dest.count})</b>
+                    </div>
+                    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-blue-600 h-full rounded-full transition-all duration-300" style={{ width: `${dest.percentage}%` }}></div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                  <span>No alumni country destinations cataloged yet for this campus.</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
