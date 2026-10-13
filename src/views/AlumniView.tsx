@@ -34,7 +34,7 @@ interface AlumniViewProps {
 
 export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) => {
   const { currentUser, userProfile } = useAuth();
-  const { universities, alumni, stats, allUsers } = useData();
+  const { universities, alumni, stats, allUsers, loadingData } = useData();
 
   // Legacy student records may exist in the alumni collection. Never list a profile
   const alumniOnly = useMemo(() => alumni.filter((record) => {
@@ -68,6 +68,15 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
   const [directoryPage, setDirectoryPage] = useState(1);
   const [directoryPageSize, setDirectoryPageSize] = useState(9);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce the search input to avoid excessive re-filtering
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(alumniSearch);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [alumniSearch]);
 
   // Sorted universities by alumni count
   const universityRankings = useMemo(() => {
@@ -223,7 +232,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
 
   // Filter and sort only approved alumni, then paginate the result set.
   const filteredAlumni = useMemo(() => {
-    const query = alumniSearch.trim().toLowerCase();
+    const query = debouncedSearch.trim().toLowerCase();
     const filtered = approvedAlumni.filter((a) => {
       // 1. Verified filter
       if (verifiedOnly && !a.isVerified) return false;
@@ -332,7 +341,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
     });
   }, [
     approvedAlumni,
-    alumniSearch,
+    debouncedSearch,
     countryFilter,
     sectorFilter,
     universityFilter,
@@ -419,6 +428,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
     if (deptGroupFilter !== 'All') count++;
     if (useYearRange ? (Boolean(yearMin) || Boolean(yearMax)) : yearFilter !== 'All') count++;
     if (countryFilter !== 'All') count++;
+    if (sectorFilter !== 'All') count++;
     if (verifiedOnly) count++;
     return count;
   }, [
@@ -432,6 +442,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
     yearMax,
     yearFilter,
     countryFilter,
+    sectorFilter,
     verifiedOnly,
   ]);
 
@@ -448,6 +459,7 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
   const clearDirectoryFilters = () => {
     setAlumniSearch('');
     setCountryFilter('All');
+    setSectorFilter('All');
     setUniversityFilter('All');
     setUniversityTypeFilter('All');
     setDepartmentFilter('All');
@@ -1081,6 +1093,36 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
               </select>
             </div>
 
+            {/* Sector / Industry Filter */}
+            {uniqueSectors.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <label className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                  <Briefcase className="w-3 h-3 text-slate-400" />
+                  <span className="hidden sm:inline">Industry:</span>
+                </label>
+                <select
+                  value={sectorFilter}
+                  onChange={(e) => {
+                    setSectorFilter(e.target.value);
+                    setDirectoryPage(1);
+                  }}
+                  className={`border rounded-xl px-2.5 py-1.5 text-xs bg-white outline-none cursor-pointer font-medium transition ${
+                    sectorFilter !== 'All'
+                      ? 'border-amber-500 bg-amber-50 text-amber-900 font-bold'
+                      : 'border-slate-200 text-slate-700 hover:border-slate-300'
+                  }`}
+                  aria-label="Filter by industry sector"
+                >
+                  <option value="All">All Industries ({uniqueSectors.length})</option>
+                  {uniqueSectors.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Sort Order */}
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
@@ -1280,6 +1322,22 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
               </span>
             )}
 
+            {/* Sector / Industry Chip */}
+            {sectorFilter !== 'All' && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white text-amber-800 border border-amber-300 text-xs font-semibold shadow-2xs">
+                <Briefcase className="w-3 h-3 text-amber-600" />
+                <span>Industry: <b>{sectorFilter}</b></span>
+                <button
+                  type="button"
+                  onClick={() => { setSectorFilter('All'); setDirectoryPage(1); }}
+                  className="hover:bg-amber-100 rounded-full p-0.5 ml-0.5 cursor-pointer"
+                  title="Remove industry filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
             {/* Verified Chip */}
             {verifiedOnly && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold shadow-2xs">
@@ -1330,8 +1388,38 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
           <span>Page {Math.min(directoryPage, totalDirectoryPages)} of {totalDirectoryPages}</span>
         </div>
 
-        {/* Main Content: Empty State vs Cards vs Table */}
-        {filteredAlumni.length === 0 ? (
+        {/* Main Content: Loading Skeleton vs Empty State vs Cards vs Table */}
+        {loadingData && approvedAlumni.length === 0 ? (
+          /* Loading Skeleton */
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: directoryPageSize }).map((_, i) => (
+              <div key={`skeleton-${i}`} className="rounded-2xl border border-slate-100 bg-white overflow-hidden animate-pulse">
+                <div className="p-4 pb-0">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-14 h-14 rounded-xl bg-slate-200 shrink-0" />
+                    <div className="flex-1 pt-1 space-y-2">
+                      <div className="h-4 bg-slate-200 rounded-lg w-3/4" />
+                      <div className="h-3 bg-slate-100 rounded-lg w-1/2" />
+                      <div className="h-3 bg-slate-100 rounded-lg w-2/3" />
+                    </div>
+                  </div>
+                </div>
+                <div className="px-4 pt-3 pb-3">
+                  <div className="h-px bg-slate-100 mb-3" />
+                  <div className="space-y-2">
+                    <div className="h-3 bg-slate-100 rounded-lg w-4/5" />
+                    <div className="h-3 bg-slate-100 rounded-lg w-3/5" />
+                    <div className="h-3 bg-slate-100 rounded-lg w-2/5" />
+                  </div>
+                </div>
+                <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                  <div className="h-4 bg-slate-200 rounded-full w-16" />
+                  <div className="h-4 bg-slate-100 rounded-lg w-20" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredAlumni.length === 0 ? (
           <div className="py-14 text-center card p-8 border border-dashed border-soft bg-slate-50/50">
             <Filter className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <b className="navy text-base block font-bold">No alumni records match your filter criteria</b>
@@ -1364,6 +1452,24 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
                   className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 transition cursor-pointer"
                 >
                   Clear University Filter
+                </button>
+              )}
+              {sectorFilter !== 'All' && (
+                <button
+                  type="button"
+                  onClick={() => { setSectorFilter('All'); setDirectoryPage(1); }}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-amber-300 text-amber-700 hover:bg-amber-50 transition cursor-pointer"
+                >
+                  Clear Industry Filter
+                </button>
+              )}
+              {alumniSearch && (
+                <button
+                  type="button"
+                  onClick={() => { setAlumniSearch(''); setDirectoryPage(1); }}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Clear Search Query
                 </button>
               )}
               <button
@@ -1408,8 +1514,22 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
                     >
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full avatar flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-                            {initials}
+                          <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 shadow-2xs relative">
+                            {person.photoUrl ? (
+                              <img
+                                src={person.photoUrl}
+                                alt={person.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                  const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
+                                  if (fallback) fallback.style.display = 'flex';
+                                }}
+                              />
+                            ) : null}
+                            <div className={`w-full h-full avatar items-center justify-center font-bold text-xs ${person.photoUrl ? 'hidden' : 'flex'}`}>
+                              {initials}
+                            </div>
                           </div>
                           <div className="min-w-0">
                             <b className="navy block text-xs group-hover:text-blue-600 transition truncate">
@@ -1478,51 +1598,93 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
                 .split(' ')
                 .map((x) => x[0])
                 .join('')
-                .slice(0, 2);
+                .slice(0, 2)
+                .toUpperCase();
               const displayYear = person.graduationYear || person.batch || '—';
 
               return (
-                <button
+                <div
                   key={person.id}
+                  role="article"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onNavigate('alumniProfile', { id: person.id, name: person.name });
+                    }
+                  }}
                   onClick={() => onNavigate('alumniProfile', { id: person.id, name: person.name })}
-                  className="card p-5 text-left hover:-translate-y-1 transition group flex flex-col justify-between cursor-pointer border border-soft hover:border-blue-300 hover:shadow-md"
+                  className="card p-0 text-left hover:-translate-y-0.5 transition-all duration-200 group flex flex-col justify-between cursor-pointer border border-soft hover:border-blue-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 rounded-2xl overflow-hidden bg-white"
+                  aria-label={`Alumni profile: ${person.name}, ${person.department} at ${person.university}`}
                 >
-                  <div>
+                  {/* Card Header with Photo */}
+                  <div className="p-4 pb-0">
                     <div className="flex items-start gap-3.5">
-                      <div className="w-12 h-12 rounded-full avatar flex items-center justify-center font-bold text-base shadow-sm shrink-0">
-                        {initials}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <b className="navy text-sm block truncate group-hover:text-blue-600 transition">
-                            {person.name}
-                          </b>
+                      <div className="relative shrink-0">
+                        {person.photoUrl ? (
+                          <img
+                            src={person.photoUrl}
+                            alt={person.name}
+                            className="w-14 h-14 rounded-xl object-cover shadow-sm border border-slate-100"
+                            loading="lazy"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className={`w-14 h-14 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-100 border border-slate-200/80 items-center justify-center font-bold text-base text-blue-700 shadow-sm ${
+                            person.photoUrl ? 'hidden' : 'flex'
+                          }`}
+                        >
+                          {initials}
                         </div>
-                        <p className="text-xs text-slate-700 font-semibold truncate mt-0.5">
-                          {person.jobRole}
-                        </p>
-                        <p className="text-xs text-slate-400 truncate">{person.company}</p>
+                        {person.isVerified && (
+                          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center" title="Verified Alumni">
+                            <Check className="w-2.5 h-2.5 text-white" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1 pt-0.5">
+                        <b className="navy text-sm block truncate group-hover:text-blue-600 transition leading-snug">
+                          {person.name}
+                        </b>
+                        {person.jobRole && (
+                          <p className="text-xs text-slate-700 font-semibold truncate mt-0.5 leading-snug">
+                            {person.jobRole}
+                          </p>
+                        )}
+                        {person.company && (
+                          <p className="text-[11px] text-slate-400 truncate leading-snug flex items-center gap-1 mt-0.5">
+                            <Briefcase className="w-3 h-3 shrink-0 text-slate-300" />
+                            {person.company}
+                          </p>
+                        )}
                       </div>
                     </div>
+                  </div>
 
-                    <div className="line my-3.5"></div>
-
+                  {/* Card Body — Academic Details */}
+                  <div className="px-4 pt-3 pb-3">
+                    <div className="h-px bg-slate-100 mb-3" />
                     <div className="text-xs text-slate-600 space-y-1.5">
                       <div className="truncate flex items-center gap-1.5">
-                        <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                        <span className="truncate">{person.university}</span>
+                        <Building2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                        <span className="truncate font-medium">{person.university}</span>
                       </div>
                       <div className="truncate flex items-center gap-1.5">
-                        <GraduationCap className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        <GraduationCap className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                         <span className="truncate">{person.department}</span>
                       </div>
                       <div className="flex items-center justify-between text-xs pt-0.5">
                         <div className="flex items-center gap-1 text-slate-500">
-                          <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span>Class of <b>{displayYear}</b></span>
+                          <Calendar className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          <span>Class of <b className="text-slate-700">{displayYear}</b></span>
                         </div>
                         {person.country && (
-                          <div className="flex items-center gap-1 text-slate-400">
+                          <div className="flex items-center gap-1 text-slate-400 text-[11px]">
                             <Globe className="w-3 h-3 shrink-0" />
                             <span>{person.country}</span>
                           </div>
@@ -1531,22 +1693,27 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-soft flex items-center justify-between text-xs">
+                  {/* Card Footer — Status + CTA */}
+                  <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
                     {person.isVerified ? (
                       <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                        <Check className="w-2.5 h-2.5" />
-                        <span>Verified Alumni</span>
+                        <CheckCircle2 className="w-2.5 h-2.5" />
+                        <span>Verified</span>
                       </span>
                     ) : (
-                      <span className="text-[10px] text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] text-slate-400 bg-white px-2 py-0.5 rounded-full border border-slate-200">
                         Graduate
                       </span>
                     )}
-                    <span className="text-blue-600 font-bold group-hover:translate-x-1 transition text-xs">
-                      Profile →
+                    <span
+                      className="text-blue-600 font-bold text-xs group-hover:translate-x-0.5 transition-transform inline-flex items-center gap-1"
+                      aria-hidden="true"
+                    >
+                      View Profile
+                      <ChevronRight className="w-3.5 h-3.5" />
                     </span>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>

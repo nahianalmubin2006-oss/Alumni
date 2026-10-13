@@ -606,13 +606,21 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
                       : 'bg-gradient-to-tr from-blue-600 via-sky-300 to-indigo-600 ring-4 ring-blue-500/30 shadow-blue-950/30'
                   }`}
                 >
-                  <div className="w-full h-full rounded-2xl bg-white overflow-hidden flex items-center justify-center font-black text-3xl sm:text-4xl text-blue-700 bg-gradient-to-tr from-blue-50 to-indigo-50 relative">
                     {profile.photoUrl ? (
-                      <img src={profile.photoUrl} alt={profile.name} className="w-full h-full object-cover rounded-2xl" />
-                    ) : (
-                      initials
-                    )}
-                  </div>
+                      <img
+                        src={profile.photoUrl}
+                        alt={profile.name}
+                        className="w-full h-full object-cover rounded-2xl"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div className={`w-full h-full items-center justify-center font-black text-3xl sm:text-4xl text-blue-700 ${profile.photoUrl ? 'hidden' : 'flex'}`}>
+                      {initials}
+                    </div>
                 </div>
 
                 {profile.isVerified && (
