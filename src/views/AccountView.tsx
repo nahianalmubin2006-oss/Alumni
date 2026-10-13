@@ -187,8 +187,22 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
     }
     if (pageParams?.tab) {
       const tab = pageParams.tab.toLowerCase();
-      if (tab === 'dossier' || tab === 'posts' || tab === 'followed' || tab === 'storage') {
+      if (
+        tab === 'overview' ||
+        tab === 'academic' ||
+        tab === 'skills' ||
+        tab === 'network' ||
+        tab === 'posts' ||
+        tab === 'digitalid' ||
+        tab === 'storage'
+      ) {
         setProfileTab(tab as any);
+      } else if (tab === 'dossier') {
+        setProfileTab('overview');
+      } else if (tab === 'idcard') {
+        setProfileTab('digitalid');
+      } else if (tab === 'followed' || tab === 'peers') {
+        setProfileTab('network');
       }
     }
   }, [pageParams]);
@@ -235,8 +249,10 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
     }
   };
 
-  // Profile sub-tabs: 'dossier' | 'idcard' | 'peers' | 'posts' | 'followed' | 'storage'
-  const [profileTab, setProfileTab] = useState<'dossier' | 'idcard' | 'peers' | 'posts' | 'followed' | 'storage'>('dossier');
+  // Profile tabs: 'overview' | 'academic' | 'skills' | 'network' | 'posts' | 'digitalid' | 'storage'
+  const [profileTab, setProfileTab] = useState<
+    'overview' | 'academic' | 'skills' | 'network' | 'posts' | 'digitalid' | 'storage'
+  >('overview');
 
   // Executive profile decoration and customization states
   const [coverTheme, setCoverTheme] = useState<'classic' | 'modern' | 'sapphire' | 'emerald' | 'royal' | 'midnight' | 'crimson' | 'aurora' | 'cyber'>('sapphire');
@@ -1256,193 +1272,113 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
 
             {/* Profile Avatar & Primary Info Row */}
             <div className="px-6 pb-6 pt-0 sm:px-8 relative bg-white">
-              <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 -mt-14 sm:-mt-16 md:-mt-20 mb-6">
-                <div className="flex flex-col sm:flex-row sm:items-end gap-5">
-                  {/* 3D Metallic Foil Avatar Frame */}
-                  <div className="relative group shrink-0">
-                    <div
-                      className={`w-28 h-28 sm:w-36 sm:h-36 rounded-3xl p-1.5 shadow-2xl transition duration-300 ring-4 ring-white bg-white ${
-                        userProfile.isVerifiedAlumni || userProfile.profileType === 'Alumni'
-                          ? 'bg-linear-to-tr from-amber-400 via-yellow-200 to-amber-600 shadow-amber-950/20'
-                          : 'bg-linear-to-tr from-blue-600 via-sky-300 to-indigo-600 shadow-blue-950/20'
-                      }`}
-                    >
-                      <div className="w-full h-full rounded-2xl bg-white overflow-hidden flex items-center justify-center font-black text-4xl text-blue-700 bg-linear-to-tr from-blue-50 to-indigo-50 relative">
-                        {isUploadingPhoto ? (
-                          <div className="flex flex-col items-center justify-center gap-1.5 text-blue-600 p-2 text-center">
-                            <div className="w-7 h-7 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                            <span className="text-[10px] font-bold tracking-tight">Saving…</span>
-                          </div>
-                        ) : (userProfile.photoUrl || photoUrl || defaultProfilePictures[0]?.url) ? (
-                          <img
-                            src={userProfile.photoUrl || photoUrl || defaultProfilePictures[0]?.url || ''}
-                            alt={userProfile.name}
-                            className="w-full h-full object-cover rounded-2xl group-hover:scale-105 transition duration-500"
-                          />
-                        ) : (
-                          userProfile.name
-                            ? userProfile.name
-                                .split(' ')
-                                .map((w) => w[0])
-                                .join('')
-                                .slice(0, 2)
-                            : 'U'
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Verified Alumni Hologram / Shield Badge Overlay */}
-                    {userProfile.isVerifiedAlumni && (
-                      <div
-                        className="absolute -top-2 -right-2 w-9 h-9 rounded-full bg-linear-to-tr from-amber-400 via-yellow-300 to-amber-600 border-2 border-white shadow-xl flex items-center justify-center text-amber-950"
-                        title="Official Verified Degree Holder"
-                      >
-                        <BadgeCheck className="w-5 h-5 text-amber-950 fill-amber-300" />
-                      </div>
-                    )}
-
-                    {/* Online / Active Beacon */}
-                    <div
-                      className="absolute -bottom-1 -left-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white shadow-md flex items-center justify-center"
-                      title="Active Member"
-                    >
-                      <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                    </div>
-
-                    {/* Camera Upload Button */}
-                    <label
-                      className="absolute -bottom-2 -right-2 z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-2xl border-2 border-white bg-blue-600 text-white shadow-xl hover:bg-blue-700 hover:scale-105 transition"
-                      title="Upload or change profile picture"
-                      aria-label="Upload profile picture"
-                    >
-                      <Camera className="w-4 h-4" />
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,image/gif"
-                        className="hidden"
-                        disabled={isUploadingPhoto}
-                        onChange={async (event) => {
-                          const file = event.target.files?.[0];
-                          event.target.value = '';
-                          if (!file) return;
-                          await handleUploadProfilePhoto(file);
-                        }}
-                      />
-                    </label>
-                  </div>
-
-                  {/* Name, Credentials, and Institutional Info - clean, un-crowded, completely below cover */}
-                  <div className="pt-3 sm:pt-0 pb-1 space-y-2">
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold navy tracking-tight">
-                        {userProfile.name}
-                      </h2>
-                      {userProfile.isVerifiedAlumni ? (
-                        <span
-                          className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-300 text-xs font-black shadow-xs"
-                          title="Verified Alumni Badge"
-                        >
-                          <BadgeCheck className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Verified Graduate</span>
-                        </span>
+              {/* Row 1: Avatar with negative margin + Action Buttons Toolbar */}
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-14 sm:-mt-16 mb-5">
+                <div className="relative group shrink-0 ml-2 sm:ml-4">
+                  <div
+                    className={`w-28 h-28 sm:w-34 sm:h-34 rounded-3xl p-1 shadow-xl transition duration-300 profile-avatar-ring bg-white ${
+                      userProfile.isVerifiedAlumni || userProfile.profileType === 'Alumni'
+                        ? 'bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600'
+                        : 'bg-gradient-to-tr from-blue-600 via-sky-300 to-indigo-600'
+                    }`}
+                  >
+                    <div className="w-full h-full rounded-2xl bg-white overflow-hidden flex items-center justify-center font-black text-3xl sm:text-4xl text-blue-700 bg-gradient-to-tr from-blue-50 to-indigo-50 relative">
+                      {isUploadingPhoto ? (
+                        <div className="flex flex-col items-center justify-center gap-1.5 text-blue-600 p-2 text-center">
+                          <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                          <span className="text-[10px] font-bold tracking-tight">Saving…</span>
+                        </div>
+                      ) : (userProfile.photoUrl || photoUrl || defaultProfilePictures[0]?.url) ? (
+                        <img
+                          src={userProfile.photoUrl || photoUrl || defaultProfilePictures[0]?.url || ''}
+                          alt={userProfile.name}
+                          className="w-full h-full object-cover rounded-2xl group-hover:scale-105 transition duration-500"
+                        />
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold shadow-xs">
-                          <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
-                          <span>{userProfile.profileType}</span>
-                        </span>
-                      )}
-
-                      {/* Mentorship Status Pill */}
-                      <button
-                        type="button"
-                        onClick={handleToggleMentorship}
-                        className={`text-[11px] font-bold px-3 py-1 rounded-full border transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                          mentorshipOpen
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                            : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200'
-                        }`}
-                        title="Click to toggle mentorship availability"
-                      >
-                        <span className={`w-2 h-2 rounded-full ${mentorshipOpen ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-                        <span>{mentorshipOpen ? '🤝 Open for Mentorship' : 'Mentorship Inactive'}</span>
-                      </button>
-                    </div>
-
-                    {/* Role & Company or Student Standing */}
-                    <p className="text-sm sm:text-base text-slate-600 font-semibold leading-snug">
-                      {userProfile.jobRole ? (
-                        <span>
-                          <b className="navy">{userProfile.jobRole}</b>
-                          {userProfile.company && <span> at <b className="navy">{userProfile.company}</b></span>}
-                          {userProfile.department && <span className="text-slate-400 font-normal"> · {userProfile.department}</span>}
-                        </span>
-                      ) : (
-                        <span>
-                          <b className="navy">{userProfile.educationLevel || 'Undergraduate'}</b> · {userProfile.department || 'General Faculty'}
-                          {userProfile.studentYear && <span className="text-slate-400 font-normal"> ({userProfile.studentYear})</span>}
-                        </span>
-                      )}
-                    </p>
-
-                    {/* University & City & ID Row */}
-                    <div className="flex flex-wrap items-center gap-3 text-xs pt-0.5">
-                      {userProfile.university && (
-                        <button
-                          type="button"
-                          onClick={() => onNavigate('universityDetail', { name: userProfile.university || '' })}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50/80 hover:bg-blue-100 text-blue-800 font-bold border border-blue-200/80 transition cursor-pointer shadow-xs"
-                          title="Explore institution profile"
-                        >
-                          {getUniversityLogo(userProfile.university) && (
-                            <img
-                              src={getUniversityLogo(userProfile.university)}
-                              alt=""
-                              className="w-4 h-4 object-contain shrink-0"
-                            />
-                          )}
-                          <span>{userProfile.university}</span>
-                          <ExternalLink className="w-3 h-3 opacity-60" />
-                        </button>
-                      )}
-
-                      {(userProfile.city || userProfile.country) && (
-                        <span className="text-slate-500 font-medium flex items-center gap-1 text-xs">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                          <span>
-                            {userProfile.city ? `${userProfile.city}, ` : ''}{userProfile.country || 'Bangladesh'}
-                          </span>
-                        </span>
-                      )}
-
-                      {userProfile.studentId && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(userProfile.studentId || '');
-                            setCopiedStudentId(true);
-                            setTimeout(() => setCopiedStudentId(false), 2000);
-                          }}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-[11px] font-bold border border-slate-200 transition cursor-pointer"
-                          title="Click to copy Student Roll ID"
-                        >
-                          <span>ID: {userProfile.studentId}</span>
-                          {copiedStudentId ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-slate-400" />}
-                        </button>
+                        userProfile.name
+                          ? userProfile.name
+                              .split(' ')
+                              .map((w) => w[0])
+                              .join('')
+                              .slice(0, 2)
+                          : 'U'
                       )}
                     </div>
                   </div>
+
+                  {/* Verified Alumni Hologram / Shield Badge Overlay */}
+                  {userProfile.isVerifiedAlumni && (
+                    <div
+                      className="absolute -top-1.5 -right-1.5 w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-600 border-2 border-white shadow-xl flex items-center justify-center text-amber-950"
+                      title="Official Verified Degree Holder"
+                    >
+                      <BadgeCheck className="w-4 h-4 text-amber-950 fill-amber-300" />
+                    </div>
+                  )}
+
+                  {/* Online / Active Beacon */}
+                  <div
+                    className="absolute -bottom-1 -left-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white shadow-md flex items-center justify-center"
+                    title="Active Member"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  </div>
+
+                  {/* Camera Upload Button */}
+                  <label
+                    className="absolute -bottom-1 -right-1 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border-2 border-white bg-blue-600 text-white shadow-lg hover:bg-blue-700 hover:scale-105 transition"
+                    title="Upload or change profile picture"
+                    aria-label="Upload profile picture"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      disabled={isUploadingPhoto}
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = '';
+                        if (!file) return;
+                        await handleUploadProfilePhoto(file);
+                      }}
+                    />
+                  </label>
                 </div>
 
-                {/* Profile Action Buttons */}
-                <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0 shrink-0">
+                {/* Profile Action Buttons Toolbar */}
+                <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0 shrink-0">
+                  <button
+                    onClick={() => enterEditMode()}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition cursor-pointer"
+                    aria-label="Edit Profile"
+                  >
+                    <Sliders className="w-3.5 h-3.5" />
+                    <span>Edit Profile</span>
+                  </button>
+
                   <button
                     type="button"
-                    onClick={() => setProfileTab('idcard')}
-                    className="inline-flex items-center gap-1.5 border border-amber-300 bg-linear-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 px-3.5 py-2 rounded-xl text-xs font-black text-amber-900 transition shadow-xs cursor-pointer"
-                    title="View your official smart university digital identity pass"
+                    onClick={() => {
+                      const shareUrl = window.location.origin + '/account';
+                      navigator.clipboard.writeText(shareUrl);
+                      setCopiedProfileLink(true);
+                      setTimeout(() => setCopiedProfileLink(false), 2200);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition shadow-xs cursor-pointer"
+                    title="Copy profile link"
                   >
-                    <QrCode className="w-3.5 h-3.5 text-amber-700" />
-                    <span>Digital Pass</span>
+                    {copiedProfileLink ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="text-emerald-700 font-bold">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Share Profile</span>
+                      </>
+                    )}
                   </button>
 
                   {userProfile.university && (
@@ -1457,21 +1393,156 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                   )}
 
                   <button
-                    onClick={() => enterEditMode()}
-                    className="inline-flex items-center gap-1.5 border border-blue-200 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-md cursor-pointer"
-                    aria-label="Edit Profile"
-                  >
-                    <Sliders className="w-3.5 h-3.5" />
-                    <span>Edit Profile</span>
-                  </button>
-
-                  <button
                     onClick={logout}
                     className="bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
                     title="Sign out of account"
                   >
                     Log Out
                   </button>
+                </div>
+              </div>
+
+              {/* Row 2: Name, Credentials, and Institutional Info - clean, un-crowded, completely below avatar row */}
+              <div className="space-y-2 mt-2">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold navy tracking-tight">
+                    {userProfile.name}
+                  </h2>
+                  {userProfile.isVerifiedAlumni ? (
+                    <span
+                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-300 text-xs font-black shadow-xs"
+                      title="Verified Alumni Badge"
+                    >
+                      <BadgeCheck className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Verified Alumni</span>
+                    </span>
+                  ) : isAlumni ? (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold shadow-xs">
+                      <Award className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Alumni</span>
+                    </span>
+                  ) : userProfile.role === 'SUPER_ADMIN' ? (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-50 text-purple-800 border border-purple-200 text-xs font-bold shadow-xs">
+                      <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+                      <span>Admin</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold shadow-xs">
+                      <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Student</span>
+                    </span>
+                  )}
+
+                  {/* Mentorship Status Pill */}
+                  {isAlumni && (
+                    <button
+                      type="button"
+                      onClick={handleToggleMentorship}
+                      className={`text-[11px] font-bold px-3 py-1 rounded-full border transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                        mentorshipOpen
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                          : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200'
+                      }`}
+                      title="Click to toggle mentorship availability"
+                    >
+                      <span className={`w-2 h-2 rounded-full ${mentorshipOpen ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                      <span>{mentorshipOpen ? '🤝 Open for Mentorship' : 'Mentorship Inactive'}</span>
+                    </button>
+                  )}
+
+                  {/* Directory Visibility Pill */}
+                  <button
+                    type="button"
+                    onClick={handleToggleDirectoryVisibility}
+                    className={`text-[11px] font-bold px-3 py-1 rounded-full border transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                      publicDirectoryVisible
+                        ? 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100'
+                        : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200'
+                    }`}
+                    title="Click to toggle public directory discovery"
+                  >
+                    <Globe className={`w-3.5 h-3.5 ${publicDirectoryVisible ? 'text-blue-600' : 'text-slate-400'}`} />
+                    <span>{publicDirectoryVisible ? 'Public in Directory' : 'Private Profile'}</span>
+                  </button>
+                </div>
+
+                {/* Role & Company or Student Standing */}
+                <p className="text-sm sm:text-base text-slate-600 font-semibold leading-snug">
+                  {isAlumni ? (
+                    userProfile.jobRole ? (
+                      <span>
+                        <b className="navy">{userProfile.jobRole}</b>
+                        {userProfile.company && <span> at <b className="navy">{userProfile.company}</b></span>}
+                        {userProfile.department && <span className="text-slate-400 font-normal"> · {userProfile.department}</span>}
+                      </span>
+                    ) : (
+                      <span>
+                        <b className="navy">Alumni</b>
+                        {userProfile.department && <span> · {userProfile.department}</span>}
+                        {userProfile.graduationYear && <span className="text-slate-400 font-normal"> (Class of {userProfile.graduationYear})</span>}
+                      </span>
+                    )
+                  ) : (
+                    <span>
+                      <b className="navy">{userProfile.studentYear || userProfile.educationLevel || 'Undergraduate Student'}</b>
+                      {userProfile.department && <span> · {userProfile.department}</span>}
+                      {userProfile.expectedGraduation && <span className="text-slate-400 font-normal"> (Expected {userProfile.expectedGraduation})</span>}
+                    </span>
+                  )}
+                </p>
+
+                {/* University & City & ID Row */}
+                <div className="flex flex-wrap items-center gap-3 text-xs pt-0.5">
+                  {userProfile.university && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('universityDetail', { name: userProfile.university || '' })}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50/80 hover:bg-blue-100 text-blue-800 font-bold border border-blue-200/80 transition cursor-pointer shadow-xs"
+                      title="Explore institution profile"
+                    >
+                      {getUniversityLogo(userProfile.university) && (
+                        <img
+                          src={getUniversityLogo(userProfile.university)}
+                          alt=""
+                          className="w-4 h-4 object-contain shrink-0"
+                        />
+                      )}
+                      <span>{userProfile.university}</span>
+                      <ExternalLink className="w-3 h-3 opacity-60" />
+                    </button>
+                  )}
+
+                  {userProfile.department && (
+                    <span className="text-slate-600 font-semibold flex items-center gap-1.5">
+                      <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{userProfile.department}</span>
+                    </span>
+                  )}
+
+                  {(userProfile.city || userProfile.country) && (
+                    <span className="text-slate-500 font-medium flex items-center gap-1 text-xs">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      <span>
+                        {userProfile.city ? `${userProfile.city}, ` : ''}{userProfile.country || 'Bangladesh'}
+                      </span>
+                    </span>
+                  )}
+
+                  {userProfile.studentId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(userProfile.studentId || '');
+                        setCopiedStudentId(true);
+                        setTimeout(() => setCopiedStudentId(false), 2000);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-[11px] font-bold border border-slate-200 transition cursor-pointer"
+                      title="Click to copy Student Roll ID"
+                    >
+                      <span>ID: {userProfile.studentId}</span>
+                      {copiedStudentId ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-slate-400" />}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1728,162 +1799,93 @@ export const AccountView: React.FC<AccountViewProps> = ({ onNavigate, onBack, pa
                 </div>
               </div>
 
-              {/* 4-Tile Executive KPI Dashboard */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
-                {/* Tile 1: Standing */}
-                <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-xs flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                    <GraduationCap className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">
-                      {isAlumni ? 'Convocated Batch' : 'Current Standing'}
-                    </span>
-                    <b className="text-sm navy font-black block truncate mt-0.5">
-                      {isAlumni ? `Class of ${userProfile.graduationYear || '2024'}` : (userProfile.studentYear || 'Active Student')}
-                    </b>
-                  </div>
-                </div>
-
-                {/* Tile 2: Network */}
-                <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-xs flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
-                    <Building2 className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">
-                      Followed Campuses
-                    </span>
-                    <b className="text-sm navy font-black block truncate mt-0.5">
-                      {userProfile.followedUniversities?.length || 0} Universities
-                    </b>
-                  </div>
-                </div>
-
-                {/* Tile 3: Posts & Community */}
-                <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-xs flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                    <MessageSquare className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">
-                      Community Feed
-                    </span>
-                    <b className="text-sm navy font-black block truncate mt-0.5">
-                      {posts.length} Shared Updates
-                    </b>
-                  </div>
-                </div>
-
-                {/* Tile 4: Storage */}
-                <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-xs flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
-                    <ShieldCheck className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">
-                      Security Ledger
-                    </span>
-                    <b className="text-sm text-emerald-700 font-black block truncate mt-0.5">
-                      Salted & Persistent
-                    </b>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Profile Navigation Tabs Bar */}
-            <div className="flex items-center gap-2 px-6 sm:px-8 border-t border-soft bg-slate-50/80 pt-2.5 pb-2.5 text-xs overflow-x-auto">
-              <button
-                type="button"
-                onClick={() => setProfileTab('dossier')}
-                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer shrink-0 ${
-                  profileTab === 'dossier'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                }`}
-              >
-                <GraduationCap className="w-4 h-4" />
-                <span>Executive Dossier & Credentials</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setProfileTab('idcard')}
-                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer shrink-0 ${
-                  profileTab === 'idcard'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                }`}
-              >
-                <QrCode className="w-4 h-4 text-amber-500" />
-                <span>Digital Identity Pass</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setProfileTab('posts')}
-                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer shrink-0 ${
-                  profileTab === 'posts'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                }`}
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>Posts & Campus Feed</span>
-                <span
-                  className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
-                    profileTab === 'posts' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  {posts.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setProfileTab('followed')}
-                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer shrink-0 ${
-                  profileTab === 'followed'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                }`}
-              >
-                <Building2 className="w-4 h-4" />
-                <span>Followed Universities</span>
-                <span
-                  className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
-                    profileTab === 'followed'
-                      ? 'bg-white/20 text-white'
-                      : 'bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  {userProfile.followedUniversities?.length || 0}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setProfileTab('storage');
-                  if (!activeReceipt) getStorageReceipt();
-                }}
-                className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer shrink-0 ${
-                  profileTab === 'storage'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                }`}
-              >
-                <Database className="w-4 h-4" />
-                <span>Data Storage & Security Receipt</span>
-              </button>
             </div>
           </div>
 
-          {/* ========================================================= */}
-          {/* TAB 0: INTERACTIVE DIGITAL CAMPUS PASS (SMART CARD)       */}
-          {/* ========================================================= */}
-          {profileTab === 'idcard' && (
+          {/* Sticky Tab Navigation Bar */}
+          <div className="sticky top-2 z-30 card p-2 shadow-md border-soft flex items-center gap-1.5 overflow-x-auto bg-white/95 backdrop-blur-md">
+            <button
+              type="button"
+              onClick={() => setProfileTab('overview')}
+              className={`tab-btn flex items-center gap-1.5 shrink-0 ${profileTab === 'overview' ? 'active' : ''}`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Overview</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setProfileTab('academic')}
+              className={`tab-btn flex items-center gap-1.5 shrink-0 ${profileTab === 'academic' ? 'active' : ''}`}
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>Academic / Career</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setProfileTab('skills')}
+              className={`tab-btn flex items-center gap-1.5 shrink-0 ${profileTab === 'skills' ? 'active' : ''}`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Skills & Links</span>
+              {skills.length > 0 && (
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    profileTab === 'skills' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {skills.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setProfileTab('network')}
+              className={`tab-btn flex items-center gap-1.5 shrink-0 ${profileTab === 'network' ? 'active' : ''}`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Network</span>
+              {cohortPeers.length > 0 && (
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    profileTab === 'network' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {cohortPeers.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setProfileTab('posts')}
+              className={`tab-btn flex items-center gap-1.5 shrink-0 ${profileTab === 'posts' ? 'active' : ''}`}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Posts</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  profileTab === 'posts' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                }`}
+              >
+                {posts.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setProfileTab('digitalid')}
+              className={`tab-btn flex items-center gap-1.5 shrink-0 ${profileTab === 'digitalid' ? 'active' : ''}`}
+            >
+              <QrCode className="w-3.5 h-3.5 text-amber-500" />
+              <span>Digital ID</span>
+            </button>
+          </div>
+
+          {/* TAB: INTERACTIVE DIGITAL CAMPUS PASS (SMART CARD) */}
+          {(profileTab === 'digitalid' || profileTab === 'idcard') && (
             <div className="space-y-6">
               <div className="card p-6 sm:p-8 shadow-xl border-soft">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-soft">
