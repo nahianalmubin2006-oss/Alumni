@@ -35,7 +35,7 @@ interface AlumniViewProps {
 }
 
 export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) => {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, isSuperAdmin, isUniversityAdmin } = useAuth();
   const { universities, alumni, stats, allUsers, loadingData } = useData();
 
   // Legacy student records may exist in the alumni collection. Never list a profile
@@ -237,6 +237,12 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
   const filteredAlumni = useMemo(() => {
     const query = debouncedSearch.trim().toLowerCase();
     const filtered = approvedAlumni.filter((a) => {
+      // 0. Privacy filter: if publicDirectoryVisible is explicitly false, only visible to owner or admins
+      if (a.publicDirectoryVisible === false) {
+        const isOwner = Boolean(currentUser && (currentUser.uid === a.userId || currentUser.uid === a.id));
+        if (!isOwner && !isSuperAdmin && !isUniversityAdmin) return false;
+      }
+
       // 1. Verified filter
       if (verifiedOnly && !a.isVerified) return false;
 
@@ -363,6 +369,9 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
     directorySort,
     universityTypeLookup,
     departmentGroupLookup,
+    currentUser,
+    isSuperAdmin,
+    isUniversityAdmin,
   ]);
 
   const uniqueCountries = useMemo(

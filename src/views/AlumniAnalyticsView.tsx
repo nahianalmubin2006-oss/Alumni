@@ -521,7 +521,6 @@ export const AlumniAnalyticsView: React.FC<AlumniAnalyticsViewProps> = ({
         labels: careerDistribution.map((c) => c.name),
         datasets: [
           {
-            axis: 'y',
             label: 'Alumni',
             data: careerDistribution.map((c) => c.count),
             backgroundColor: [
@@ -760,7 +759,7 @@ export const AlumniAnalyticsView: React.FC<AlumniAnalyticsViewProps> = ({
             >
               <option value="All">All Universities</option>
               {ALL_DIRECTORY_UNIVERSITIES.map((u) => (
-                <option key={u.id} value={u.name}>
+                <option key={u.name} value={u.name}>
                   {u.name}
                 </option>
               ))}
@@ -779,7 +778,7 @@ export const AlumniAnalyticsView: React.FC<AlumniAnalyticsViewProps> = ({
             >
               <option value="All">All Departments</option>
               {RAW_DEPARTMENT_CATALOG.map((d) => (
-                <option key={d.id} value={d.name}>
+                <option key={d.name} value={d.name}>
                   {d.name}
                 </option>
               ))}

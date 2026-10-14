@@ -80,6 +80,17 @@ export const NetworkView: React.FC<NetworkViewProps> = ({ onNavigate, onBack, pa
     setTimeout(() => setToastMessage(null), 4000);
   };
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setRespondingMentorship(null);
+        setDisconnectTarget(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const currentUid = currentUser?.uid?.toLowerCase() || '';
   const currentEmail = userProfile?.email?.toLowerCase() || currentUser?.email?.toLowerCase() || '';
 
@@ -1135,11 +1146,16 @@ export const NetworkView: React.FC<NetworkViewProps> = ({ onNavigate, onBack, pa
       {/* MENTORSHIP RESPONSE MODAL */}
       {/* ==================================================================== */}
       {respondingMentorship && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mentorship-response-title"
+        >
           <div className="card max-w-lg w-full p-6 bg-white rounded-2xl shadow-2xl animate-in zoom-in-95 duration-150 space-y-4">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-base font-black navy">
+                <h3 id="mentorship-response-title" className="text-base font-black navy">
                   {respondingMentorship.status === 'ACCEPTED' ? 'Accept Mentorship Request' : 'Decline Mentorship Request'}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -1205,14 +1221,19 @@ export const NetworkView: React.FC<NetworkViewProps> = ({ onNavigate, onBack, pa
       {/* DISCONNECT CONFIRMATION MODAL */}
       {/* ==================================================================== */}
       {disconnectTarget && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="disconnect-network-title"
+        >
           <div className="card max-w-sm w-full p-6 bg-white rounded-2xl shadow-2xl animate-in zoom-in-95 duration-150 space-y-4">
             <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
               <Trash2 className="w-5 h-5" />
             </div>
 
             <div className="text-center">
-              <h3 className="text-base font-black navy">Remove Connection?</h3>
+              <h3 id="disconnect-network-title" className="text-base font-black navy">Remove Connection?</h3>
               <p className="text-xs text-slate-500 mt-1">
                 Are you sure you want to disconnect with{' '}
                 <b>

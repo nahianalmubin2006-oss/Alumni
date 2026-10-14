@@ -985,6 +985,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         photoUrl: updated.photoUrl || '',
         linkedin: updated.linkedin || '',
         isVerified: Boolean(updated.isVerifiedAlumni),
+        mentorshipOpen: updated.mentorshipOpen !== undefined ? updated.mentorshipOpen : (userProfile.mentorshipOpen !== undefined ? userProfile.mentorshipOpen : true),
+        skills: updated.skills || userProfile.skills || [],
+        sector: updated.sector || userProfile.sector || '',
+        specialization: updated.specialization || userProfile.specialization || '',
+        degree: updated.degree || userProfile.degree || '',
+        publicDirectoryVisible: updated.publicDirectoryVisible !== undefined ? updated.publicDirectoryVisible : true,
+        coverTheme: updated.coverTheme || userProfile.coverTheme || 'default',
         status: 'APPROVED',
         updatedAt: now,
       };

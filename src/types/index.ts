@@ -50,7 +50,10 @@ export interface UserProfile {
   mentorshipOpen?: boolean;
   skills?: string[];
   publicDirectoryVisible?: boolean;
+  degree?: string;
   degreeTitle?: string;
+  sector?: string;
+  specialization?: string;
   portfolioUrl?: string;
   achievements?: string;
   linkedin?: string;
@@ -199,7 +202,6 @@ export interface AlumniRecord {
   skills?: string[];
   portfolioUrl?: string;
   achievements?: string;
-  mentorshipOpen?: boolean;
   publicDirectoryVisible?: boolean;
   degreeTitle?: string;
   coverTheme?: string;

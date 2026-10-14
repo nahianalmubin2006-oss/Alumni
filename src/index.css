@@ -245,6 +245,102 @@
   border-color: #263244;
 }
 
+.dark-mode .navy,
+.dark-mode .text-navy {
+  color: #f8fafc !important;
+}
+
+.dark-mode .bg-navy {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+/* Dark mode semantic badge contrast */
+.dark-mode .bg-emerald-50 {
+  background-color: rgba(6, 78, 59, 0.35) !important;
+  color: #6ee7b7 !important;
+}
+.dark-mode .text-emerald-800,
+.dark-mode .text-emerald-700 {
+  color: #6ee7b7 !important;
+}
+.dark-mode .border-emerald-200,
+.dark-mode .border-emerald-300 {
+  border-color: rgba(5, 150, 105, 0.4) !important;
+}
+
+.dark-mode .bg-blue-50 {
+  background-color: rgba(30, 58, 138, 0.35) !important;
+  color: #93c5fd !important;
+}
+.dark-mode .text-blue-800,
+.dark-mode .text-blue-700,
+.dark-mode .text-blue-900 {
+  color: #93c5fd !important;
+}
+.dark-mode .border-blue-100,
+.dark-mode .border-blue-200,
+.dark-mode .border-blue-300 {
+  border-color: rgba(37, 99, 235, 0.4) !important;
+}
+
+.dark-mode .bg-amber-50 {
+  background-color: rgba(120, 53, 15, 0.35) !important;
+  color: #fcd34d !important;
+}
+.dark-mode .text-amber-800,
+.dark-mode .text-amber-900 {
+  color: #fcd34d !important;
+}
+.dark-mode .border-amber-200,
+.dark-mode .border-amber-300 {
+  border-color: rgba(217, 119, 6, 0.4) !important;
+}
+
+.dark-mode .bg-indigo-50 {
+  background-color: rgba(49, 46, 129, 0.35) !important;
+  color: #c7d2fe !important;
+}
+.dark-mode .text-indigo-800,
+.dark-mode .text-indigo-700 {
+  color: #c7d2fe !important;
+}
+.dark-mode .border-indigo-200 {
+  border-color: rgba(99, 102, 241, 0.4) !important;
+}
+
+.dark-mode .bg-slate-50\/50,
+.dark-mode .bg-slate-50\/70,
+.dark-mode .bg-slate-50\/80 {
+  background-color: #0f172a !important;
+}
+
+.dark-mode select option {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+/* Accessibility: Focus visible indicators */
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.dark-mode :focus-visible {
+  outline-color: #60a5fa;
+}
+
+/* Accessibility: Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 
 /* Responsive UX refinements */
 @media (max-width: 767px) {

@@ -25,6 +25,7 @@ import {
   Handshake,
   Users,
   Trash2,
+  ShieldAlert,
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
@@ -82,7 +83,7 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
     getConnectionStatusWith,
     getMentorshipStatusWith,
   } = useData();
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, isSuperAdmin, isUniversityAdmin } = useAuth();
 
   // Find alumni record or generate rich fallback profile with live synchronization
   const profile: AlumniRecord = useMemo(() => {
@@ -498,6 +499,45 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setConnectModalOpen(false);
+        setMentorshipModalOpen(false);
+        setDisconnectModalOpen(false);
+        setShowDigitalPass(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const isProfilePrivate = profile.publicDirectoryVisible === false && !isOwnProfile && !isSuperAdmin && !isUniversityAdmin;
+
+  if (isProfilePrivate) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
+        <div className="card p-8 sm:p-12 text-center bg-white shadow-xl rounded-2xl border border-soft">
+          <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center mx-auto mb-4">
+            <ShieldAlert className="w-8 h-8 text-slate-400" />
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black navy">Private Alumni Profile</h1>
+          <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mt-2 leading-relaxed">
+            This alumnus has set their profile visibility to private. Only institutional administrators or the profile owner can view their records.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={() => (onBack ? onBack() : onNavigate('alumni'))}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-navy text-white hover:bg-slate-800 transition cursor-pointer"
+            >
+              ← Return to Directory
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       {/* Toast Feedback */}
@@ -532,59 +572,29 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
         </div>
       </div>
 
-      {/* Primary Profile Card with Luxury Campus Cover Banner */}
-      <div className="card overflow-hidden bg-white shadow-2xl border border-slate-200/80 rounded-3xl">
-        {/* Luxury Collegiate Cover Banner */}
-        <div className="h-52 sm:h-64 lg:h-72 relative overflow-hidden bg-slate-950">
+      {/* Primary Profile Card with Restrained Premium Campus Cover Banner */}
+      <div className="card overflow-hidden bg-white shadow-xl border border-slate-200/80 rounded-3xl">
+        {/* Collegiate Cover Banner */}
+        <div className="h-44 sm:h-56 md:h-64 relative overflow-hidden bg-slate-900 rounded-t-3xl">
           <img
             src={campusBanner}
             alt={profile.university}
-            className="absolute inset-0 w-full h-full object-cover object-center filter brightness-90 contrast-105"
+            className="w-full h-full object-cover filter brightness-90 contrast-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-black/35 backdrop-blur-[0.5px]" />
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-950/70 via-slate-900/60 to-indigo-950/80 mix-blend-overlay" />
-          <div className="absolute -top-16 -right-16 w-80 h-80 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-16 -left-16 w-80 h-80 rounded-full bg-amber-500/20 blur-3xl pointer-events-none" />
-          <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none" />
-
-          {/* Gold Crest Medallion Watermark */}
-          <div className="absolute right-6 -bottom-6 opacity-30 pointer-events-none select-none hidden sm:block">
-            <img
-              src={goldCrestMedallion}
-              alt=""
-              className="w-44 h-44 lg:w-52 lg:h-52 object-contain filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.7)] brightness-110"
-            />
-          </div>
-
-          {/* University Crest / Emblem Watermark */}
-          {profile.university && (
-            <div className="absolute right-48 -bottom-4 opacity-15 pointer-events-none select-none hidden md:block">
-              {getUniversityLogo(profile.university) ? (
-                <img
-                  src={getUniversityLogo(profile.university)}
-                  alt=""
-                  className="w-32 h-32 object-contain brightness-200 contrast-125"
-                />
-              ) : (
-                <span className="text-7xl font-black text-white/40 tracking-tighter font-serif">
-                  {universityInitials(profile.university)}
-                </span>
-              )}
-            </div>
-          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-black/25" />
 
           {/* Cover Top Badges & Quick Action Toolbar */}
           <div className="absolute top-4 left-4 right-4 flex flex-wrap items-center justify-between gap-2 z-10">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-black text-white bg-black/45 backdrop-blur-md px-3.5 py-1 rounded-full border border-white/25 shadow-md flex items-center gap-1.5">
+              <span className="text-[11px] font-bold text-white bg-black/45 backdrop-blur-md px-3.5 py-1 rounded-full border border-white/25 shadow-xs flex items-center gap-1.5">
                 <Award className="w-3.5 h-3.5 text-amber-300" />
-                <span>{profile.isVerified ? 'Verified Alumni' : 'Alumni Profile'}</span>
+                <span>{profile.isVerified ? 'Verified Alumni' : 'Alumni Member'}</span>
               </span>
 
               {profile.university && (
-                <span className="text-[11px] font-bold text-emerald-200 bg-emerald-950/65 backdrop-blur-md px-3.5 py-1 rounded-full border border-emerald-400/40 flex items-center gap-1.5 shadow-md">
+                <span className="text-[11px] font-bold text-emerald-200 bg-emerald-950/70 backdrop-blur-md px-3.5 py-1 rounded-full border border-emerald-400/40 flex items-center gap-1.5 shadow-xs">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{profile.university}</span>
+                  <span className="truncate max-w-[200px] sm:max-w-none">{profile.university}</span>
                 </span>
               )}
             </div>
@@ -593,9 +603,9 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowDigitalPass((prev) => !prev)}
-                className={`text-[11px] font-bold px-3.5 py-1.5 rounded-full backdrop-blur-md transition shadow-lg flex items-center gap-1.5 cursor-pointer border ${
+                className={`text-[11px] font-bold px-3.5 py-1.5 rounded-full backdrop-blur-md transition shadow-xs flex items-center gap-1.5 cursor-pointer border ${
                   showDigitalPass
-                    ? 'bg-amber-500 text-slate-950 border-amber-300 font-black'
+                    ? 'bg-amber-500 text-slate-950 border-amber-300 font-bold'
                     : 'text-amber-200 bg-amber-950/70 hover:bg-amber-900/90 border-amber-400/50'
                 }`}
                 title="Toggle Digital Campus Pass"
@@ -603,59 +613,44 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
                 <QrCode className="w-3.5 h-3.5" />
                 <span>{showDigitalPass ? 'Hide Digital Pass' : 'View Digital Pass'}</span>
               </button>
-
-
             </div>
           </div>
-
-          {/* Bottom Latin Motto */}
         </div>
 
         {/* Profile Avatar & Primary Row */}
-        <div className="px-4 pb-6 pt-6 sm:px-8 sm:pt-8 relative">
+        <div className="px-4 pb-6 pt-0 sm:px-8 relative">
           <div className="flex flex-col md:flex-row gap-6 items-start justify-between mb-4">
             <div className="flex min-w-0 flex-col sm:flex-row gap-5 items-start flex-1">
-              {/* 3D Metallic Foil Avatar Frame */}
-              <div className="relative group self-start shrink-0">
-                <div
-                  className={`w-28 h-28 sm:w-36 sm:h-36 rounded-3xl p-1.5 shadow-2xl transition duration-300 ${
-                    profile.isVerified
-                      ? 'bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600 ring-4 ring-amber-400/40 shadow-amber-950/30'
-                      : 'bg-gradient-to-tr from-blue-600 via-sky-300 to-indigo-600 ring-4 ring-blue-500/30 shadow-blue-950/30'
-                  }`}
-                >
-                    {profile.photoUrl ? (
-                      <img
-                        src={profile.photoUrl}
-                        alt={profile.name}
-                        className="w-full h-full object-cover rounded-2xl"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                          const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
-                        }}
-                      />
-                    ) : null}
-                    <div className={`w-full h-full items-center justify-center font-black text-3xl sm:text-4xl text-blue-700 ${profile.photoUrl ? 'hidden' : 'flex'}`}>
-                      {initials}
-                    </div>
+              {/* Responsive Premium Avatar Frame */}
+              <div className="-mt-14 sm:-mt-18 md:-mt-20 relative self-start shrink-0 z-20">
+                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl p-1 bg-white ring-4 ring-white shadow-xl overflow-hidden">
+                  {profile.photoUrl ? (
+                    <img
+                      src={profile.photoUrl}
+                      alt={profile.name}
+                      width={144}
+                      height={144}
+                      className="w-full h-full object-cover rounded-xl"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div className={`w-full h-full items-center justify-center font-bold text-3xl sm:text-4xl bg-gradient-to-br from-blue-50 to-indigo-100 text-blue-700 rounded-xl ${profile.photoUrl ? 'hidden' : 'flex'}`}>
+                    {initials}
+                  </div>
                 </div>
 
                 {profile.isVerified && (
                   <div
-                    className="absolute -top-2 -right-2 w-9 h-9 rounded-full bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-600 border-2 border-white shadow-xl flex items-center justify-center text-amber-950"
-                    title="Verified Alumni Holder"
+                    className="absolute -top-1.5 -right-1.5 w-8 h-8 rounded-full bg-emerald-500 border-2 border-white shadow-md flex items-center justify-center text-white"
+                    title="Verified Alumni Member"
                   >
-                    <BadgeCheck className="w-5 h-5 text-amber-950 fill-amber-300" />
+                    <BadgeCheck className="w-5 h-5 text-white" />
                   </div>
                 )}
-
-                <div
-                  className="absolute -bottom-1 -left-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white shadow-md flex items-center justify-center"
-                  title="Active Member"
-                >
-                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                </div>
               </div>
 
               {/* Profile Info & Status Indicators */}
@@ -790,7 +785,7 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
                       data-testid="pending-button"
                       className="bg-amber-50 text-amber-800 border border-amber-300 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-default shadow-xs"
                     >
-                      <Clock className="w-4 h-4 text-amber-600 animate-spin" />
+                      <Clock className="w-4 h-4 text-amber-600" />
                       <span>Request Pending</span>
                     </button>
 
@@ -1111,7 +1106,12 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
       {/* 1. REAL CONNECTION REQUEST MODAL */}
       {/* ========================================================= */}
       {connectModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="connect-dialog-title"
+        >
           <div className="card max-w-lg w-full p-6 shadow-2xl bg-white rounded-2xl animate-in zoom-in-95 duration-150">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
@@ -1119,7 +1119,7 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
                   {initials}
                 </div>
                 <div>
-                  <h3 className="text-lg font-black navy">Connect with {profile.name}</h3>
+                  <h3 id="connect-dialog-title" className="text-lg font-black navy">Connect with {profile.name}</h3>
                   <p className="text-xs text-slate-500">
                     {profile.jobRole} at {profile.company} · {profile.university}
                   </p>
@@ -1207,7 +1207,12 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
       {/* 2. REAL MENTORSHIP REQUEST FORM MODAL */}
       {/* ========================================================= */}
       {mentorshipModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mentorship-dialog-title"
+        >
           <div className="card max-w-lg w-full p-6 shadow-2xl bg-white rounded-2xl animate-in zoom-in-95 duration-150">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
@@ -1215,7 +1220,7 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
                   🤝
                 </div>
                 <div>
-                  <h3 className="text-lg font-black navy">Request Mentorship from {profile.name}</h3>
+                  <h3 id="mentorship-dialog-title" className="text-lg font-black navy">Request Mentorship from {profile.name}</h3>
                   <p className="text-xs text-slate-500">
                     {profile.jobRole} at {profile.company} · {profile.department}
                   </p>
@@ -1319,14 +1324,19 @@ export const AlumniProfileView: React.FC<AlumniProfileViewProps> = ({
       {/* 3. DISCONNECT CONFIRMATION MODAL */}
       {/* ========================================================= */}
       {disconnectModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="disconnect-dialog-title"
+        >
           <div className="card max-w-md w-full p-6 shadow-2xl bg-white rounded-2xl animate-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 text-rose-600 mb-3">
               <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
                 <Trash2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-black navy">Remove Connection?</h3>
+                <h3 id="disconnect-dialog-title" className="text-base font-black navy">Remove Connection?</h3>
                 <p className="text-xs text-slate-500">This will remove {profile.name} from your network.</p>
               </div>
             </div>
