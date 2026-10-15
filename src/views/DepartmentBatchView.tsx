@@ -66,20 +66,38 @@ export const DepartmentBatchView: React.FC<DepartmentBatchViewProps> = ({
   const bYear = (batchYear || '').trim();
   const normD = normalizeDepartmentName(departmentName || '');
 
+  const isDuEee =
+    uLower.includes('dhaka') &&
+    (normD.includes('electrical') ||
+      normD.includes('eee') ||
+      normD.includes('appliedphysics') ||
+      normD.includes('apece') ||
+      normD.includes('ape'));
+
   // Look up structured batch metadata from DataContext
   const batchInfo = useMemo(() => {
     return batches.find((b) => {
       const uMatch = (b.university || '').toLowerCase().trim() === uLower;
-      const dMatch =
+      const bNorm = normalizeDepartmentName(b.department || '');
+      let dMatch =
         (b.department || '').toLowerCase().trim() === dLower ||
-        normalizeDepartmentName(b.department || '') === normD;
+        bNorm === normD;
+      if (isDuEee) {
+        dMatch =
+          dMatch ||
+          bNorm.includes('electrical') ||
+          bNorm.includes('eee') ||
+          bNorm.includes('appliedphysics') ||
+          bNorm.includes('apece') ||
+          bNorm.includes('ape');
+      }
       const yrMatch =
         (batchNumber !== undefined && b.batchNumber === batchNumber) ||
         b.year === bYear ||
         (b.id && b.id.endsWith(`-${bYear}`));
       return uMatch && dMatch && yrMatch;
     });
-  }, [batches, uLower, dLower, normD, bYear, batchNumber]);
+  }, [batches, uLower, dLower, normD, bYear, batchNumber, isDuEee]);
 
   // Verified alumni from this specific graduation batch
   const batchAlumni = useMemo(() => {
@@ -88,7 +106,16 @@ export const DepartmentBatchView: React.FC<DepartmentBatchViewProps> = ({
       const uniMatch = (a.university || '').toLowerCase().trim() === uLower;
       const aDeptLower = (a.department || '').toLowerCase().trim();
       const aDeptNorm = normalizeDepartmentName(a.department || '');
-      const deptMatch = aDeptLower === dLower || aDeptNorm === normD;
+      let deptMatch = aDeptLower === dLower || aDeptNorm === normD;
+      if (isDuEee) {
+        deptMatch =
+          deptMatch ||
+          aDeptNorm.includes('electrical') ||
+          aDeptNorm.includes('eee') ||
+          aDeptNorm.includes('appliedphysics') ||
+          aDeptNorm.includes('apece') ||
+          aDeptNorm.includes('ape');
+      }
 
       const yearMatch =
         (batchNumber !== undefined && a.batchNumber === batchNumber) ||
@@ -101,7 +128,7 @@ export const DepartmentBatchView: React.FC<DepartmentBatchViewProps> = ({
 
       return uniMatch && deptMatch && yearMatch;
     });
-  }, [alumni, uLower, dLower, normD, bYear, batchNumber, batchInfo]);
+  }, [alumni, uLower, dLower, normD, bYear, batchNumber, batchInfo, isDuEee]);
 
   // Filtered batch alumni by search, country, and sector
   const filteredBatchAlumni = useMemo(() => {

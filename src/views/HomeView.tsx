@@ -4,8 +4,8 @@ import { useData } from '../context/DataContext';
 import { GlobalGraph } from '../components/GlobalGraph';
 import { UniversityLogo } from '../components/UniversityLogo';
 import { getUniversityLogo, ALL_DIRECTORY_UNIVERSITIES } from '../data/initialData';
-import { VERIFIED_DEPARTMENT_SEEDS } from '../data/verifiedDepartments';
 import { DU_CSE_BATCHES, DU_CSE_ANALYTICS } from '../data/duCseData';
+import { DU_EEE_BATCHES, DU_EEE_ANALYTICS } from '../data/duEeeData';
 import {
   Flame,
   Award,
@@ -30,7 +30,9 @@ import {
   Compass,
   ArrowUpRight,
   ExternalLink,
+  Cpu,
 } from 'lucide-react';
+import { VERIFIED_DEPARTMENT_SEEDS } from '../data/verifiedDepartments';
 import { NewsArticle, University, AlumniRecord } from '../types';
 
 interface HomeViewProps {
@@ -50,6 +52,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
   const [selectedDeptGroup, setSelectedDeptGroup] = useState<string>('All');
   const [showAllUnis, setShowAllUnis] = useState(false);
   const [diasporaTab, setDiasporaTab] = useState<'EMPLOYERS' | 'COUNTRIES'>('EMPLOYERS');
+  const [spotlightDept, setSpotlightDept] = useState<'EEE' | 'CSE'>('EEE');
   const [updateVersion, setUpdateVersion] = useState(0);
 
   useEffect(() => {
@@ -745,113 +748,249 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onSearch }) => {
           </div>
 
           <div className="relative z-10">
-            <div className="flex flex-wrap items-center gap-2 mb-3">
-              <span className="text-[11px] font-bold text-blue-300 tracking-wider uppercase flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                <span>Featured Department Intelligence Spotlight</span>
-              </span>
-              <span className="text-[11px] font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
-                ✓ 32 Cohorts Verified
-              </span>
-            </div>
-
-            <div className="grid lg:grid-cols-12 gap-8 items-center">
-              <div className="lg:col-span-8">
-                <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
-                  Department of Computer Science & Engineering
-                </h2>
-                <p className="text-blue-200 text-sm sm:text-base mt-1 font-medium">
-                  University of Dhaka · Established 1992 · First Graduating Cohort 1994
-                </p>
-
-                <p className="text-slate-300 text-xs sm:text-sm mt-3.5 leading-relaxed max-w-2xl">
-                  {DU_CSE_ANALYTICS.denominatorExplanation ||
-                    'Comprehensive source-backed career records tracing 32 graduating cohorts from founding pioneer classes to modern software architects, university professors, Google/Meta engineers, and doctoral researchers.'}
-                </p>
-
-                {/* Spotlight metrics row */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-white/10">
-                  <div>
-                    <span className="text-[11px] text-blue-200 block">Researched Cohorts</span>
-                    <b className="text-xl text-white font-bold block mt-0.5">32 Batches</b>
-                    <span className="text-[10px] text-slate-400">1994 — 2029</span>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-blue-200 block">Verified Alumni</span>
-                    <b className="text-xl text-white font-bold block mt-0.5">75 Profiles</b>
-                    <span className="text-[10px] text-slate-400">Source-backed</span>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-blue-200 block">Employment Placements</span>
-                    <b className="text-xl text-emerald-300 font-bold block mt-0.5">91%</b>
-                    <span className="text-[10px] text-slate-400">Tech & Academia</span>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-blue-200 block">Global Presence</span>
-                    <b className="text-xl text-white font-bold block mt-0.5">18 Countries</b>
-                    <span className="text-[10px] text-slate-400">USA, Germany, UK...</span>
-                  </div>
-                </div>
-
-                {/* Quick Cohort Jump Buttons */}
-                <div className="mt-6 flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-blue-200 font-semibold mr-1">Quick Cohorts:</span>
-                  {[
-                    { label: 'Batch #0 (1994 Founding)', year: '1994', num: 0 },
-                    { label: 'Batch #1 (1999)', year: '1999', num: 1 },
-                    { label: 'Batch #10 (2008)', year: '2008', num: 10 },
-                    { label: 'Batch #23 (2021)', year: '2021', num: 23 },
-                    { label: 'Batch #25 (2023)', year: '2023', num: 25 },
-                  ].map((b) => (
-                    <button
-                      key={b.year}
-                      onClick={() =>
-                        onNavigate('departmentBatch', {
-                          dept: 'Computer Science and Engineering',
-                          uni: 'University of Dhaka',
-                          batch: b.year,
-                          batchNumber: String(b.num),
-                        })
-                      }
-                      className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg border border-white/20 transition cursor-pointer font-medium"
-                    >
-                      {b.label}
-                    </button>
-                  ))}
-                </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold text-blue-300 tracking-wider uppercase flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Flagship Department Intelligence Spotlight</span>
+                </span>
+                <span className="text-[11px] font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                  {spotlightDept === 'EEE' ? '✓ 99 Profiles · 97% Verified' : '✓ 32 Cohorts Verified'}
+                </span>
               </div>
 
-              {/* Right Call-To-Action Box */}
-              <div className="lg:col-span-4 flex flex-col gap-3">
+              {/* Department Switcher Tabs */}
+              <div className="flex items-center gap-1 bg-white/10 p-1 rounded-xl border border-white/15">
                 <button
-                  onClick={() =>
-                    onNavigate('departmentProfile', {
-                      dept: 'Computer Science and Engineering',
-                      uni: 'University of Dhaka',
-                    })
-                  }
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3.5 rounded-xl text-sm transition shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2 cursor-pointer"
+                  type="button"
+                  onClick={() => setSpotlightDept('EEE')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                    spotlightDept === 'EEE'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-300 hover:text-white hover:bg-white/10'
+                  }`}
                 >
-                  <span>Explore DU CSE Profile & Charts</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <Cpu className="w-3.5 h-3.5" />
+                  <span>DU EEE (60-Yr Legacy)</span>
                 </button>
-
                 <button
-                  onClick={() =>
-                    onNavigate('departmentBatch', {
-                      dept: 'Computer Science and Engineering',
-                      uni: 'University of Dhaka',
-                      batch: '2023',
-                      batchNumber: '25',
-                    })
-                  }
-                  className="bg-white/10 hover:bg-white/15 text-white font-semibold px-6 py-3 rounded-xl text-xs transition border border-white/20 flex items-center justify-center gap-2 cursor-pointer"
+                  type="button"
+                  onClick={() => setSpotlightDept('CSE')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                    spotlightDept === 'CSE'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-300 hover:text-white hover:bg-white/10'
+                  }`}
                 >
-                  <span>Browse Latest Researched Cohort</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>DU CSE (1992–Present)</span>
                 </button>
               </div>
             </div>
+
+            {spotlightDept === 'EEE' ? (
+              /* DU EEE Flagship Spotlight */
+              <div className="grid lg:grid-cols-12 gap-8 items-center">
+                <div className="lg:col-span-8">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                      Curzon Hall Campus · Founded Sept 1965
+                    </span>
+                    <span className="text-[11px] text-slate-300">
+                      Chairman: {DU_EEE_ANALYTICS.currentChairman}
+                    </span>
+                  </div>
+                  <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                    Department of Electrical & Electronic Engineering (EEE)
+                  </h2>
+                  <p className="text-blue-200 text-sm sm:text-base mt-1 font-medium">
+                    University of Dhaka · 4 Institutional Eras: Applied Physics (1965) → APE (1974) → APECE (2005) → EEE (2014)
+                  </p>
+
+                  <p className="text-slate-300 text-xs sm:text-sm mt-3.5 leading-relaxed max-w-2xl">
+                    Comprehensive source-backed career records tracing 60 years of engineering graduates from founding 1967 pioneer classes to Silicon Valley semiconductor designers (GlobalFoundries, Intel, Samsung, STMicroelectronics), international researchers (Stanford, Berkeley, UCLA, Cambridge, Princeton), and national industry leaders.
+                  </p>
+
+                  {/* Spotlight metrics row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-white/10">
+                    <div>
+                      <span className="text-[11px] text-blue-200 block">Documented Cohorts</span>
+                      <b className="text-xl text-white font-bold block mt-0.5">60 Batches</b>
+                      <span className="text-[10px] text-slate-400">1965 — 2025+</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-blue-200 block">Verified Alumni</span>
+                      <b className="text-xl text-white font-bold block mt-0.5">99 Profiles</b>
+                      <span className="text-[10px] text-slate-400">97.0% Dual-Verified</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-blue-200 block">Portal Census Audited</span>
+                      <b className="text-xl text-emerald-300 font-bold block mt-0.5">628 Entries</b>
+                      <span className="text-[10px] text-slate-400">Batches 2–53 Audited</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-blue-200 block">Specialized Labs</span>
+                      <b className="text-xl text-white font-bold block mt-0.5">5 Facilities</b>
+                      <span className="text-[10px] text-slate-400">MicroNano, STRC, FabLab...</span>
+                    </div>
+                  </div>
+
+                  {/* Quick Cohort Jump Buttons */}
+                  <div className="mt-6 flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-blue-200 font-semibold mr-1">Notable Cohorts:</span>
+                    {[
+                      { label: 'Batch #3 (1970)', year: '1970', num: 3 },
+                      { label: 'Batch #11 (1980 1st B.Sc.)', year: '1980', num: 11 },
+                      { label: 'Batch #16 (1984 Ha-Meem)', year: '1984', num: 16 },
+                      { label: 'Batch #25 (1995 Chairman)', year: '1995', num: 25 },
+                      { label: 'Batch #38 (2009 GF)', year: '2009', num: 38 },
+                      { label: 'Batch #43 (2014 Duke)', year: '2014', num: 43 },
+                      { label: 'Batch #56 (2025 Class)', year: '2025', num: 56 },
+                    ].map((b) => (
+                      <button
+                        key={b.year}
+                        onClick={() =>
+                          onNavigate('departmentBatch', {
+                            dept: 'Electrical & Electronic Engineering',
+                            uni: 'University of Dhaka',
+                            batch: b.year,
+                            batchNumber: String(b.num),
+                          })
+                        }
+                        className="text-xs bg-white/10 hover:bg-white/20 text-white px-2.5 py-1.5 rounded-lg border border-white/20 transition cursor-pointer font-medium"
+                      >
+                        {b.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right Call-To-Action Box */}
+                <div className="lg:col-span-4 flex flex-col gap-3">
+                  <button
+                    onClick={() =>
+                      onNavigate('departmentProfile', {
+                        dept: 'Electrical & Electronic Engineering',
+                        uni: 'University of Dhaka',
+                      })
+                    }
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3.5 rounded-xl text-sm transition shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>Explore DU EEE Profile & 4 Eras</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  <a
+                    href="https://apece-eee-alumni.org"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-white/10 hover:bg-white/15 text-white font-semibold px-6 py-3 rounded-xl text-xs transition border border-white/20 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>Official Alumni Portal (628 Registrations)</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              </div>
+            ) : (
+              /* DU CSE Flagship Spotlight */
+              <div className="grid lg:grid-cols-12 gap-8 items-center">
+                <div className="lg:col-span-8">
+                  <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                    Department of Computer Science & Engineering
+                  </h2>
+                  <p className="text-blue-200 text-sm sm:text-base mt-1 font-medium">
+                    University of Dhaka · Established 1992 · First Graduating Cohort 1994
+                  </p>
+
+                  <p className="text-slate-300 text-xs sm:text-sm mt-3.5 leading-relaxed max-w-2xl">
+                    {DU_CSE_ANALYTICS.denominatorExplanation ||
+                      'Comprehensive source-backed career records tracing 32 graduating cohorts from founding pioneer classes to modern software architects, university professors, Google/Meta engineers, and doctoral researchers.'}
+                  </p>
+
+                  {/* Spotlight metrics row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-white/10">
+                    <div>
+                      <span className="text-[11px] text-blue-200 block">Researched Cohorts</span>
+                      <b className="text-xl text-white font-bold block mt-0.5">32 Batches</b>
+                      <span className="text-[10px] text-slate-400">1994 — 2029</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-blue-200 block">Verified Alumni</span>
+                      <b className="text-xl text-white font-bold block mt-0.5">75 Profiles</b>
+                      <span className="text-[10px] text-slate-400">Source-backed</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-blue-200 block">Employment Placements</span>
+                      <b className="text-xl text-emerald-300 font-bold block mt-0.5">91%</b>
+                      <span className="text-[10px] text-slate-400">Tech & Academia</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-blue-200 block">Global Presence</span>
+                      <b className="text-xl text-white font-bold block mt-0.5">18 Countries</b>
+                      <span className="text-[10px] text-slate-400">USA, Germany, UK...</span>
+                    </div>
+                  </div>
+
+                  {/* Quick Cohort Jump Buttons */}
+                  <div className="mt-6 flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-blue-200 font-semibold mr-1">Quick Cohorts:</span>
+                    {[
+                      { label: 'Batch #0 (1994 Founding)', year: '1994', num: 0 },
+                      { label: 'Batch #1 (1999)', year: '1999', num: 1 },
+                      { label: 'Batch #10 (2008)', year: '2008', num: 10 },
+                      { label: 'Batch #23 (2021)', year: '2021', num: 23 },
+                      { label: 'Batch #25 (2023)', year: '2023', num: 25 },
+                    ].map((b) => (
+                      <button
+                        key={b.year}
+                        onClick={() =>
+                          onNavigate('departmentBatch', {
+                            dept: 'Computer Science and Engineering',
+                            uni: 'University of Dhaka',
+                            batch: b.year,
+                            batchNumber: String(b.num),
+                          })
+                        }
+                        className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg border border-white/20 transition cursor-pointer font-medium"
+                      >
+                        {b.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right Call-To-Action Box */}
+                <div className="lg:col-span-4 flex flex-col gap-3">
+                  <button
+                    onClick={() =>
+                      onNavigate('departmentProfile', {
+                        dept: 'Computer Science and Engineering',
+                        uni: 'University of Dhaka',
+                      })
+                    }
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3.5 rounded-xl text-sm transition shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>Explore DU CSE Profile & Charts</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      onNavigate('departmentBatch', {
+                        dept: 'Computer Science and Engineering',
+                        uni: 'University of Dhaka',
+                        batch: '2023',
+                        batchNumber: '25',
+                      })
+                    }
+                    className="bg-white/10 hover:bg-white/15 text-white font-semibold px-6 py-3 rounded-xl text-xs transition border border-white/20 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>Browse Latest Researched Cohort</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

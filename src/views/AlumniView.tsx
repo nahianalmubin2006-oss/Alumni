@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import { RAW_DEPARTMENT_CATALOG, ALL_DIRECTORY_UNIVERSITIES } from '../data/initialData';
+import { RAW_DEPARTMENT_CATALOG, ALL_DIRECTORY_UNIVERSITIES, isDepartmentMatch } from '../data/initialData';
 import { AlumniRecord } from '../types';
 
 interface AlumniViewProps {
@@ -261,8 +261,11 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
       }
 
       // 4. Department filter
-      if (departmentFilter !== 'All' && a.department?.toLowerCase() !== departmentFilter.toLowerCase()) {
-        return false;
+      if (departmentFilter !== 'All') {
+        const matchesDept =
+          a.department?.toLowerCase() === departmentFilter.toLowerCase() ||
+          isDepartmentMatch(a.department || '', departmentFilter);
+        if (!matchesDept) return false;
       }
 
       // 5. Department group filter
@@ -317,6 +320,11 @@ export const AlumniView: React.FC<AlumniViewProps> = ({ onNavigate, onBack }) =>
           a.country,
           a.city,
           a.batch,
+          a.batchNumber ? `batch ${a.batchNumber}` : '',
+          a.academicSession,
+          a.studentId,
+          a.degreeTitle,
+          a.bio,
           a.graduationYear,
           a.sector,
           a.specialization,

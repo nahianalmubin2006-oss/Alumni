@@ -15,12 +15,14 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Baseline HTTP hardening without changing the existing auth/session flow.
 app.disable('x-powered-by');
-app.use((_req, res, next) => {
+app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  if (_req.path.startsWith('/api/')) res.setHeader('Cache-Control', 'no-store');
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Cache-Control', 'no-store');
+  }
   next();
 });
 app.use((req, res, next) => {

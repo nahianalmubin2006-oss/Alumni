@@ -5,6 +5,9 @@ import {
   getUniversityLogo,
   normalizeDepartmentName,
   DU_CSE_ANALYTICS,
+  DU_EEE_ANALYTICS,
+  DU_EEE_ERAS,
+  DU_EEE_RESEARCH_LABS,
 } from '../data/initialData';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
@@ -32,6 +35,10 @@ import {
   Calendar,
   History,
   TrendingUp,
+  Cpu,
+  Microscope,
+  Radio,
+  Atom,
 } from 'lucide-react';
 import { Role, Batch } from '../types';
 
@@ -168,13 +175,36 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
 
   const normD = (departmentName || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
 
+  const [selectedEeeEra, setSelectedEeeEra] = useState<string>('ALL');
+
+  const isDuCse =
+    uLower.includes('dhaka') &&
+    (normD.includes('computerscience') || normD.includes('cse'));
+
+  const isDuEee =
+    uLower.includes('dhaka') &&
+    (normD.includes('electrical') ||
+      normD.includes('eee') ||
+      normD.includes('appliedphysics') ||
+      normD.includes('ape') ||
+      normD.includes('apece'));
+
   // All department metrics are derived from approved live records with fuzzy & normalized linkage.
   const departmentAlumni = alumniRecords.filter((a) => {
     if (a.status !== 'APPROVED') return false;
     const uniMatch = (a.university || '').toLowerCase().trim() === uLower;
     const aDeptLower = (a.department || '').toLowerCase().trim();
     const aDeptNorm = (a.department || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
-    const deptMatch = aDeptLower === dLower || aDeptNorm === normD;
+    let deptMatch = aDeptLower === dLower || aDeptNorm === normD;
+    if (isDuEee) {
+      deptMatch =
+        deptMatch ||
+        aDeptNorm.includes('electrical') ||
+        aDeptNorm.includes('eee') ||
+        aDeptNorm.includes('appliedphysics') ||
+        aDeptNorm.includes('apece') ||
+        aDeptNorm.includes('ape');
+    }
     return uniMatch && deptMatch;
   });
   const departmentStudents = studentRecords.filter((s) => {
@@ -182,12 +212,18 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
     const uniMatch = (s.university || '').toLowerCase().trim() === uLower;
     const sDeptLower = (s.department || '').toLowerCase().trim();
     const sDeptNorm = (s.department || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
-    const deptMatch = sDeptLower === dLower || sDeptNorm === normD;
+    let deptMatch = sDeptLower === dLower || sDeptNorm === normD;
+    if (isDuEee) {
+      deptMatch =
+        deptMatch ||
+        sDeptNorm.includes('electrical') ||
+        sDeptNorm.includes('eee') ||
+        sDeptNorm.includes('appliedphysics') ||
+        sDeptNorm.includes('apece') ||
+        sDeptNorm.includes('ape');
+    }
     return uniMatch && deptMatch;
   });
-  const isDuCse =
-    uLower.includes('dhaka') &&
-    (normD.includes('computerscience') || normD.includes('cse'));
 
   const alumni = departmentAlumni.length;
   const companies = new Set(departmentAlumni.map((a) => a.company).filter(Boolean)).size;
@@ -352,13 +388,34 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
 
   // Chronologically sorted graduation batches from earliest to latest
   const deptBatches = useMemo(() => {
-    const fromRecords = batchRecords.filter((b) => {
+    let fromRecords = batchRecords.filter((b) => {
       const uMatch = (b.university || '').toLowerCase().trim() === uLower;
-      const dMatch =
+      const bNorm = normalizeDepartmentName(b.department || '');
+      let dMatch =
         (b.department || '').toLowerCase().trim() === dLower ||
-        normalizeDepartmentName(b.department || '') === normD;
+        bNorm === normD;
+      if (isDuEee) {
+        dMatch =
+          dMatch ||
+          bNorm.includes('electrical') ||
+          bNorm.includes('eee') ||
+          bNorm.includes('appliedphysics') ||
+          bNorm.includes('apece') ||
+          bNorm.includes('ape');
+      }
       return uMatch && dMatch;
     });
+
+    if (isDuEee && selectedEeeEra !== 'ALL') {
+      fromRecords = fromRecords.filter((b) => {
+        const era = (b as any).era;
+        if (selectedEeeEra === 'applied-physics') return era?.includes('Applied Physics');
+        if (selectedEeeEra === 'ape') return era?.includes('APE (');
+        if (selectedEeeEra === 'apece') return era?.includes('APECE');
+        if (selectedEeeEra === 'eee') return era?.includes('EEE');
+        return true;
+      });
+    }
 
     if (fromRecords.length > 0) {
       return [...fromRecords].sort((a, b) => {
@@ -686,6 +743,78 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
           </span>
         </div>
 
+        {isDuEee && (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-2.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <Atom className="w-3.5 h-3.5 text-blue-600" />
+                <span>60-Year Department Nomenclature & Era Continuum (1965–2026)</span>
+              </span>
+              <span className="text-[11px] text-slate-400">
+                Founded Sept 1965 at Curzon Hall
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSelectedEeeEra('ALL')}
+                className={`text-xs px-3 py-1.5 rounded-xl font-bold transition cursor-pointer ${
+                  selectedEeeEra === 'ALL'
+                    ? 'bg-navy text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                All Eras ({deptBatches.length} Batches)
+              </button>
+              {DU_EEE_ERAS.map((era) => (
+                <button
+                  key={era.id}
+                  type="button"
+                  onClick={() => setSelectedEeeEra(era.id)}
+                  className={`text-xs px-3 py-1.5 rounded-xl font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                    selectedEeeEra === era.id
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200/80'
+                  }`}
+                >
+                  <span>{era.shortName}</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                    selectedEeeEra === era.id ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {era.years}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {selectedEeeEra !== 'ALL' && (() => {
+              const activeEra = DU_EEE_ERAS.find((e) => e.id === selectedEeeEra);
+              if (!activeEra) return null;
+              return (
+                <div className="mt-3 p-3.5 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 border border-blue-200/70 rounded-xl text-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-2 border-b border-blue-100">
+                    <b className="navy text-sm font-black">{activeEra.name}</b>
+                    <span className="text-blue-700 font-bold text-[11px] bg-blue-100/70 px-2 py-0.5 rounded-md">
+                      {activeEra.batches} · {activeEra.degree}
+                    </span>
+                  </div>
+                  <p className="text-slate-600 mt-2 leading-relaxed">
+                    {activeEra.description}
+                  </p>
+                  <div className="mt-2.5 pt-2 border-t border-blue-100/60 flex items-center gap-1.5 flex-wrap text-[11px]">
+                    <span className="font-bold text-slate-500">Documented Notable Cohorts:</span>
+                    {activeEra.keyAlumni.map((k) => (
+                      <span key={k} className="px-2 py-0.5 bg-white border border-slate-200 rounded-lg text-slate-700 font-medium shadow-2xs">
+                        {k}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 mt-5">
           {deptBatches.map((b) => {
             const count = departmentAlumni.filter((a) => {
@@ -767,6 +896,145 @@ export const DepartmentProfileView: React.FC<DepartmentProfileViewProps> = ({
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Historical Milestones & Research Ecosystem (DU EEE Heritage) */}
+      {isDuEee && (
+        <div className="space-y-6 mt-6">
+          {/* 1. Official APECE-EEE Registry & Verification Audit Card */}
+          <div className="card p-6 bg-gradient-to-br from-slate-900 via-navy to-slate-900 text-white rounded-2xl shadow-md border border-slate-700/60">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-700/60">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-lg">
+                    <Shield className="w-4 h-4 text-blue-400" />
+                  </span>
+                  <span className="text-xs font-bold text-blue-300 tracking-wider uppercase">
+                    Official Alumni Registry & Verification Audit
+                  </span>
+                </div>
+                <h3 className="text-xl font-black text-white mt-1">
+                  60-Year Department Census & Dual-Verification Standard
+                </h3>
+                <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                  Audited across 628 registered entries on the official DU APECE-EEE Alumni Association registry (<code className="text-blue-300">apece-eee-alumni.org</code>) and official University of Dhaka faculty & laboratory registries (<code className="text-blue-300">du.ac.bd/body/EEE</code>).
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href="https://apece-eee-alumni.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Alumni Portal</span>
+                </a>
+                <a
+                  href="https://www.du.ac.bd/body/EEE"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  <span>DU Department Portal</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mt-4">
+              <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
+                <span className="text-[11px] text-slate-400 block font-medium">Audited Portal Registry</span>
+                <b className="text-lg text-white font-black block mt-0.5">{DU_EEE_ANALYTICS.totalOfficialPortalRegistryAudited} Entries</b>
+                <span className="text-[10px] text-slate-400">Batches 2–53 audited</span>
+              </div>
+              <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
+                <span className="text-[11px] text-slate-400 block font-medium">Documented Research Cohort</span>
+                <b className="text-lg text-emerald-400 font-black block mt-0.5">{DU_EEE_ANALYTICS.totalResearchedAlumniInDirectory} Alumni Profiles</b>
+                <span className="text-[10px] text-emerald-300/80">Batches 3 through 2025</span>
+              </div>
+              <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
+                <span className="text-[11px] text-slate-400 block font-medium">Evidence Verification Rate</span>
+                <b className="text-lg text-blue-300 font-black block mt-0.5">97.0% Verified</b>
+                <span className="text-[10px] text-blue-200/80">96 confirmed · 1 partial · 2 review</span>
+              </div>
+              <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
+                <span className="text-[11px] text-slate-400 block font-medium">Disambiguated Clusters</span>
+                <b className="text-lg text-amber-300 font-black block mt-0.5">3 Homonym Groups</b>
+                <span className="text-[10px] text-amber-200/80">Abul Kalam Azad, Mahmudul, Mainul</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Curzon Hall Research Labs & Innovation Ecosystem */}
+          <div className="card p-6 bg-white border border-slate-200/90 shadow-xs rounded-2xl">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <span className="p-1.5 bg-blue-100 text-blue-700 rounded-lg">
+                <Cpu className="w-4 h-4" />
+              </span>
+              <div>
+                <h2 className="text-xl font-black navy">
+                  Curzon Hall Research Ecosystem & Specialized Labs
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Advanced micro-nano, semiconductor, photonics, radar sensing, and digital fabrication facilities
+                </p>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
+              {DU_EEE_RESEARCH_LABS.map((lab) => (
+                <div key={lab.id} className="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 flex flex-col justify-between">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 inline-block mb-1.5">
+                      {lab.lead}
+                    </span>
+                    <b className="navy text-sm block leading-snug">{lab.name}</b>
+                    <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                      {lab.focus}
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-slate-200/60 text-[11px] text-slate-500">
+                    <span className="font-bold text-slate-700">Publications: </span>
+                    <span>{lab.notableOutputs}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 3. 60-Year Historical Milestones (1965–2026) */}
+          <div className="card p-6 bg-white border border-slate-200/90 shadow-xs rounded-2xl">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <span className="p-1.5 bg-amber-100 text-amber-700 rounded-lg">
+                <History className="w-4 h-4" />
+              </span>
+              <div>
+                <h2 className="text-xl font-black navy">
+                  Department History & 60-Year Milestones (1965–2026)
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Institutional continuity from Applied Physics founding to Curzon Hall modern engineering leadership
+                </p>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
+              {DU_EEE_ANALYTICS.historyMilestones.map((m, idx) => (
+                <div key={idx} className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="text-xs font-black text-blue-600 uppercase tracking-widest">
+                    {m.year}
+                  </div>
+                  <b className="navy text-sm block mt-1">{m.title}</b>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    {m.description}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

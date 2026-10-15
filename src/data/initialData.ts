@@ -1,5 +1,6 @@
 import { University, Department, AlumniRecord, NewsArticle, Batch, PlatformSetting } from '../types';
 import { DU_CSE_ALUMNI, DU_CSE_BATCHES, DU_CSE_ANALYTICS } from './duCseData';
+import { DU_EEE_ALUMNI, DU_EEE_BATCHES, DU_EEE_ANALYTICS, DU_EEE_ERAS, DU_EEE_RESEARCH_LABS } from './duEeeData';
 
 export const normalizeDepartmentName = (name: string): string =>
   (name || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
@@ -10,8 +11,8 @@ export const isDepartmentMatch = (dept1: string, dept2: string): boolean => {
   return normalizeDepartmentName(dept1) === normalizeDepartmentName(dept2);
 };
 
-export const INITIAL_BATCHES: Batch[] = DU_CSE_BATCHES;
-export { DU_CSE_ANALYTICS };
+export const INITIAL_BATCHES: Batch[] = [...DU_CSE_BATCHES, ...DU_EEE_BATCHES];
+export { DU_CSE_ANALYTICS, DU_EEE_ANALYTICS, DU_EEE_ERAS, DU_EEE_RESEARCH_LABS, DU_EEE_ALUMNI, DU_EEE_BATCHES };
 
 export const PUBLIC_UNIVERSITIES = [
   "University of Dhaka", "University of Rajshahi", "Bangladesh Agricultural University",
@@ -106,7 +107,7 @@ export const ALL_DIRECTORY_UNIVERSITIES = [
 
 export const RAW_DEPARTMENT_CATALOG = [
   { name: 'Computer Science & Engineering', group: 'Engineering' as const, aliases: ['CSE', 'Computer Science', 'Computer Engineering'] },
-  { name: 'Electrical & Electronic Engineering', group: 'Engineering' as const, aliases: ['EEE', 'Electrical Engineering'] },
+  { name: 'Electrical & Electronic Engineering', group: 'Engineering' as const, aliases: ['EEE', 'Electrical Engineering', 'Electrical and Electronic Engineering', 'Applied Physics', 'Applied Physics and Electronics', 'APE', 'APECE'] },
   { name: 'Civil Engineering', group: 'Engineering' as const, aliases: ['Civil'] },
   { name: 'Mechanical Engineering', group: 'Engineering' as const, aliases: ['ME'] },
   { name: 'Industrial & Production Engineering', group: 'Engineering' as const, aliases: ['IPE'] },
@@ -163,6 +164,7 @@ export const RAW_DEPARTMENT_CATALOG = [
 
 export const INITIAL_ALUMNI: AlumniRecord[] = [
   ...DU_CSE_ALUMNI,
+  ...DU_EEE_ALUMNI,
   {
     id: 'alumni-tanvir-hasan',
     userId: 'usr-tanvir-hasan',
